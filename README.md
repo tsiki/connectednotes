@@ -14,7 +14,7 @@ Take notes. Connect notes. Graph connections.
 - Graph view for exploring notes easily
 - Open source (duh)
 
-If you want to leave feedback: tsiki @ freenode/IRCnet or 
+If you want to leave feedback: tsiki @ freenode/IRCnet
 
 # Current progress
 
