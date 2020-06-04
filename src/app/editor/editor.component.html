@@ -1,0 +1,17 @@
+
+<style>
+  #codemirror-container {
+    display: flex;
+    height: 100%;
+    max-width: 700px;
+  }
+
+  #codemirror {
+    border: 1px solid red !important;
+    height: 100%;
+  }
+</style>
+
+<div id="codemirror-container" appDnd (imageDropped)="onImageDropped($event)">
+  <textarea #codemirror id="codemirror"></textarea>
+</div>

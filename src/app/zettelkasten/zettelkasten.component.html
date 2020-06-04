@@ -1,0 +1,172 @@
+
+<style>
+  #icon-menu {
+    align-items: stretch;
+    display: flex;
+    justify-content: space-around;
+    min-height: 50px;
+  }
+
+  #icon-menu > button {
+    flex-grow: 1;
+    min-width: 0;
+    padding: 0;
+  }
+
+  .vertical #left-end-button-container,
+  .vertical #icon-menu {
+    flex-direction: column;
+  }
+
+  #left-frame.vertical {
+    flex-direction: column;
+  }
+
+  #left-frame {
+    background-color: #fafafa; /* TODO: make this into CSS variable for theming */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+  }
+
+  .vertical #icon-menu > button {
+    padding: 10px 0;
+  }
+
+  #container {
+    align-items: stretch;
+    display: flex;
+    height: 100%;
+    width: 100%;
+  }
+
+  #right-frame {
+    height: 100%;
+    width: 100%;
+  }
+
+  #graph-icon {
+    padding: 1px 4px 5px 4px;
+  }
+
+  #editor-container {
+    display: block;
+    height: 100%;
+  }
+
+  #editor {
+    height: 100%;
+    padding: 10px;
+  }
+
+  #markdown-renderer {
+    padding: 10px;
+  }
+
+  .space-evenly {
+    display: inline-block;
+    width: 50%;
+    vertical-align: top;
+  }
+
+  #logout-icon {
+    height: 24px;
+    width: 24px;
+  }
+
+  /* make the draggable divider a bit narrower */
+  ::ng-deep .as-split-gutter {
+    flex-basis: 5px !important;
+  }
+
+  #left-end-button-container {
+    display: flex;
+  }
+
+  #left-end-button-container > * {
+    flex-grow: 1;
+  }
+
+  #editor.split-state {
+    border-right: 1px solid #bdbdbd;
+    width: 50%;
+  }
+
+  #editor {
+    width: 100%;
+  }
+
+  #notifications {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+  }
+
+</style>
+
+<div id="container">
+  <as-split unit="pixel" direction="horizontal" (dragEnd)="dragEnd('percent', $event)" #split="asSplit">
+    <as-split-area [size]="250"
+                   #sidebar
+                   #sidebarArea="asSplitArea"
+                   [@openClose]="{value: sidebarCollapsed ? 'closed' : 'open', params: {curWidth: unCollapsedSidebarWidth}}">
+      <div id="left-frame" [class.vertical]="sidebarCollapsed">
+        <div id="left-frame-start">
+          <div id="icon-menu">
+            <button (click)="toggleSidebar()" mat-button matTooltip="toggle note list">
+              <mat-icon>list</mat-icon>
+            </button>
+            <button (click)="openNewNoteDialog()" mat-button matTooltip="new note (ctrl + k)">
+              <mat-icon>add</mat-icon>
+            </button>
+            <button (click)="openSearchDialog()" mat-button matTooltip="search notes (ctrl + shift + f)">
+              <mat-icon>search</mat-icon>
+            </button>
+            <button (click)="openGraphView()" mat-button matTooltip="view notes as a graph">
+              <mat-icon><img alt="graph" id="graph-icon" src="./assets/img/graph-icon.svg"></mat-icon>
+            </button>
+            <button (click)="toggleSplitView()" mat-button matTooltip="show/hide rendered note">
+              <mat-icon>border_vertical</mat-icon>
+            </button>
+          </div>
+          <app-filelist *ngIf="!sidebarCollapsed"></app-filelist>
+        </div>
+
+        <div id="left-frame-end">
+          <div id="notifications">
+            <div *ngFor="let statusUpdate of activeStatusUpdates">
+              {{ statusUpdate.message }}
+            </div>
+          </div>
+          <div id="left-end-button-container">
+            <button (click)="logout()" mat-button matTooltip="logout">
+              <ion-icon id="logout-icon" name="log-out-outline"></ion-icon>
+            </button>
+            <button (click)="openSettings()" mat-button matTooltip="settings">
+              <mat-icon class="material-icons-outlined">settings</mat-icon>
+            </button>
+          </div>
+        </div>
+      </div>
+    </as-split-area>
+
+    <as-split-area size="*">
+      <div id="right-frame">
+        <div id="editor-container" *ngIf="['editor', 'split'].includes(editorState)">
+          <app-editor
+            id="editor"
+            [class.split-state]="editorState === 'split'"
+            appDnd
+            class="space-evenly"
+            id="editor"
+            #editor>
+          </app-editor>
+          <div id="markdown-renderer" class="space-evenly" *ngIf="editorState === 'split'" #markdown></div>
+        </div>
+        <app-graph *ngIf="editorState === 'graph'"></app-graph>
+      </div>
+    </as-split-area>
+  </as-split>
+</div>
