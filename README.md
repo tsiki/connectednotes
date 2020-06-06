@@ -1,11 +1,14 @@
 
-Hi everyone, thank for your interest in this project. This is the
-pre-alpha version of Connected Notes (as in, many major features are still missing), a note taking app based on Zettelkasten.
-Sorry for the delay, I know I said I'd try to get something out in May but I
-moved out of my apartment over the weekend and was quite busy.
+Hi everyone, thank for your interest in this project - sorry for the delay,
+I know I said I'd try to get something out in May but I moved out of my
+apartment over last weekend and was quite busy.
 
-I have set up a test version at connectednotes.net - please don't use it for
-anything serious, but I'd love to get some feedback.
+This is the
+still-in-development version of Connected Notes, a note taking app based on Zettelkasten.
+Some major features are still missing (see below for full list).
+
+I have set up a test version at connectednotes.net - I wouldn't use it for
+anything serious just yet, but I'd love to get some feedback via github bugs or IRC messages.
 
 # Goals
 
@@ -13,7 +16,7 @@ anything serious, but I'd love to get some feedback.
 - Progressive web app (PWA) usable from both mobile and desktop
 - Low upkeep cost combined with open-sourcing to give reasonable long-term support 
 - Give users as much control over their notes as possible
-  - Notes are mainly synced in personal cloud (currently Google Drive works)
+  - Notes are synced in personal cloud (currently Google Drive works)
   - Store notes in plain text with any metadata stored separately
   - Possibly support for local notes (although so far only Chrome has any sort of filesystem API available)
 - Currently markdown based (maybe provide WYSIWYG editor as alternative?)
@@ -42,15 +45,14 @@ Then, navigate to localhost:4200/gd for the Google Drive backed version
 - Proper testing with browsers other than Chrome
 - Dark mode
 - Sorting notes by different criteria (eg. creation time, modification time)
-
-On the technical side, needs more tests (currently only some default tests exist).
+- Disentangle anything firebase related from the current app
+- Dropbox integration
+- On the technical side, needs more tests (currently only some default tests exist).
 
 # Tech stack
 
-Angular 9 is the main framework. Codemirror is used to provide markdown
+Angular 9 (so Typescript) is the main framework. Codemirror is used to provide markdown
 highlighting, marked.js provides markdown rendering and d3 the graph view. 
-
-Everything is Typescript.
 
 # Comparison to other Zettelkasten-ish note taking apps
 
@@ -64,9 +66,9 @@ While Electron is powerful and well-supported, I think it carries long-term risk
 PWAs don't have. Namely, Electron apps must be kept up-to-date by manually releasing
 new versions based on the the latest Electron, whereas PWAs can rely on the user to keep
 their browser udpated which reduces the maintenance load.
-Also, code signing Electron apps is not trivial.
-This makes it more crucial to have support from a commercial company or dedicated
-maintainers for Electron apps, where the same doesn't apply for PWAs (at least to same extent).
+Also, code signing Electron apps is not trivial and increases maintenance load.
+This makes it more important to have support from a commercial company or dedicated
+maintainers for Electron apps, where the same doesn't apply for PWAs (to a degree).
 
 # Planned timeline
 
@@ -77,4 +79,6 @@ get cut from 1.0 depending on how much time there is.
 
 # Contact me
 
-tsiki @ freenode/IRCnet (yes that's IRC, yes I'm oldschool)
+tsiki @ freenode/IRCnet
+
+Or just create a github bug
