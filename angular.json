@@ -33,6 +33,8 @@
               "./node_modules/@angular/material/prebuilt-themes/indigo-pink.css",
               "src/styles.css",
               "src/codemirror-styles.css",
+              "src/codemirror-dark-styles.css",
+              "src/themes.scss",
               "./node_modules/codemirror/addon/hint/show-hint.css",
               {
                 "input": "node_modules/@ionic/angular/css/normalize.css"

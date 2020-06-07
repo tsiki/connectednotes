@@ -1,7 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import {Component, HostBinding, OnInit} from '@angular/core';
 import {MatDialogRef} from '@angular/material/dialog';
 import {NoteService} from '../note.service';
 import {HighlightedSegment, SearchResult} from '../types';
+import {SettingsService, Theme} from "../settings.service";
 
 @Component({
   selector: 'app-search-dialog',
@@ -39,9 +40,19 @@ export class SearchDialogComponent implements OnInit {
 
   noteTitle: string;
   searchResults: SearchResult[];
-
   selectedListIndex = 0;
-  constructor(public dialogRef: MatDialogRef<SearchDialogComponent>, private readonly noteService: NoteService) {}
+
+  @HostBinding('class.dark-theme') darkThemeActive = false;
+
+
+  constructor(
+      public dialogRef: MatDialogRef<SearchDialogComponent>,
+      private readonly noteService: NoteService,
+      private readonly settingsService: SettingsService) {
+    this.settingsService.themeSetting.subscribe(theme => {
+      this.darkThemeActive = theme === Theme.DARK;
+    });
+  }
 
   close() {
     this.dialogRef.close();

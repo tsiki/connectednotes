@@ -6,19 +6,17 @@ import {AngularFireAuth} from '@angular/fire/auth';
 import {auth} from 'firebase';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {NoteObject} from '../types';
+import {SettingsService} from '../settings.service';
 
 @Component({
   selector: 'app-filelist',
   templateUrl: './filelist.component.html',
-  styles: [`
-
-  `],
+  styles: [``],
 })
 export class FilelistComponent implements OnInit {
   @ViewChild('titleRenameInput') titleRenameInput: ElementRef;
   @ViewChild('contextMenu') contextMenu: ElementRef;
 
-  private userid: string;
   selectedNoteId: string;
   notes: NoteObject[];
 
@@ -31,9 +29,9 @@ export class FilelistComponent implements OnInit {
   constructor(
       private readonly route: ActivatedRoute,
       private readonly noteService: NoteService,
+      private readonly settingsService: SettingsService,
       private snackBar: MatSnackBar,
       private cdr: ChangeDetectorRef) {
-    this.userid = this.route.snapshot.paramMap.get('userid');
   }
 
   ngOnInit(): void {

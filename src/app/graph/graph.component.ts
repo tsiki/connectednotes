@@ -124,6 +124,7 @@ export class GraphComponent implements AfterViewInit {
     const text = node.append('text')
       .attr('stroke', 'none')
       .style('font-size', '9px')
+      .style('fill', 'var(--primary-text-color)')
       .attr('x', 6)
       .attr('y', 3)
       .text((d) => d.id);

@@ -1,5 +1,9 @@
 
 <style>
+  :host {
+    background: var(--primary-background-color);
+  }
+
   #codemirror-container {
     display: flex;
     height: 100%;
@@ -7,11 +11,10 @@
   }
 
   #codemirror {
-    border: 1px solid red !important;
     height: 100%;
   }
 </style>
 
-<div id="codemirror-container" appDnd (imageDropped)="onImageDropped($event)">
+<div id="codemirror-container" class="dark-theme" appDnd (imageDropped)="onImageDropped($event)">
   <textarea #codemirror id="codemirror"></textarea>
 </div>

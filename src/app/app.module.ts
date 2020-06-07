@@ -17,7 +17,7 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import {MatButtonModule} from '@angular/material/button';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatInputModule} from '@angular/material/input';
-import {MatRippleModule} from '@angular/material/core';
+import {MatOptionModule, MatRippleModule} from '@angular/material/core';
 import {MatDialogModule} from '@angular/material/dialog';
 import {FormsModule} from '@angular/forms';
 import {MatIconModule} from '@angular/material/icon';
@@ -36,6 +36,7 @@ import {AngularFireStorageModule} from '@angular/fire/storage';
 import {MatSnackBarModule} from '@angular/material/snack-bar';
 import {HttpClientModule} from '@angular/common/http';
 import { SettingsComponent } from './settings/settings.component';
+import {MatSelectModule} from "@angular/material/select";
 
 @NgModule({
   entryComponents: [CreateNoteDialog], // Not declared in template to must be here
@@ -51,35 +52,37 @@ import { SettingsComponent } from './settings/settings.component';
     DndDirective,
     SettingsComponent,
   ],
-  imports: [
-    BrowserModule,
-    BrowserAnimationsModule,
-    AngularFireModule.initializeApp(environment.firebase),
-    AngularFireStorageModule,
-    AngularSplitModule.forRoot(),
-    ServiceWorkerModule.register('ngsw-worker.js', { enabled: environment.production }),
-    AppRoutingModule,
-    AngularFirestoreModule,
-    AngularFireAuthModule,
-    FormsModule,
-    HttpClientModule,
-    IonicModule.forRoot(),
-    BrowserAnimationsModule,
-    MatButtonModule,
-    MatButtonToggleModule,
-    MatCardModule,
-    MatDividerModule,
-    MatFormFieldModule,
-    MatIconModule,
-    MatInputModule,
-    MatListModule,
-    MatMenuModule,
-    MatSidenavModule,
-    MatSnackBarModule,
-    MatTooltipModule,
-    MatRippleModule,
-    MatDialogModule,
-  ],
+    imports: [
+        BrowserModule,
+        BrowserAnimationsModule,
+        AngularFireModule.initializeApp(environment.firebase),
+        AngularFireStorageModule,
+        AngularSplitModule.forRoot(),
+        ServiceWorkerModule.register('ngsw-worker.js', {enabled: environment.production}),
+        AppRoutingModule,
+        AngularFirestoreModule,
+        AngularFireAuthModule,
+        FormsModule,
+        HttpClientModule,
+        IonicModule.forRoot(),
+        BrowserAnimationsModule,
+        MatButtonModule,
+        MatButtonToggleModule,
+        MatCardModule,
+        MatDividerModule,
+        MatFormFieldModule,
+        MatIconModule,
+        MatInputModule,
+        MatListModule,
+        MatMenuModule,
+        MatSidenavModule,
+        MatSnackBarModule,
+        MatTooltipModule,
+        MatRippleModule,
+        MatDialogModule,
+        MatOptionModule,
+        MatSelectModule,
+    ],
   providers: [],
   bootstrap: [AppComponent]
 })

@@ -23,7 +23,7 @@
   }
 
   #left-frame {
-    background-color: #fafafa; /* TODO: make this into CSS variable for theming */
+    background-color: var(--low-contrast-background-color); /* TODO: make this into CSS variable for theming */
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -36,6 +36,8 @@
 
   #container {
     align-items: stretch;
+    color: var(--primary-text-color);
+    background: var(--primary-background-color);
     display: flex;
     height: 100%;
     width: 100%;
@@ -104,6 +106,10 @@
     justify-content: space-around;
   }
 
+  #graph-icon.dark-theme {
+    filter: invert(1);
+  }
+
 </style>
 
 <div id="container">
@@ -125,7 +131,7 @@
               <mat-icon>search</mat-icon>
             </button>
             <button (click)="openGraphView()" mat-button matTooltip="view notes as a graph">
-              <mat-icon><img alt="graph" id="graph-icon" src="./assets/img/graph-icon.svg"></mat-icon>
+              <mat-icon><img alt="graph" id="graph-icon" [class.dark-theme]="theme === 'dark'" src="./assets/img/graph-icon.png"></mat-icon>
             </button>
             <button (click)="toggleSplitView()" mat-button matTooltip="show/hide rendered note">
               <mat-icon>border_vertical</mat-icon>

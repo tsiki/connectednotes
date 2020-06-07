@@ -50,9 +50,9 @@ interface RenameResult {
 }
 
 interface BackendStatusNotification {
-  id: string;
+  id: string; // A notification can be overwritten by sending another notification with the same ID
   removeAfterMillis?: number; // If not defined the status stays until overriden
-  message: string;
+  message: string; // Actual message to be displayed to the user
 }
 
 interface StorageBackend {

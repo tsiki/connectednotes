@@ -1,7 +1,16 @@
+@import '@angular/material/prebuilt-themes/deeppurple-amber.css';
 
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 
 :root {
   --primary-text-color: #000;
+  --primary-background-color: #fff;
+  --low-contrast-background-color: #fafafa;
+}
+
+.dark-theme {
+  --primary-text-color: #fff; /* too much constrast? */
+  --primary-background-color: #2e2e2e;
+  --low-contrast-background-color: #1c1c1c;
 }

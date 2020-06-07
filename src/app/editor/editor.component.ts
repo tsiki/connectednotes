@@ -1,10 +1,11 @@
-import {AfterViewInit, Component, ElementRef, EventEmitter, HostListener, OnDestroy, OnInit, Output, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, EventEmitter, OnDestroy, OnInit, Output, ViewChild} from '@angular/core';
 import * as CodeMirror from 'codemirror';
 import {NoteService} from '../note.service';
 import {fromEvent} from 'rxjs';
 import {debounceTime} from 'rxjs/operators';
 import 'codemirror/addon/hint/show-hint';
 import {DragAndDropImage, NoteObject} from '../types';
+import {SettingsService, Theme} from "../settings.service";
 
 declare interface CodeMirrorHelper {
   commands: {
@@ -15,6 +16,9 @@ declare interface CodeMirrorHelper {
   };
 }
 
+const DARK_THEME = 'darcula';
+const LIGHT_THEME = 'default';
+
 @Component({
   selector: 'app-editor',
   templateUrl: './editor.component.html',
@@ -24,14 +28,23 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   @ViewChild('codemirror') cm: ElementRef;
   @Output() contentChange = new EventEmitter();
 
-
   private codemirror: CodeMirror.EditorFromTextArea;
   private selectedNote: NoteObject;
   private previousChar: string;
   private allNoteTitles: string[];
   private unloadListener = () => this.saveChanges();
 
-  constructor(private readonly noteService: NoteService) { }
+  constructor(private readonly noteService: NoteService, private readonly settingsService: SettingsService) {
+    this.settingsService.themeSetting.subscribe(theme => {
+      switch (theme) {
+        case Theme.DARK:
+          this.codemirror?.setOption('theme', DARK_THEME);
+          break;
+        case Theme.LIGHT:
+          this.codemirror?.setOption('theme', LIGHT_THEME);
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.selectedNote = this.noteService.currentSelectedNote;
@@ -80,8 +93,9 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       });
     };
 
+    const theme = this.settingsService.themeSetting.value === Theme.DARK ? DARK_THEME : LIGHT_THEME;
     this.codemirror = CodeMirror.fromTextArea(this.cm.nativeElement,
-      {mode: 'markdown', lineWrapping: true, extraKeys: {'Shift-Space': 'autocomplete'}});
+      {mode: 'markdown', lineWrapping: true, extraKeys: {'Shift-Space': 'autocomplete'}, theme});
     // this.codemirror.setSize('400px', '1000px'); // keep this here for performance testing codemirror resizing
     this.codemirror.setSize('100%', '100%');
 

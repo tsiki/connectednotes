@@ -118,7 +118,6 @@ export class GoogleDriveService implements StorageBackend {
     });
   }
 
-  // TODO: everything below
   requestRefreshAllNotes() {
     if (!this.currentRootFolderId) {
       if (!this.refreshSubscription) {
@@ -175,7 +174,8 @@ export class GoogleDriveService implements StorageBackend {
       const listReq = gapi.client.drive.files.list({
         q: "trashed = false and mimeType='text/plain'",
         pageToken,
-        fields: `nextPageToken, files(id, name, parents, modifiedTime)`, // fields: `*` can be used for debugging, returns all fields
+        // fields: `*` can be used for debugging, returns all fields
+        fields: `nextPageToken, files(id, name, parents, modifiedTime)`,
         pageSize: 1000 // 1000 is the max value
       });
       const resp = await this.executeListMetadataReq(listReq);
@@ -184,21 +184,22 @@ export class GoogleDriveService implements StorageBackend {
     } while (pageToken);
 
 
-    // Handle caching
-    // First, delete version from cache that aren't there anymore
+    // Handle caching - first, delete version from cache that aren't there anymore
     const existingNoteIds = new Set(noteMetadata.map(n => n.id));
     const noteIdToLastChanged = await this.cache.getAllNoteIdToLastChangedInCache();
     for (const noteIdInCache of noteIdToLastChanged.keys()) {
-      if (!existingNoteIds.has(noteIdInCache)) {
+      if (!existingNoteIds.has(noteIdInCache) && existingNoteIds.size > 0) {
         this.cache.deleteFromCache(noteIdInCache);
       }
     }
-    // Then, only consider the notes which have newer version on drive
-    const notesWithNewerVersion = noteMetadata.filter(n => n.lastChangedEpochMillis > (noteIdToLastChanged.get(n.id) || 0));
 
-    // Metadata fetched. Now fetch the content of the notes for which we don't have the newest version for.
+    // Then, only consider the notes which have newer version on drive
+    const notesWithNewerVersion = noteMetadata
+        .filter(n => n.lastChangedEpochMillis > (noteIdToLastChanged.get(n.id) || 0));
+
+    // Now fetch the content of the notes for which we don't have the newest version for.
     const noteContents = await this.fetchContents(notesWithNewerVersion.map(n => n.id));
-    const notes: NoteObject[] = await this.cache.getAllNotesInCache(); // We've deleted non-existing versions from cache above
+    const notes: NoteObject[] = await this.cache.getAllNotesInCache();
     for (let i = 0; i < noteContents.length; i++) {
       const metadata = notesWithNewerVersion[i];
       const note = {
@@ -211,7 +212,11 @@ export class GoogleDriveService implements StorageBackend {
       notes.push(note);
     }
     this.notes.next(notes);
-    this.backendStatusNotifications.next({id: notificationId.toString(), message: 'All notes synced', removeAfterMillis: 5000});
+    this.backendStatusNotifications.next({
+      id: notificationId.toString(),
+      message: 'All notes synced',
+      removeAfterMillis: 5000
+    });
   }
 
   private async fetchContents(fileIds: string[]): Promise<string[]> {
