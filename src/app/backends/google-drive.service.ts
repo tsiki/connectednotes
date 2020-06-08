@@ -199,20 +199,21 @@ export class GoogleDriveService implements StorageBackend {
 
     // Now fetch the content of the notes for which we don't have the newest version for.
     const noteContents = await this.fetchContents(notesWithNewerVersion.map(n => n.id));
+    const notes: NoteObject[] = await this.cache.getAllNotesInCache();
+    const noteIdsToNoteRefs = new Map<string, NoteObject>();
+    for (const note of notes) {
+      noteIdsToNoteRefs.set(note.id, note);
+    }
     for (let i = 0; i < noteContents.length; i++) {
       const metadata = notesWithNewerVersion[i];
-      const note = {
-        id: metadata.id,
-        title: metadata.title,
-        lastChangedEpochMillis: metadata.lastChangedEpochMillis,
-        content: noteContents[i],
-      };
-      // if this updates its still pushed to 'notes'
+      const noteRef = noteIdsToNoteRefs.get(metadata.id);
+      noteRef.title = metadata.title;
+      noteRef.lastChangedEpochMillis = metadata.lastChangedEpochMillis;
+      noteRef.content = noteContents[i];
+
       this.cache.addOrUpdateNoteInCache(metadata.id, metadata.lastChangedEpochMillis, metadata.title, noteContents[i]);
     }
 
-    // Cache has been udpated with the latest notes, so return its contents.
-    const notes: NoteObject[] = await this.cache.getAllNotesInCache();
     this.notes.next(notes);
     this.backendStatusNotifications.next({
       id: notificationId.toString(),

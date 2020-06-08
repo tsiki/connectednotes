@@ -48,7 +48,11 @@ export class LocalCacheService {
       content,
     };
 
-    notes.put(newNote);
+    const putReq = notes.put(newNote);
+    return new Promise((resolve, reject) => {
+      putReq.onsuccess = () => resolve();
+      putReq.onerror = () => reject();
+    });
   }
 
   // TODO: the caching logic needs some tests
