@@ -199,7 +199,6 @@ export class GoogleDriveService implements StorageBackend {
 
     // Now fetch the content of the notes for which we don't have the newest version for.
     const noteContents = await this.fetchContents(notesWithNewerVersion.map(n => n.id));
-    const notes: NoteObject[] = await this.cache.getAllNotesInCache();
     for (let i = 0; i < noteContents.length; i++) {
       const metadata = notesWithNewerVersion[i];
       const note = {
@@ -208,9 +207,12 @@ export class GoogleDriveService implements StorageBackend {
         lastChangedEpochMillis: metadata.lastChangedEpochMillis,
         content: noteContents[i],
       };
+      // if this updates its still pushed to 'notes'
       this.cache.addOrUpdateNoteInCache(metadata.id, metadata.lastChangedEpochMillis, metadata.title, noteContents[i]);
-      notes.push(note);
     }
+
+    // Cache has been udpated with the latest notes, so return its contents.
+    const notes: NoteObject[] = await this.cache.getAllNotesInCache();
     this.notes.next(notes);
     this.backendStatusNotifications.next({
       id: notificationId.toString(),
@@ -265,6 +267,8 @@ export class GoogleDriveService implements StorageBackend {
       this.backendStatusNotifications.next({id: noteId, message: 'Saving...'});
     }
     req.execute(resp => {
+      // TODO: cache this - we need to last changed timestamp from the server
+      // this.cache.addOrUpdateNoteInCache(noteId, )
       if (notify) {
         this.backendStatusNotifications.next({id: noteId, message: 'Saved', removeAfterMillis: 5000});
       }

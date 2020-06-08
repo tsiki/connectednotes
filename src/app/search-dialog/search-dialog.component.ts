@@ -22,9 +22,9 @@ import {SettingsService, Theme} from "../settings.service";
   `,
   styles: [`
     .highlighted {
-      background-color: yellow;
+      background-color: var(--highlight-color);
     }
-
+    
     .result-link {
       display: block;
     }

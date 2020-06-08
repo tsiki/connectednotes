@@ -43,7 +43,6 @@ Then, navigate to localhost:4200/gd for the Google Drive backed version
 - Responsiveness
 - Settings to control eg. showing timestamps on notes
 - Proper testing with browsers other than Chrome
-- Dark mode
 - Sorting notes by different criteria (eg. creation time, modification time)
 - Disentangle anything firebase related from the current app
 - Dropbox integration
