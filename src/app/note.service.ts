@@ -1,10 +1,5 @@
 import {Injectable, Injector} from '@angular/core';
-import {AngularFirestore} from '@angular/fire/firestore';
-import {AngularFireAuth} from '@angular/fire/auth';
-import {BehaviorSubject, Observable, Subject} from 'rxjs';
-import * as firebase from 'firebase/app';
-import {AngularFireStorage} from '@angular/fire/storage';
-import {UploadTaskSnapshot} from '@angular/fire/storage/interfaces';
+import {BehaviorSubject, Subject} from 'rxjs';
 import {GoogleDriveService} from './backends/google-drive.service';
 import {FirebaseService} from './backends/firebase.service';
 import {
@@ -14,7 +9,7 @@ import {
   NotesAndTagGroups,
   RenameResult,
   StorageBackend,
-  TagGroup
+  TagGroup, UserSettings
 } from './types';
 
 export enum Backend {
@@ -29,10 +24,12 @@ export class NoteService {
 
   notes: Subject<NoteObject[]> = new Subject();
   notesAndTagGroups: BehaviorSubject<NotesAndTagGroups> = new BehaviorSubject(null);
+
   currentNotes: NoteObject[];
   selectedNote: Subject<NoteObject> = new Subject();
   currentSelectedNote: NoteObject;
   backendStatusNotifications: Subject<BackendStatusNotification>;
+  storedSettings = new BehaviorSubject<UserSettings>(null);
 
   private backendType: Backend;
   private backend?: StorageBackend;
@@ -42,7 +39,7 @@ export class NoteService {
 
   async initialize(backendType: Backend) {
     if (backendType === Backend.FIREBASE) {
-      this.backend = this.injector.get(FirebaseService);
+      // this.backend = this.injector.get(FirebaseService);
     }
     if (backendType === Backend.GOOGLE_DRIVE) {
       this.backend = this.injector.get(GoogleDriveService);
@@ -52,6 +49,7 @@ export class NoteService {
     this.backend.requestRefreshAllNotes();
     this.notes = this.backend.notes;
     this.backendStatusNotifications = this.backend.backendStatusNotifications;
+    this.backend.storedSettings.subscribe(newSettings => this.storedSettings.next(newSettings));
     this.notes.subscribe(newNotes => {
       this.noteIdToNote = new Map();
       for (const note of newNotes) {
@@ -148,6 +146,10 @@ export class NoteService {
 
   async saveImage(img: any, fileType: string, fileName: string): Promise<string> {
     return this.backend.saveImage(img, fileType, fileName);
+  }
+
+  async updateSettings(settingKey: string, settingValue: string) {
+    this.backend.updateSettings(settingKey, settingValue);
   }
 
   private getAllNotesReferenced(s: string, existingTitles: Set<string>): string[] {

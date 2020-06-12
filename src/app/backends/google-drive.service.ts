@@ -21,10 +21,11 @@ export class GoogleDriveService implements StorageBackend {
 
   notes = new Subject<NoteObject[]>();
   backendStatusNotifications = new Subject<BackendStatusNotification>();
+  storedSettings = new BehaviorSubject<UserSettings>(null);
 
   private rootFolderId = new Subject<string>();
   private settingAndMetadataFolderId = new BehaviorSubject<string>(null);
-  private storedSetting = new BehaviorSubject<UserSettings>(null);
+  private storedSettingsFileId: string; // Not observable since we assume any settings update is done with delay
   private currentRootFolderId: string;
   private refreshSubscription: Subscription;
 
@@ -33,6 +34,7 @@ export class GoogleDriveService implements StorageBackend {
   constructor(private http: HttpClient, private cache: LocalCacheService) {
     this.initialize();
   }
+
 
   async initialize() {
     this.signInIfNotSignedIn().then(() => {
@@ -92,16 +94,26 @@ export class GoogleDriveService implements StorageBackend {
       this.settingAndMetadataFolderId.next(settingsFolderCreationResp.result.id);
     }
 
+    // console.log(this.settingAndMetadataFolderId.getValue());
+    // console.log(this.currentRootFolderId);
+    // const storedSettingsListResp1 = await gapi.client.drive.files.list({
+    //   q: `trashed = false and mimeType='application/json' and `
+    //       + `name='${SETTINGS_FILE_NAME}'`,
+    //   fields: 'files(id, name, parents)',
+    // });
+    // console.log(storedSettingsListResp1);
+
     const storedSettingsListResp = await gapi.client.drive.files.list({
       q: `trashed = false and mimeType='application/json' and `
           + `name='${SETTINGS_FILE_NAME}' and '${this.settingAndMetadataFolderId.getValue()}' in parents`,
-      fields: 'files(id, name)',
+      fields: 'files(id, name,  parents)',
     });
     if (storedSettingsListResp.result.files.length > 0) {
       const storedSettingsFileId = storedSettingsListResp.result.files[0].id;
+      this.storedSettingsFileId = storedSettingsFileId;
       const storedSettings = await this.fetchContents([storedSettingsFileId]);
-      // If the the file is new it doesn't contain any settings, and isn't JSON parseable
-      this.storedSetting.next(JSON.parse(storedSettings[0] || '{}'));
+      // If the file is new it doesn't contain any settings, and isn't JSON parseable -> use empty object as placeholder
+      this.storedSettings.next(JSON.parse(storedSettings[0] || '{}'));
     } else {
       // Finally, create settings file
       const settingsFileCreationResp = await gapi.client.drive.files.create({
@@ -112,6 +124,8 @@ export class GoogleDriveService implements StorageBackend {
         },
         fields: 'id'
       });
+      this.storedSettingsFileId = settingsFileCreationResp.result.id;
+      this.storedSettings.next({});
     }
   }
 
@@ -152,6 +166,13 @@ export class GoogleDriveService implements StorageBackend {
     } else {
       this.refreshAllNotes();
     }
+  }
+
+  updateSettings(settingKey: string, settingValue: string) {
+    const current = this.storedSettings.getValue();
+    current[settingKey] = settingValue;
+    this.saveContent(this.storedSettingsFileId, JSON.stringify(current), true, 'application/json');
+    this.storedSettings.next(current);
   }
 
   createNote(filename: string): Promise<NoteObject> {
@@ -276,28 +297,28 @@ export class GoogleDriveService implements StorageBackend {
     return Promise.all(fetches);
   }
 
-  saveContent(noteId: string, content: string, notify: boolean) {
+  saveContent(fileId: string, content: string, notify: boolean, mimeType = 'text/plain') {
     if (!content) {
       return; // Don't save empty content, just in case there's some bug which overwrites the notes
     }
     const req = gapi.client.request({
-      path: `/upload/drive/v3/files/${noteId}`,
+      path: `/upload/drive/v3/files/${fileId}`,
       method: 'PATCH',
       headers: {
-        'Content-Type': 'text/plain'
+        'Content-Type': mimeType
       },
       body: content});
 
     // Use note ID as the ID for the status update because if the same note
     // is save twice we don't want to see two different notifications.
     if (notify) {
-      this.backendStatusNotifications.next({id: noteId, message: 'Saving...'});
+      this.backendStatusNotifications.next({id: fileId, message: 'Saving...'});
     }
     req.execute(resp => {
       // TODO: cache this - we need to last changed timestamp from the server
       // this.cache.addOrUpdateNoteInCache(noteId, )
       if (notify) {
-        this.backendStatusNotifications.next({id: noteId, message: 'Saved', removeAfterMillis: 5000});
+        this.backendStatusNotifications.next({id: fileId, message: 'Saved', removeAfterMillis: 5000});
       }
     });
   }

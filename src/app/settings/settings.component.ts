@@ -26,6 +26,6 @@ export class SettingsComponent implements OnInit {
   ngOnInit(): void {}
 
   changeTheme(e) {
-    this.settingsService.themeSetting.next(Theme[e.value]);
+    this.settingsService.setTheme(Theme[e.value]);
   }
 }

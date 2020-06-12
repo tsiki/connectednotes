@@ -15,8 +15,14 @@ export class SettingsService {
   themeSetting = new BehaviorSubject<Theme>(Theme.DARK);
 
   constructor(private readonly noteService: NoteService) {
-    // this.themeSetting.next()
-
+    noteService.storedSettings.asObservable().subscribe(newSettings => {
+      if (newSettings?.theme) {
+        this.themeSetting.next(newSettings.theme);
+      }
+    });
   }
 
+  setTheme(value: Theme) {
+    this.noteService.updateSettings('theme', value);
+  }
 }

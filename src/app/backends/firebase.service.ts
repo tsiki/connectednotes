@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import {Subject} from 'rxjs';
-import {BackendStatusNotification, NoteFile, NoteObject, StorageBackend} from '../types';
+import {BehaviorSubject, Subject} from 'rxjs';
+import {BackendStatusNotification, NoteFile, NoteObject, StorageBackend, UserSettings} from '../types';
 import {AngularFireAuth} from '@angular/fire/auth';
 import {AngularFirestore, DocumentReference} from '@angular/fire/firestore';
 import {AngularFireStorage} from '@angular/fire/storage';
@@ -9,7 +9,7 @@ import {UploadTaskSnapshot} from '@angular/fire/storage/interfaces';
 @Injectable({
   providedIn: 'root'
 })
-export class FirebaseService implements StorageBackend {
+export class FirebaseService {
 
   user?: string;
   notes: Subject<NoteObject[]> = new Subject();
@@ -30,6 +30,10 @@ export class FirebaseService implements StorageBackend {
         this.requestRefreshAllNotes();
       }
     });
+  }
+
+  async updateSettings(settingsKey, settingsValue) {
+    // Do nothing - should we get rid of firebase backend?
   }
 
   // Might not immediately refresh all notes if the user is undefined
