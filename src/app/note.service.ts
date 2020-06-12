@@ -1,13 +1,21 @@
 import {Injectable, Injector} from '@angular/core';
 import {AngularFirestore} from '@angular/fire/firestore';
 import {AngularFireAuth} from '@angular/fire/auth';
-import {Observable, Subject} from 'rxjs';
+import {BehaviorSubject, Observable, Subject} from 'rxjs';
 import * as firebase from 'firebase/app';
 import {AngularFireStorage} from '@angular/fire/storage';
 import {UploadTaskSnapshot} from '@angular/fire/storage/interfaces';
 import {GoogleDriveService} from './backends/google-drive.service';
 import {FirebaseService} from './backends/firebase.service';
-import {BackendStatusNotification, NoteAndLinks, NoteObject, RenameResult, StorageBackend} from './types';
+import {
+  BackendStatusNotification,
+  NoteAndLinks,
+  NoteObject,
+  NotesAndTagGroups,
+  RenameResult,
+  StorageBackend,
+  TagGroup
+} from './types';
 
 export enum Backend {
   FIREBASE,
@@ -20,6 +28,7 @@ export enum Backend {
 export class NoteService {
 
   notes: Subject<NoteObject[]> = new Subject();
+  notesAndTagGroups: BehaviorSubject<NotesAndTagGroups> = new BehaviorSubject(null);
   currentNotes: NoteObject[];
   selectedNote: Subject<NoteObject> = new Subject();
   currentSelectedNote: NoteObject;
@@ -27,6 +36,7 @@ export class NoteService {
 
   private backendType: Backend;
   private backend?: StorageBackend;
+  private noteIdToNote?: Map<string, NoteObject>;
 
   constructor(private injector: Injector) {}
 
@@ -42,7 +52,19 @@ export class NoteService {
     this.backend.requestRefreshAllNotes();
     this.notes = this.backend.notes;
     this.backendStatusNotifications = this.backend.backendStatusNotifications;
-    this.notes.subscribe(newNotes => this.currentNotes = newNotes);
+    this.notes.subscribe(newNotes => {
+      this.noteIdToNote = new Map();
+      for (const note of newNotes) {
+        this.noteIdToNote.set(note.id, note);
+      }
+      this.currentNotes = newNotes;
+      const tagGroups = this.extractTagGroups(newNotes);
+      this.notesAndTagGroups.next({tagGroups, notes: newNotes});
+    });
+  }
+
+  getNote(noteId: string) {
+    return this.noteIdToNote.get(noteId);
   }
 
   logout() {
@@ -142,6 +164,26 @@ export class NoteService {
         ans.push(s.slice(idx + 1, endIdx));
       }
       idx = s.indexOf('[[', endIdx);
+    }
+    return ans;
+  }
+
+  private extractTagGroups(notes: NoteObject[]): TagGroup[] {
+    const tagToNotes = new Map<string, Set<string>>();
+    for (const note of notes) {
+      const tags = note.content.match(/(^|\W)(#\S+)/ig) || [];
+      for (const untrimmedTag of tags) {
+        const tag = untrimmedTag.trim();
+        if (!tagToNotes.has(tag)) {
+          tagToNotes.set(tag, new Set<string>());
+        }
+        tagToNotes.get(tag).add(note.id);
+      }
+    }
+
+    const ans = [];
+    for (const [tag, noteIds] of tagToNotes) {
+      ans.push({tag, noteIds: Array.from(noteIds)});
     }
     return ans;
   }

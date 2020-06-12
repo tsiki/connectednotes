@@ -36,9 +36,7 @@ Then, navigate to localhost:4200/gd for the Google Drive backed version
 
 # Major missing features
 
-- Support for tags (search, visualization)
 - Search from note contents (not just titles)
-- Folders
 - Reasonable offline support
 - Responsiveness
 - Settings to control eg. showing timestamps on notes

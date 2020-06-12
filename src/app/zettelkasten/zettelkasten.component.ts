@@ -12,7 +12,7 @@ import {animate, state, style, transition, trigger} from '@angular/animations';
 import {GoogleDriveService} from '../backends/google-drive.service';
 import {SettingsComponent} from '../settings/settings.component';
 import {BackendStatusNotification} from '../types';
-import {SettingsService, Theme} from "../settings.service";
+import {SettingsService, Theme} from '../settings.service';
 
 
 @Component({
@@ -42,13 +42,12 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
   @ViewChild('sidebar') sidebar: ElementRef;
 
   editorState: 'editor'|'graph'|'split' = 'editor';
+  theme: Theme;
   sidebarCollapsed: boolean;
   unCollapsedSidebarWidth: number;
   currentNoteTitle: string;
   activeStatusUpdates: BackendStatusNotification[] = [];
   clearStatusUpdateFns = new Map<string, number>();
-
-  theme: Theme;
 
   constructor(
     private fireAuth: AngularFireAuth,

@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import {BehaviorSubject, Subject, Subscription} from 'rxjs';
 import {GDRIVE_API_KEY, GDRIVE_CLIENT_ID} from '../../environments/environment';
 import {HttpClient} from '@angular/common/http';
-import {BackendStatusNotification, NoteMetadata, NoteObject, StorageBackend} from '../types';
+import {BackendStatusNotification, NoteMetadata, NoteObject, StorageBackend, UserSettings} from '../types';
 import {LocalCacheService} from './local-cache.service';
 
 interface PartialMetadataFetch {
@@ -12,6 +12,7 @@ interface PartialMetadataFetch {
 
 const ROOT_FOLDER_NAME = 'Connected Notes';
 const SETTINGS_AND_METADATA_FOLDER_NAME = 'Settings and Metadata';
+const SETTINGS_FILE_NAME = 'settings.json';
 
 @Injectable({
   providedIn: 'root'
@@ -23,10 +24,12 @@ export class GoogleDriveService implements StorageBackend {
 
   private rootFolderId = new Subject<string>();
   private settingAndMetadataFolderId = new BehaviorSubject<string>(null);
+  private storedSetting = new BehaviorSubject<UserSettings>(null);
   private currentRootFolderId: string;
   private refreshSubscription: Subscription;
 
-  // This service should be created when it's actually needed, ie. user has decided they want to use Google Drive as backend
+  // This service should be created when it's actually needed, ie. user has decided they want to use Google Drive as
+  // backend - that way we can go straight to the authentication.
   constructor(private http: HttpClient, private cache: LocalCacheService) {
     this.initialize();
   }
@@ -49,47 +52,67 @@ export class GoogleDriveService implements StorageBackend {
   }
 
   private async createFoldersIfNotExist() {
-    const listReq = gapi.client.drive.files.list({
+    const rootFolderReq = await gapi.client.drive.files.list({
       q: `trashed = false and mimeType='application/vnd.google-apps.folder' and name='${ROOT_FOLDER_NAME}'`,
       fields: 'files(id, name)',
     });
-    const rootFolderReq = await listReq;
     if (rootFolderReq.result.files.length > 0) {
       this.currentRootFolderId = rootFolderReq.result.files[0].id;
       this.rootFolderId.next(this.currentRootFolderId);
-      const settingsListResp = await gapi.client.drive.files.list({
-        q: `trashed = false and mimeType='application/vnd.google-apps.folder' and `
-          + `name='${SETTINGS_AND_METADATA_FOLDER_NAME}' and '${this.currentRootFolderId}' in parents`,
-        fields: 'files(id, name)',
+    } else {
+      const rootFolderCreationResp = await gapi.client.drive.files.create({
+        resource: {
+          name: ROOT_FOLDER_NAME,
+          mimeType: 'application/vnd.google-apps.folder'
+        },
+        fields: 'id'
       });
-      if (settingsListResp.result.files.length > 0) {
-        // TODO: we should actually create it in an else branch
-        const folderId = settingsListResp.result.files[0].id;
-        this.settingAndMetadataFolderId.next(folderId);
-      }
-      return;
+      this.currentRootFolderId = rootFolderCreationResp.result.id;
+      this.rootFolderId.next(rootFolderCreationResp.result.id);
     }
 
-    const rootFolderCreationResp = await gapi.client.drive.files.create({
-      resource: {
-        name: ROOT_FOLDER_NAME,
-        mimeType: 'application/vnd.google-apps.folder'
-      },
-      fields: 'id'
+    const settingsFolderListResp = await gapi.client.drive.files.list({
+      q: `trashed = false and mimeType='application/vnd.google-apps.folder' and `
+          + `name='${SETTINGS_AND_METADATA_FOLDER_NAME}' and '${this.currentRootFolderId}' in parents`,
+      fields: 'files(id, name)',
     });
-    this.currentRootFolderId = rootFolderCreationResp.result.id;
-    this.rootFolderId.next(rootFolderCreationResp.result.id);
+    if (settingsFolderListResp.result.files.length > 0) {
+      const folderId = settingsFolderListResp.result.files[0].id;
+      this.settingAndMetadataFolderId.next(folderId);
+    } else {
+      // Also create settings/metadata folder
+      const settingsFolderCreationResp = await gapi.client.drive.files.create({
+        resource: {
+          name: SETTINGS_AND_METADATA_FOLDER_NAME,
+          mimeType: 'application/vnd.google-apps.folder',
+          parents: [this.currentRootFolderId],
+        },
+        fields: 'id'
+      });
+      this.settingAndMetadataFolderId.next(settingsFolderCreationResp.result.id);
+    }
 
-    // Also create settings/metadata folder
-    const settingsFolderCreationResp = await gapi.client.drive.files.create({
-      resource: {
-        name: SETTINGS_AND_METADATA_FOLDER_NAME,
-        mimeType: 'application/vnd.google-apps.folder',
-        parents: [this.currentRootFolderId],
-      },
-      fields: 'id'
+    const storedSettingsListResp = await gapi.client.drive.files.list({
+      q: `trashed = false and mimeType='application/json' and `
+          + `name='${SETTINGS_FILE_NAME}' and '${this.settingAndMetadataFolderId.getValue()}' in parents`,
+      fields: 'files(id, name)',
     });
-    this.settingAndMetadataFolderId.next(settingsFolderCreationResp.result.id);
+    if (storedSettingsListResp.result.files.length > 0) {
+      const storedSettingsFileId = storedSettingsListResp.result.files[0].id;
+      const storedSettings = await this.fetchContents([storedSettingsFileId]);
+      // If the the file is new it doesn't contain any settings, and isn't JSON parseable
+      this.storedSetting.next(JSON.parse(storedSettings[0] || '{}'));
+    } else {
+      // Finally, create settings file
+      const settingsFileCreationResp = await gapi.client.drive.files.create({
+        resource: {
+          name: SETTINGS_FILE_NAME,
+          mimeType: 'application/json',
+          parents: [this.settingAndMetadataFolderId.getValue()],
+        },
+        fields: 'id'
+      });
+    }
   }
 
   private signInIfNotSignedIn() {
@@ -188,6 +211,7 @@ export class GoogleDriveService implements StorageBackend {
     const existingNoteIds = new Set(noteMetadata.map(n => n.id));
     const noteIdToLastChanged = await this.cache.getAllNoteIdToLastChangedInCache();
     for (const noteIdInCache of noteIdToLastChanged.keys()) {
+      // Make sure there are some existing notes - we don't want to delete everything just because fetch failed
       if (!existingNoteIds.has(noteIdInCache) && existingNoteIds.size > 0) {
         this.cache.deleteFromCache(noteIdInCache);
       }
@@ -199,22 +223,24 @@ export class GoogleDriveService implements StorageBackend {
 
     // Now fetch the content of the notes for which we don't have the newest version for.
     const noteContents = await this.fetchContents(notesWithNewerVersion.map(n => n.id));
-    const notes: NoteObject[] = await this.cache.getAllNotesInCache();
     const noteIdsToNoteRefs = new Map<string, NoteObject>();
-    for (const note of notes) {
+    for (const note of await this.cache.getAllNotesInCache()) {
       noteIdsToNoteRefs.set(note.id, note);
     }
     for (let i = 0; i < noteContents.length; i++) {
       const metadata = notesWithNewerVersion[i];
-      const noteRef = noteIdsToNoteRefs.get(metadata.id);
-      noteRef.title = metadata.title;
-      noteRef.lastChangedEpochMillis = metadata.lastChangedEpochMillis;
-      noteRef.content = noteContents[i];
+      const updatedNote: NoteObject = {
+        id: metadata.id,
+        title: metadata.title,
+        lastChangedEpochMillis: metadata.lastChangedEpochMillis,
+        content: noteContents[i]
+      };
+      noteIdsToNoteRefs.set(metadata.id, updatedNote);
 
       this.cache.addOrUpdateNoteInCache(metadata.id, metadata.lastChangedEpochMillis, metadata.title, noteContents[i]);
     }
 
-    this.notes.next(notes);
+    this.notes.next(Array.from(noteIdsToNoteRefs.values()));
     this.backendStatusNotifications.next({
       id: notificationId.toString(),
       message: 'All notes synced',

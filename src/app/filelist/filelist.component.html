@@ -13,6 +13,21 @@
     padding: 0;
   }
 
+  .tag-group-note.note-link {
+    display: none;
+  }
+
+  .expanded .tag-group-note.note-link {
+    display: flex;
+    padding-left: 30px;
+    background-color: var(--primary-background-color);
+  }
+
+  .tag-group-link {
+    padding-left: 0;
+  }
+
+  .tag-group-link,
   .note-link {
     cursor: pointer;
     color: var(--primary-text-color);
@@ -37,6 +52,14 @@
     width: 100%;
   }
 
+  .expand-icon {
+    transform: rotate(-90deg);
+  }
+
+  .expanded .expand-icon {
+    transform: initial;
+  }
+
   #new-title-input {
     padding: 0 16px;
   }
@@ -44,6 +67,26 @@
 </style>
 
 <div id="note-list-container">
+  <span *ngFor="let tagGroup of tagGroups">
+    <button class="tag-group-link"
+            (click)="toggleTagGroup($event)"
+            mat-button>
+        <mat-icon class="expand-icon">expand_more</mat-icon>
+      {{ tagGroup.tag }}
+    </button>
+
+    <span *ngFor="let noteId of tagGroup.noteIds">
+      <button *ngIf="noteId !== noteToBeRenamed"
+              [class.mat-button-toggle-checked]="selectedNoteId===noteId"
+              class="note-link tag-group-note"
+              (click)="openNote(noteId)"
+              (contextmenu)="onRightClick($event, noteId)"
+              mat-button>
+        {{ noteService.getNote(noteId).title }}
+      </button>
+    </span>
+  </span>
+
   <span *ngFor="let note of notes">
     <button [class.mat-button-toggle-checked]="selectedNoteId==note.id"
             class="note-link"

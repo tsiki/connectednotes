@@ -5,7 +5,7 @@ import {Observable} from 'rxjs';
 import {AngularFireAuth} from '@angular/fire/auth';
 import {auth} from 'firebase';
 import {MatSnackBar} from '@angular/material/snack-bar';
-import {NoteObject} from '../types';
+import {NoteObject, TagGroup} from '../types';
 import {SettingsService} from '../settings.service';
 
 @Component({
@@ -19,6 +19,7 @@ export class FilelistComponent implements OnInit {
 
   selectedNoteId: string;
   notes: NoteObject[];
+  tagGroups: TagGroup[];
 
   contextMenuX: string;
   contextMenuY: string;
@@ -27,8 +28,8 @@ export class FilelistComponent implements OnInit {
   noteToBeRenamed?: string; // if null then there's no note to be renamed
 
   constructor(
+      readonly noteService: NoteService,
       private readonly route: ActivatedRoute,
-      private readonly noteService: NoteService,
       private readonly settingsService: SettingsService,
       private snackBar: MatSnackBar,
       private cdr: ChangeDetectorRef) {
@@ -44,8 +45,9 @@ export class FilelistComponent implements OnInit {
         this.selectedNoteId = null;
       }
     });
-    this.noteService.notes.asObservable().subscribe(newNotes => {
-      this.notes = newNotes;
+    this.noteService.notesAndTagGroups.asObservable().subscribe(notesAndTagGroups => {
+      this.notes = notesAndTagGroups?.notes;
+      this.tagGroups = notesAndTagGroups?.tagGroups;
       this.cdr.detectChanges(); // For some reason angular doesn't always pick up the changes
     });
   }
@@ -108,5 +110,10 @@ export class FilelistComponent implements OnInit {
 
   openNote(noteId: string) {
     this.noteService.selectNote(noteId);
+  }
+
+  toggleTagGroup(e: Event) {
+    const elem = e.currentTarget as HTMLElement;
+    elem.parentElement.classList.toggle('expanded');
   }
 }

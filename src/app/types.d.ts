@@ -11,6 +11,17 @@ declare interface NoteObject extends NoteFile {
   id: string;
 }
 
+declare interface TagGroup {
+  tag: string;
+  noteIds: string[];
+}
+
+interface NotesAndTagGroups {
+  tagGroups: TagGroup[];
+  notes: NoteObject[];
+}
+
+
 declare interface NoteMetadata {
   id: string;
   title: string;
@@ -49,10 +60,16 @@ interface RenameResult {
   status: Promise<any>;
 }
 
+export enum BackendStatusNotificationType {
+  POPUP,
+  MOLE,
+}
+
 interface BackendStatusNotification {
   id: string; // A notification can be overwritten by sending another notification with the same ID
   removeAfterMillis?: number; // If not defined the status stays until overriden
   message: string; // Actual message to be displayed to the user
+  type?: BackendStatusNotificationType;
 }
 
 interface StorageBackend {
@@ -65,4 +82,8 @@ interface StorageBackend {
   saveContent(noteId: string, content: string, notify: boolean);
   saveImage(image: any, fileType: string, fileName: string): Promise<string>;
   logout();
+}
+
+interface UserSettings {
+  theme?: 'dark'|'light'|'device';
 }
