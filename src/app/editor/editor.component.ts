@@ -100,7 +100,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     this.codemirror.setSize('100%', '100%');
 
 
-    fromEvent(this.codemirror, 'changes').pipe(debounceTime(10_000)).subscribe(() => this.saveChanges());
+    fromEvent(this.codemirror, 'changes').pipe(debounceTime(3_000)).subscribe(() => this.saveChanges());
 
     this.codemirror.on('keyup', (cm, event) => {
       /* Enables keyboard navigation in autocomplete list */
