@@ -14,7 +14,6 @@ const LINE_WIDTH = 15;
   templateUrl: './frontpage.component.html',
 })
 export class FrontpageComponent implements AfterViewInit {
-  // @ViewChild('canvas') canvas: HTMLCanvasElement;
   @ViewChild('canvas') canvas: ElementRef<HTMLCanvasElement>;
 
   constructor(private router: Router, private injector: Injector) { }
@@ -52,7 +51,7 @@ export class FrontpageComponent implements AfterViewInit {
     };
 
     for (let i = 0; i < 25; i++) {
-      setTimeout(() => drawFn(), Math.random() * 1000);
+      setTimeout(() => drawFn(), Math.random() * 500);
     }
 
   }
@@ -187,10 +186,9 @@ export class FrontpageComponent implements AfterViewInit {
 
   async toGd() {
     // Initialize service here - if we initialize immediately after redirecting to new URL the popup is more likely to
-    // get blocked
+    // get blocked by the browser and it'll be confusing when the user lands on the page and can't create notes.
     const service = this.injector.get(GoogleDriveService);
     await service.signInIfNotSignedIn();
-    console.log('redirecting');
     this.router.navigate(['gd']);
   }
 }
