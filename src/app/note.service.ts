@@ -43,6 +43,7 @@ export class NoteService {
     }
     if (backendType === Backend.GOOGLE_DRIVE) {
       this.backend = this.injector.get(GoogleDriveService);
+      this.backend.initialize();
     }
     this.backendType = backendType;
 

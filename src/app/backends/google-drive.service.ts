@@ -32,11 +32,9 @@ export class GoogleDriveService implements StorageBackend {
   // This service should be created when it's actually needed, ie. user has decided they want to use Google Drive as
   // backend - that way we can go straight to the authentication.
   constructor(private http: HttpClient, private cache: LocalCacheService) {
-    this.initialize();
   }
 
-
-  async initialize() {
+  initialize() {
     this.signInIfNotSignedIn().then(() => {
       this.createFoldersIfNotExist();
       this.requestRefreshAllNotes();
@@ -46,7 +44,7 @@ export class GoogleDriveService implements StorageBackend {
   }
 
   async initiateSignIn() {
-    gapi.auth2.getAuthInstance().signIn();
+    await gapi.auth2.getAuthInstance().signIn();
   }
 
   logout() {
@@ -94,15 +92,6 @@ export class GoogleDriveService implements StorageBackend {
       this.settingAndMetadataFolderId.next(settingsFolderCreationResp.result.id);
     }
 
-    // console.log(this.settingAndMetadataFolderId.getValue());
-    // console.log(this.currentRootFolderId);
-    // const storedSettingsListResp1 = await gapi.client.drive.files.list({
-    //   q: `trashed = false and mimeType='application/json' and `
-    //       + `name='${SETTINGS_FILE_NAME}'`,
-    //   fields: 'files(id, name, parents)',
-    // });
-    // console.log(storedSettingsListResp1);
-
     const storedSettingsListResp = await gapi.client.drive.files.list({
       q: `trashed = false and mimeType='application/json' and `
           + `name='${SETTINGS_FILE_NAME}' and '${this.settingAndMetadataFolderId.getValue()}' in parents`,
@@ -129,7 +118,7 @@ export class GoogleDriveService implements StorageBackend {
     }
   }
 
-  private signInIfNotSignedIn() {
+  signInIfNotSignedIn() {
     return new Promise((resolve, reject) => {
       gapi.load('client:auth2', () => this.checkAndListenForSignIn().then(() => resolve()));
     });

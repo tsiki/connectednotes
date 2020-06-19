@@ -1,5 +1,5 @@
 import {BehaviorSubject, Observable, Subject} from 'rxjs';
-import {Theme} from "./settings.service";
+import {Theme} from './settings.service';
 
 declare interface NoteFile {
   title: string; // Maps to file name when exported
@@ -77,6 +77,8 @@ interface StorageBackend {
   notes: Subject<NoteObject[]>;
   backendStatusNotifications: Subject<BackendStatusNotification>;
   storedSettings: BehaviorSubject<UserSettings>;
+  initialize();
+  signInIfNotSignedIn();
   requestRefreshAllNotes();
   updateSettings(settingKey: string, settingValue: string);
   createNote(title: string): Promise<NoteObject>;

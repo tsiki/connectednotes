@@ -1,10 +1,10 @@
-import {AfterViewInit, Component, ElementRef, HostListener, OnInit, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, HostListener, Injector, OnInit, ViewChild} from '@angular/core';
 import {AngularFireAuth} from '@angular/fire/auth';
 import { auth } from 'firebase/app';
 import 'firebase/auth';
 import {Router} from '@angular/router';
 import {GoogleDriveService} from '../backends/google-drive.service';
-import {EditorComponent} from "../editor/editor.component";
+import {EditorComponent} from '../editor/editor.component';
 
 const RADIUS = 8;
 const LINE_WIDTH = 15;
@@ -17,7 +17,7 @@ export class FrontpageComponent implements AfterViewInit {
   // @ViewChild('canvas') canvas: HTMLCanvasElement;
   @ViewChild('canvas') canvas: ElementRef<HTMLCanvasElement>;
 
-  constructor(private router: Router) { }
+  constructor(private router: Router, private injector: Injector) { }
 
   ngAfterViewInit(): void {
     // this.drawLoop();
@@ -185,7 +185,12 @@ export class FrontpageComponent implements AfterViewInit {
     return [fn1, fn2, fn3];
   }
 
-  toGd() {
+  async toGd() {
+    // Initialize service here - if we initialize immediately after redirecting to new URL the popup is more likely to
+    // get blocked
+    const service = this.injector.get(GoogleDriveService);
+    await service.signInIfNotSignedIn();
+    console.log('redirecting');
     this.router.navigate(['gd']);
   }
 }
