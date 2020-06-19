@@ -99,7 +99,10 @@ export class FilelistComponent implements OnInit {
     // on the 'rename' option because 'documentClick' function is triggered
     if (newTitle !== curTitle) {
       const res = await this.noteService.renameNote(noteId, newTitle);
-      this.snackBar.open(`Renamed ${res.renamedBackRefCount} references in ${res.renamedNoteCount} notes`);
+      this.snackBar.open(
+          `Renamed ${res.renamedBackRefCount} references in ${res.renamedNoteCount} notes`,
+          null,
+          {duration: 5000});
     }
     this.noteToBeRenamed = null;
   }

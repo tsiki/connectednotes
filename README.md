@@ -1,9 +1,5 @@
 
-Hi everyone, thank for your interest in this project - sorry for the delay,
-I know I said I'd try to get something out in May but I moved out of my
-apartment over last weekend and was quite busy.
-
-This is the
+Hi everyone, thank for your interest in this project. This is the
 still-in-development version of Connected Notes, a note taking app based on Zettelkasten.
 Some major features are still missing (see below for full list).
 
@@ -32,13 +28,15 @@ changes are possible and I won't yet guarantee any backwards-compatibility.
 
 First, run npm install && ng serve
 
-Then, navigate to localhost:4200/gd for the Google Drive backed version
+Then, navigate to localhost:4200/gd for the Google Drive backed version.
+I've included an API key that works when serving on ports 4200, 5000 and 8080.
+This API key is separate from prod and only able to use the drive API so
+there shouldn't be risk in having it committed (right...?).
 
 # Major missing features
 
 - Search from note contents (not just titles)
 - Reasonable offline support
-- Responsiveness
 - Settings to control eg. showing timestamps on notes
 - Proper testing with browsers other than Chrome
 - Sorting notes by different criteria (eg. creation time, modification time)
@@ -65,7 +63,7 @@ new versions based on the the latest Electron, whereas PWAs can rely on the user
 their browser udpated which reduces the maintenance load.
 Also, code signing Electron apps is not trivial and increases maintenance load.
 This makes it more important to have support from a commercial company or dedicated
-maintainers for Electron apps, where the same doesn't apply for PWAs (to a degree).
+open source maintainers, where the same doesn't apply for PWAs (to a degree).
 
 # Planned timeline
 
@@ -73,6 +71,13 @@ Get major missing features working by the end of July and push out 1.0.
 
 Responsiveness and offline support are probably the biggest time sinks so those might
 get cut from 1.0 depending on how much time there is.
+
+# Setting up your own instance
+
+The only gotcha when setting up your own instance is that you need to create
+Google Drive API key and replace the current one with that (the API key only
+allows certain domains). Aside from that, everything deploying it should be
+a breeze.
 
 # Contact me
 

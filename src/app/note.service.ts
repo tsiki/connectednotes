@@ -174,7 +174,7 @@ export class NoteService {
   private extractTagGroups(notes: NoteObject[]): TagGroup[] {
     const tagToNotes = new Map<string, Set<string>>();
     for (const note of notes) {
-      const tags = note.content.match(/(^|\W)(#\S+)/ig) || [];
+      const tags = note.content.match(/(^|\W)(#((?![#])[\S])+)/ig) || [];
       for (const untrimmedTag of tags) {
         const tag = untrimmedTag.trim();
         if (!tagToNotes.has(tag)) {
