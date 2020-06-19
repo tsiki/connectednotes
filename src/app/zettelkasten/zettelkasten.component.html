@@ -7,6 +7,7 @@
     min-height: 50px;
   }
 
+  #left-end-button-container > button,
   #icon-menu > button {
     flex-grow: 1;
     min-width: 0;
@@ -30,6 +31,7 @@
     height: 100%;
   }
 
+  .vertical #left-end-button-container > button,
   .vertical #icon-menu > button {
     padding: 10px 0;
   }
@@ -97,6 +99,14 @@
 
   #editor {
     width: 100%;
+  }
+
+  .vertical #notifications {
+    align-items: baseline;
+    margin-bottom: 40px;
+    margin-left: -25px;
+    transform: rotate(-90deg);
+    width: 100px;
   }
 
   #notifications {

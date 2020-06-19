@@ -158,13 +158,10 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
       setTimeout(() => {
         const content = this.editor.getContent();
         this.markdown.nativeElement.innerHTML = (marked as any)(content);
-        // this.editor.contentChange.subscribe(newContent => )
       });
     } else {
       this.editorState = 'editor';
     }
-
-    // TODO: we need to do shit like attach and event listener to codemirror and also remember to detach it
   }
 
   dragEnd(unit, {sizes}) {
