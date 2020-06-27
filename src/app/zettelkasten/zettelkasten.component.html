@@ -120,6 +120,10 @@
     filter: invert(1);
   }
 
+  #note-list {
+    overflow-y: scroll;
+  }
+
 </style>
 
 <div id="container">
@@ -147,8 +151,9 @@
               <mat-icon>border_vertical</mat-icon>
             </button>
           </div>
-          <app-filelist *ngIf="!sidebarCollapsed"></app-filelist>
         </div>
+
+        <app-filelist id="note-list" *ngIf="!sidebarCollapsed"></app-filelist>
 
         <div id="left-frame-end">
           <div id="notifications">

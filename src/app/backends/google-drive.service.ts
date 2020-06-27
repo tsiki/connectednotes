@@ -182,25 +182,19 @@ export class GoogleDriveService implements StorageBackend {
     });
   }
 
-  private async executeListMetadataReq(req: gapi.client.Request<any>): Promise<PartialMetadataFetch> {
-    return new Promise((resolve, reject) => {
-      req.execute(resp => {
-        const ans = resp.result.files.map(note => ({
-          id: note.id,
-          title: note.name,
-          lastChangedEpochMillis: new Date(note.modifiedTime).getTime(),
-        }));
-        resolve({notes: ans, nextPageToken: (resp as any).nextPageToken});
-      });
-    });
+  // With randomized exponential backoff
+  private async executeListMetadataReqWithRetry(req: gapi.client.Request<any>): Promise<PartialMetadataFetch> {
+    const resp = await this.awaitPromiseWithRetry(req);
+    const ans = resp.result.files.map(note => ({
+      id: note.id,
+      title: note.name,
+      lastChangedEpochMillis: new Date(note.modifiedTime).getTime(),
+    }));
+    return {notes: ans, nextPageToken: (resp as any).nextPageToken};
+
   }
 
-  /**
-   * Get all files. TODO: split this fn
-   */
-  private async refreshAllNotes() {
-    const notificationId = new Date().getTime();
-    this.backendStatusNotifications.next({id: notificationId.toString(), message: 'Syncing notes...'});
+  private async fetchNoteMetadata(): Promise<NoteMetadata[]> {
     const noteMetadata: NoteMetadata[] = [];
     let pageToken = null;
     do {
@@ -211,27 +205,51 @@ export class GoogleDriveService implements StorageBackend {
         fields: `nextPageToken, files(id, name, parents, modifiedTime)`,
         pageSize: 1000 // 1000 is the max value
       });
-      const resp = await this.executeListMetadataReq(listReq);
+      const resp = await this.executeListMetadataReqWithRetry(listReq);
       noteMetadata.push(...resp.notes);
       pageToken = resp.nextPageToken;
     } while (pageToken);
+    return noteMetadata;
+  }
 
+  /**
+   * Get all files. TODO: split this fn
+   */
+  private async refreshAllNotes() {
+    const notificationId = new Date().getTime();
+    this.backendStatusNotifications.next({id: notificationId.toString(), message: 'Syncing notes...'});
 
-    // Handle caching - first, delete version from cache that aren't there anymore
-    const existingNoteIds = new Set(noteMetadata.map(n => n.id));
-    const noteIdToLastChanged = await this.cache.getAllNoteIdToLastChangedInCache();
-    for (const noteIdInCache of noteIdToLastChanged.keys()) {
-      // Make sure there are some existing notes - we don't want to delete everything just because fetch failed
-      if (!existingNoteIds.has(noteIdInCache) && existingNoteIds.size > 0) {
-        this.cache.deleteFromCache(noteIdInCache);
+    let noteMetadata;
+    try {
+      noteMetadata = await this.fetchNoteMetadata();
+    } catch (e) {
+      this.backendStatusNotifications.next({
+        id: notificationId.toString(),
+        message: 'Fetching metadata for notes failed. Displaying only cached notes.'
+      });
+      noteMetadata = null;
+    }
+
+    const noteIdToLastChanged = await this.cache.getAllNoteIdToLastChangedTimestamp();
+    // Delete notes from cache that aren't there anymore
+    if (noteMetadata !== null) {
+      const existingNoteIds = new Set(noteMetadata?.map(n => n.id)); // inserting null creates empty set
+      for (const noteIdInCache of noteIdToLastChanged.keys()) {
+        if (!existingNoteIds.has(noteIdInCache)) {
+          this.cache.deleteFromCache(noteIdInCache);
+        }
       }
     }
 
+    // TODO: make fetchContents into a generator so we can fetch the files one by one and have realtime fetching counter
+
     // Then, only consider the notes which have newer version on drive
     const notesWithNewerVersion = noteMetadata
-        .filter(n => n.lastChangedEpochMillis > (noteIdToLastChanged.get(n.id) || 0));
+        ?.filter(n => n.lastChangedEpochMillis > (noteIdToLastChanged.get(n.id) || 0))
+        || [];
 
     // Now fetch the content of the notes for which we don't have the newest version for.
+    // TODO don't wait for all notes to be loaded
     const noteContents = await this.fetchContents(notesWithNewerVersion.map(n => n.id));
     const noteIdsToNoteRefs = new Map<string, NoteObject>();
     for (const note of await this.cache.getAllNotesInCache()) {
@@ -267,23 +285,45 @@ export class GoogleDriveService implements StorageBackend {
       .getAuthResponse(true)
       .access_token;
 
-    // TODO: load test this. I encountered some weird QPS limit errors with only a dozen fetches, make sure that won't happen at scale.
-    const fetches: Promise<string>[] = fileIds.map(id => {
-      return new Promise((resolve, reject) => {
-        this.http.get(`https://www.googleapis.com/drive/v3/files/${id}`, {
-          headers: {
-            Authorization: 'Bearer ' + token
-          },
-          params: {
-            alt: 'media'
-          },
-          responseType: 'text'
-        }).subscribe((txt: string) => {
-          resolve(txt);
-        });
-      });
-    });
+    const requestIntervalMillis = 200;
+    const fetches = [];
+    for (let i = 0; i < fileIds.length; i++) {
+      const promise = this.fetchSingleFileContents(fileIds[i], token, i * requestIntervalMillis);
+      fetches.push(promise);
+    }
+
     return Promise.all(fetches);
+  }
+
+  private async fetchSingleFileContents(fileId: string, token: string, startDelayMillis: number = 0) {
+    await new Promise(resolve => setTimeout(resolve, startDelayMillis));
+
+    const requestPromise = this.http.get(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+      headers: {
+        Authorization: 'Bearer ' + token
+      },
+      params: {
+        alt: 'media'
+      },
+      responseType: 'text'
+    }).toPromise();
+    return await this.awaitPromiseWithRetry(requestPromise);
+  }
+
+  // Exponential backoff with randomization
+  private async awaitPromiseWithRetry<T>(promise: Promise<T>): Promise<T> {
+    let backoffMillis = 100 + Math.random() * 200;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        return await promise;
+      } catch (e) {
+        if (attempt === 3) {
+          throw e;
+        }
+        await new Promise(resolve => setTimeout(resolve, backoffMillis));
+        backoffMillis *= 2;
+      }
+    }
   }
 
   saveContent(fileId: string, content: string, notify: boolean, mimeType = 'text/plain') {

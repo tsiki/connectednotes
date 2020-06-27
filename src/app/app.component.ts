@@ -9,7 +9,7 @@ import {SettingsService, Theme} from './settings.service';
   styleUrls: ['./app.component.css']
 })
 export class AppComponent {
-  title = 'zk';
+  title = 'Connected Notes';
 
   @HostBinding('class.dark-theme') darkTheme = false;
 

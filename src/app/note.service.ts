@@ -18,7 +18,7 @@ export enum Backend {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class NoteService {
 

@@ -65,7 +65,7 @@ export class LocalCacheService {
     notes.delete(noteId);
   }
 
-  async getAllNoteIdToLastChangedInCache(): Promise<Map<string, number>> {
+  async getAllNoteIdToLastChangedTimestamp(): Promise<Map<string, number>> {
     if (!this.db) {
       await this.initPromise;
     }
