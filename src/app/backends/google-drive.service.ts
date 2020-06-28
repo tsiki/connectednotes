@@ -19,7 +19,7 @@ const SETTINGS_FILE_NAME = 'settings.json';
 })
 export class GoogleDriveService implements StorageBackend {
 
-  notes = new Subject<NoteObject[]>();
+  notes = new BehaviorSubject<NoteObject[]>([]);
   backendStatusNotifications = new Subject<BackendStatusNotification>();
   storedSettings = new BehaviorSubject<UserSettings>(null);
 
@@ -100,9 +100,9 @@ export class GoogleDriveService implements StorageBackend {
     if (storedSettingsListResp.result.files.length > 0) {
       const storedSettingsFileId = storedSettingsListResp.result.files[0].id;
       this.storedSettingsFileId = storedSettingsFileId;
-      const storedSettings = await this.fetchContents([storedSettingsFileId]);
+      const settingsPromise = this.fetchContents([storedSettingsFileId]).next().value;
       // If the file is new it doesn't contain any settings, and isn't JSON parseable -> use empty object as placeholder
-      this.storedSettings.next(JSON.parse(storedSettings[0] || '{}'));
+      this.storedSettings.next(JSON.parse(await settingsPromise || '{}'));
     } else {
       // Finally, create settings file
       const settingsFileCreationResp = await gapi.client.drive.files.create({
@@ -182,38 +182,31 @@ export class GoogleDriveService implements StorageBackend {
     });
   }
 
-  // With randomized exponential backoff
-  private async executeListMetadataReqWithRetry(req: gapi.client.Request<any>): Promise<PartialMetadataFetch> {
-    const resp = await this.awaitPromiseWithRetry(req);
-    const ans = resp.result.files.map(note => ({
-      id: note.id,
-      title: note.name,
-      lastChangedEpochMillis: new Date(note.modifiedTime).getTime(),
-    }));
-    return {notes: ans, nextPageToken: (resp as any).nextPageToken};
-
-  }
-
   private async fetchNoteMetadata(): Promise<NoteMetadata[]> {
     const noteMetadata: NoteMetadata[] = [];
     let pageToken = null;
     do {
-      const listReq = gapi.client.drive.files.list({
+      const generateListReqFn = () => gapi.client.drive.files.list({
         q: "trashed = false and mimeType='text/plain'",
         pageToken,
         // fields: `*` can be used for debugging, returns all fields
         fields: `nextPageToken, files(id, name, parents, modifiedTime)`,
         pageSize: 1000 // 1000 is the max value
       });
-      const resp = await this.executeListMetadataReqWithRetry(listReq);
-      noteMetadata.push(...resp.notes);
-      pageToken = resp.nextPageToken;
+      const resp = await this.awaitPromiseWithRetry(generateListReqFn);
+      const notes = resp.result.files.map(note => ({
+        id: note.id,
+        title: note.name,
+        lastChangedEpochMillis: new Date(note.modifiedTime).getTime(),
+      }));
+      pageToken = (resp as any).nextPageToken;
+      noteMetadata.push(...notes);
     } while (pageToken);
     return noteMetadata;
   }
 
   /**
-   * Get all files. TODO: split this fn
+   * Get all files. TODO: long function is loooong
    */
   private async refreshAllNotes() {
     const notificationId = new Date().getTime();
@@ -241,8 +234,6 @@ export class GoogleDriveService implements StorageBackend {
       }
     }
 
-    // TODO: make fetchContents into a generator so we can fetch the files one by one and have realtime fetching counter
-
     // Then, only consider the notes which have newer version on drive
     const notesWithNewerVersion = noteMetadata
         ?.filter(n => n.lastChangedEpochMillis > (noteIdToLastChanged.get(n.id) || 0))
@@ -250,33 +241,58 @@ export class GoogleDriveService implements StorageBackend {
 
     // Now fetch the content of the notes for which we don't have the newest version for.
     // TODO don't wait for all notes to be loaded
-    const noteContents = await this.fetchContents(notesWithNewerVersion.map(n => n.id));
-    const noteIdsToNoteRefs = new Map<string, NoteObject>();
-    for (const note of await this.cache.getAllNotesInCache()) {
-      noteIdsToNoteRefs.set(note.id, note);
-    }
-    for (let i = 0; i < noteContents.length; i++) {
-      const metadata = notesWithNewerVersion[i];
-      const updatedNote: NoteObject = {
-        id: metadata.id,
-        title: metadata.title,
-        lastChangedEpochMillis: metadata.lastChangedEpochMillis,
-        content: noteContents[i]
-      };
-      noteIdsToNoteRefs.set(metadata.id, updatedNote);
+    const noteContentGenerator = this.fetchContents(notesWithNewerVersion.map(n => n.id));
 
-      this.cache.addOrUpdateNoteInCache(metadata.id, metadata.lastChangedEpochMillis, metadata.title, noteContents[i]);
+    const cachedNotes = await this.cache.getAllNotesInCache();
+    const newerNoteIds = new Set(notesWithNewerVersion.map(n => n.id));
+    const upToDateCachedNotes = cachedNotes.filter(note => !newerNoteIds.has(note.id));
+    this.notes.next(upToDateCachedNotes);
+    if (notesWithNewerVersion.length === 0) {
+      this.backendStatusNotifications.next({
+        id: notificationId.toString(),
+        message: 'Syncing notes... done',
+        removeAfterMillis: 3000,
+      });
     }
 
-    this.notes.next(Array.from(noteIdsToNoteRefs.values()));
-    this.backendStatusNotifications.next({
-      id: notificationId.toString(),
-      message: 'All notes synced',
-      removeAfterMillis: 5000
-    });
+    let idx = 0;
+    let doneCount = 0;
+    let failCount = 0;
+    const failNotificationId = new Date().getTime() + 1e9;
+    let it = noteContentGenerator.next();
+    while (!it.done) {
+      const promise = it.value;
+      const metadata = notesWithNewerVersion[idx];
+      promise.then(noteContent => {
+        const updatedNote: NoteObject = {
+          id: metadata.id,
+          title: metadata.title,
+          lastChangedEpochMillis: metadata.lastChangedEpochMillis,
+          content: noteContent,
+        };
+        this.cache.addOrUpdateNoteInCache(metadata.id, metadata.lastChangedEpochMillis, metadata.title, noteContent);
+        this.notes.value.push(updatedNote);
+        this.notes.next(this.notes.value);
+        doneCount++;
+        this.backendStatusNotifications.next({
+          id: notificationId.toString(),
+          message: `Syncing notes (${doneCount}/${notesWithNewerVersion.length})`,
+          removeAfterMillis: 5000
+        });
+      }).catch(err => {
+        failCount++;
+        this.backendStatusNotifications.next({
+          id: failNotificationId.toString(),
+          message: `Failed to sync (${failCount}} notes - refresh might help?`,
+          removeAfterMillis: 10_000
+        });
+      });
+      idx++;
+      it = noteContentGenerator.next();
+    }
   }
 
-  private async fetchContents(fileIds: string[]): Promise<string[]> {
+  private *fetchContents(fileIds: string[]): IterableIterator<Promise<string>> {
     const token = gapi
       .auth2
       .getAuthInstance()
@@ -286,36 +302,34 @@ export class GoogleDriveService implements StorageBackend {
       .access_token;
 
     const requestIntervalMillis = 200;
-    const fetches = [];
     for (let i = 0; i < fileIds.length; i++) {
       const promise = this.fetchSingleFileContents(fileIds[i], token, i * requestIntervalMillis);
-      fetches.push(promise);
+      yield promise;
     }
-
-    return Promise.all(fetches);
   }
 
   private async fetchSingleFileContents(fileId: string, token: string, startDelayMillis: number = 0) {
     await new Promise(resolve => setTimeout(resolve, startDelayMillis));
 
-    const requestPromise = this.http.get(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
-      headers: {
-        Authorization: 'Bearer ' + token
-      },
-      params: {
-        alt: 'media'
-      },
-      responseType: 'text'
-    }).toPromise();
-    return await this.awaitPromiseWithRetry(requestPromise);
+    const requestGeneratorFn = () =>
+        this.http.get(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+          headers: {
+            Authorization: 'Bearer ' + token
+          },
+          params: {
+            alt: 'media'
+          },
+          responseType: 'text'
+        }).toPromise();
+    return await this.awaitPromiseWithRetry(requestGeneratorFn);
   }
 
   // Exponential backoff with randomization
-  private async awaitPromiseWithRetry<T>(promise: Promise<T>): Promise<T> {
+  private async awaitPromiseWithRetry<T>(requestGeneratorFn: () => Promise<T>): Promise<T> {
     let backoffMillis = 100 + Math.random() * 200;
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        return await promise;
+        return await requestGeneratorFn();
       } catch (e) {
         if (attempt === 3) {
           throw e;
@@ -344,8 +358,7 @@ export class GoogleDriveService implements StorageBackend {
       this.backendStatusNotifications.next({id: fileId, message: 'Saving...'});
     }
     req.execute(resp => {
-      // TODO: cache this - we need to last changed timestamp from the server
-      // this.cache.addOrUpdateNoteInCache(noteId, )
+      // TODO: cache this - we need the last changed timestamp from the server
       if (notify) {
         this.backendStatusNotifications.next({id: fileId, message: 'Saved', removeAfterMillis: 5000});
       }

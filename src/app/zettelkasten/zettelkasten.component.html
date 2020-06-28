@@ -121,7 +121,16 @@
   }
 
   #note-list {
+    flex-basis: 0;
+    flex-grow: 1;
     overflow-y: scroll;
+  }
+
+  #left-frame-start {
+    display: flex;
+    flex-direction: column;
+    flex-basis: 0;
+    flex-grow: 1;
   }
 
 </style>
@@ -151,9 +160,8 @@
               <mat-icon>border_vertical</mat-icon>
             </button>
           </div>
+          <app-filelist id="note-list" *ngIf="!sidebarCollapsed"></app-filelist>
         </div>
-
-        <app-filelist id="note-list" *ngIf="!sidebarCollapsed"></app-filelist>
 
         <div id="left-frame-end">
           <div id="notifications">
@@ -181,7 +189,6 @@
             [class.split-state]="editorState === 'split'"
             appDnd
             class="space-evenly"
-            id="editor"
             #editor>
           </app-editor>
           <div id="markdown-renderer" class="space-evenly" *ngIf="editorState === 'split'" #markdown></div>
