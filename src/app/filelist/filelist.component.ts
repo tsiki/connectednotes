@@ -66,10 +66,10 @@ export class FilelistComponent implements OnInit {
     e.preventDefault();
   }
 
-  // For renaming notes.
+  // Listen for click on document so we can close the context menu and execute renaming if needed.
   @HostListener('document:click', ['$event'])
   documentClick(e) {
-    if (this.showContextMenu && e.path.includes(this.contextMenu.nativeElement)) {
+    if (this.showContextMenu) {
       this.showContextMenu = false;
       return;
     }
