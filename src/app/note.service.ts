@@ -1,9 +1,7 @@
 import {Injectable, Injector} from '@angular/core';
 import {BehaviorSubject, Subject} from 'rxjs';
 import {GoogleDriveService} from './backends/google-drive.service';
-import {FirebaseService} from './backends/firebase.service';
 import {
-  BackendStatusNotification,
   NoteAndLinks,
   NoteObject,
   NotesAndTagGroups,
@@ -11,6 +9,7 @@ import {
   StorageBackend,
   TagGroup, UserSettings
 } from './types';
+import {NotificationService} from './notification.service';
 
 export enum Backend {
   FIREBASE,
@@ -28,14 +27,13 @@ export class NoteService {
   currentNotes: NoteObject[];
   selectedNote: Subject<NoteObject> = new Subject();
   currentSelectedNote: NoteObject;
-  backendStatusNotifications: Subject<BackendStatusNotification>;
   storedSettings = new BehaviorSubject<UserSettings>(null);
 
   private backendType: Backend;
   private backend?: StorageBackend;
   private noteIdToNote?: Map<string, NoteObject>;
 
-  constructor(private injector: Injector) {}
+  constructor(private injector: Injector, private notifications: NotificationService) {}
 
   async initialize(backendType: Backend) {
     if (backendType === Backend.FIREBASE) {
@@ -49,7 +47,6 @@ export class NoteService {
 
     this.backend.requestRefreshAllNotes();
     this.notes = this.backend.notes;
-    this.backendStatusNotifications = this.backend.backendStatusNotifications;
     this.backend.storedSettings.subscribe(newSettings => this.storedSettings.next(newSettings));
     this.notes.subscribe(newNotes => {
       this.noteIdToNote = new Map();

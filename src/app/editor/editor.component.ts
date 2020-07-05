@@ -5,7 +5,8 @@ import {fromEvent} from 'rxjs';
 import {debounceTime} from 'rxjs/operators';
 import 'codemirror/addon/hint/show-hint';
 import {DragAndDropImage, NoteObject} from '../types';
-import {SettingsService, Theme} from "../settings.service";
+import {SettingsService, Theme} from '../settings.service';
+import {NotificationService} from '../notification.service';
 
 declare interface CodeMirrorHelper {
   commands: {
@@ -34,7 +35,10 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   private allNoteTitles: string[];
   private unloadListener = () => this.saveChanges();
 
-  constructor(private readonly noteService: NoteService, private readonly settingsService: SettingsService) {
+  constructor(
+      private readonly noteService: NoteService,
+      private readonly settingsService: SettingsService,
+      private readonly notifications: NotificationService) {
     this.settingsService.themeSetting.subscribe(theme => {
       switch (theme) {
         case Theme.DARK:
@@ -99,7 +103,12 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     // this.codemirror.setSize('400px', '1000px'); // keep this here for performance testing codemirror resizing
     this.codemirror.setSize('100%', '100%');
 
-
+    fromEvent(this.codemirror, 'keyHandled')
+        .pipe(debounceTime(100))
+        .subscribe(() => this.notifications.unsavedChanged(this.selectedNote.id));
+    // TODO: this approach might show the note incorrectly as saved if there are modifications to the note when the
+    //  'save note' request is in flight. To fix this we should compare the hash of the note to the current hashed
+    //  version we have on the server or have saved
     fromEvent(this.codemirror, 'changes').pipe(debounceTime(3_000)).subscribe(() => this.saveChanges());
 
     this.codemirror.on('keyup', (cm, event) => {

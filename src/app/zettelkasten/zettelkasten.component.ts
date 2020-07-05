@@ -13,6 +13,7 @@ import {GoogleDriveService} from '../backends/google-drive.service';
 import {SettingsComponent} from '../settings/settings.component';
 import {BackendStatusNotification} from '../types';
 import {SettingsService, Theme} from '../settings.service';
+import {NotificationService} from '../notification.service';
 
 
 @Component({
@@ -56,7 +57,8 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
     private readonly noteService: NoteService,
     readonly settingsService: SettingsService,
     public dialog: MatDialog,
-    private cdr: ChangeDetectorRef) { }
+    private cdr: ChangeDetectorRef,
+    private notifications: NotificationService) { }
 
   ngOnInit(): void {
     this.settingsService.themeSetting.subscribe(newTheme => this.theme = newTheme);
@@ -79,27 +81,9 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
   }
 
   private setUpStorageBackendStatusUpdates() {
-    this.noteService.backendStatusNotifications.subscribe(statusUpdate => {
-      const cur = this.activeStatusUpdates.find(status => status.id === statusUpdate.id);
-      if (cur) {
-        cur.message = statusUpdate.message;
-        // If there's already timeout we'll override it with this
-        if (this.clearStatusUpdateFns.get(cur.id)) {
-          const timeoutFnId = this.clearStatusUpdateFns.get(cur.id);
-          clearTimeout(timeoutFnId);
-        }
-      } else {
-        this.activeStatusUpdates.push(statusUpdate);
-      }
+    this.notifications.sidebar.subscribe(newNotifications => {
+      this.activeStatusUpdates = newNotifications;
       this.cdr.detectChanges();
-
-      if (statusUpdate.removeAfterMillis) {
-        const timeoutFnId = setTimeout(() => {
-          this.activeStatusUpdates = this.activeStatusUpdates.filter(s => s.id !== statusUpdate.id);
-          this.cdr.detectChanges();
-        }, statusUpdate.removeAfterMillis);
-        this.clearStatusUpdateFns.set(statusUpdate.id, timeoutFnId);
-      }
     });
   }
 

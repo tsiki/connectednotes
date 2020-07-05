@@ -4,11 +4,7 @@ import {GDRIVE_API_KEY, GDRIVE_CLIENT_ID} from '../../environments/environment';
 import {HttpClient} from '@angular/common/http';
 import {BackendStatusNotification, NoteMetadata, NoteObject, StorageBackend, UserSettings} from '../types';
 import {LocalCacheService} from './local-cache.service';
-
-interface PartialMetadataFetch {
-  notes: NoteMetadata[];
-  nextPageToken?: string;
-}
+import {NotificationService} from '../notification.service';
 
 const ROOT_FOLDER_NAME = 'Connected Notes';
 const SETTINGS_AND_METADATA_FOLDER_NAME = 'Settings and Metadata';
@@ -20,7 +16,6 @@ const SETTINGS_FILE_NAME = 'settings.json';
 export class GoogleDriveService implements StorageBackend {
 
   notes = new BehaviorSubject<NoteObject[]>([]);
-  backendStatusNotifications = new Subject<BackendStatusNotification>();
   storedSettings = new BehaviorSubject<UserSettings>(null);
 
   private rootFolderId = new Subject<string>();
@@ -31,7 +26,7 @@ export class GoogleDriveService implements StorageBackend {
 
   // This service should be created when it's actually needed, ie. user has decided they want to use Google Drive as
   // backend - that way we can go straight to the authentication.
-  constructor(private http: HttpClient, private cache: LocalCacheService) {
+  constructor(private http: HttpClient, private cache: LocalCacheService, private notifications: NotificationService) {
   }
 
   initialize() {
@@ -210,16 +205,16 @@ export class GoogleDriveService implements StorageBackend {
    */
   private async refreshAllNotes() {
     const notificationId = new Date().getTime();
-    this.backendStatusNotifications.next({id: notificationId.toString(), message: 'Syncing notes...'});
+    this.notifications.toSidebar(notificationId.toString(), 'Syncing notes...');
 
     let noteMetadata;
     try {
       noteMetadata = await this.fetchNoteMetadata();
     } catch (e) {
-      this.backendStatusNotifications.next({
-        id: notificationId.toString(),
-        message: 'Fetching metadata for notes failed. Displaying only cached notes.'
-      });
+      this.notifications.toSidebar(
+          notificationId.toString(),
+          'Fetching metadata for notes failed. Displaying only cached notes.',
+          10_000);
       noteMetadata = null;
     }
 
@@ -248,11 +243,7 @@ export class GoogleDriveService implements StorageBackend {
     const upToDateCachedNotes = cachedNotes.filter(note => !newerNoteIds.has(note.id));
     this.notes.next(upToDateCachedNotes);
     if (notesWithNewerVersion.length === 0) {
-      this.backendStatusNotifications.next({
-        id: notificationId.toString(),
-        message: 'Syncing notes... done',
-        removeAfterMillis: 3000,
-      });
+      this.notifications.toSidebar(notificationId.toString(), 'Syncing notes... done', 3000);
     }
 
     let idx = 0;
@@ -274,18 +265,15 @@ export class GoogleDriveService implements StorageBackend {
         this.notes.value.push(updatedNote);
         this.notes.next(this.notes.value);
         doneCount++;
-        this.backendStatusNotifications.next({
-          id: notificationId.toString(),
-          message: `Syncing notes (${doneCount}/${notesWithNewerVersion.length})`,
-          removeAfterMillis: 5000
-        });
+        this.notifications.toSidebar(
+            notificationId.toString(),
+            `Syncing notes (${doneCount}/${notesWithNewerVersion.length})`,
+            5000);
       }).catch(err => {
         failCount++;
-        this.backendStatusNotifications.next({
-          id: failNotificationId.toString(),
-          message: `Failed to sync (${failCount}} notes - refresh might help?`,
-          removeAfterMillis: 10_000
-        });
+        this.notifications.toSidebar(failNotificationId.toString(),
+            `Failed to sync (${failCount}} notes - refresh might help?`,
+            10_000);
       });
       idx++;
       it = noteContentGenerator.next();
@@ -355,12 +343,12 @@ export class GoogleDriveService implements StorageBackend {
     // Use note ID as the ID for the status update because if the same note
     // is save twice we don't want to see two different notifications.
     if (notify) {
-      this.backendStatusNotifications.next({id: fileId, message: 'Saving...'});
+      this.notifications.unsavedChanged(fileId);
     }
     req.execute(resp => {
       // TODO: cache this - we need the last changed timestamp from the server
       if (notify) {
-        this.backendStatusNotifications.next({id: fileId, message: 'Saved', removeAfterMillis: 5000});
+        this.notifications.noteSaved(fileId);
       }
     });
   }

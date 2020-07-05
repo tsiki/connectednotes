@@ -1,4 +1,4 @@
-import {BehaviorSubject, Observable, Subject} from 'rxjs';
+import {BehaviorSubject, Subject} from 'rxjs';
 import {Theme} from './settings.service';
 
 declare interface NoteFile {
@@ -61,21 +61,13 @@ interface RenameResult {
   status: Promise<any>;
 }
 
-export enum BackendStatusNotificationType {
-  POPUP,
-  MOLE,
-}
-
 interface BackendStatusNotification {
   id: string; // A notification can be overwritten by sending another notification with the same ID
-  removeAfterMillis?: number; // If not defined the status stays until overriden
   message: string; // Actual message to be displayed to the user
-  type?: BackendStatusNotificationType;
 }
 
 interface StorageBackend {
   notes: Subject<NoteObject[]>;
-  backendStatusNotifications: Subject<BackendStatusNotification>;
   storedSettings: BehaviorSubject<UserSettings>;
   initialize();
   signInIfNotSignedIn();
