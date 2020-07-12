@@ -33,6 +33,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   private selectedNote: NoteObject;
   private previousChar: string;
   private allNoteTitles: string[];
+  private allTags: string[];
   private unloadListener = () => this.saveChanges();
 
   constructor(
@@ -53,6 +54,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   ngOnInit(): void {
     this.selectedNote = this.noteService.currentSelectedNote;
     this.allNoteTitles = this.noteService?.currentNotes?.map(n => n.title);
+    this.noteService.notesAndTagGroups.subscribe(val => this.allTags = val.tagGroups.map(t => t.tag));
     this.noteService.selectedNote.subscribe(newSelectedNote => {
       this.saveChanges();
       this.selectedNote = newSelectedNote;
@@ -79,16 +81,32 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       const cur = mirror.getCursor();
       const range = mirror.findWordAt(cur);
       const wordSoFar = mirror.getRange(range.anchor, range.head);
-      // Current range includes [[ if nothing else has been typed. If we've types something like [[mo only 'mo' is included in the range.
-      const prefix = (wordSoFar === '[[') ? '[[' : '';
-      return {
-        list: this.allNoteTitles
-          .filter(s => s.startsWith(wordSoFar === '[[' ? '' : wordSoFar))
-          // Because current range might or might not include [[ (see above for why) we need to manually add/remove it here
-          .map(s => ({text: prefix + s + ']]', displayText: s})),
-        from: range.anchor,
-        to: range.head
-      };
+
+      const hintTypeStart = {ch: range.anchor.ch - 1, line: range.anchor.line, sticky: range.anchor.sticky} as CodeMirror.Position;
+      const hintType: '#'|'[' = mirror.getRange(hintTypeStart, range.anchor) || wordSoFar.slice(-1);
+
+      if (hintType === '#') {
+        return {
+          list: this.allTags
+              .filter(tag => tag.startsWith(wordSoFar === '#' ? '' : '#' + wordSoFar))
+              .map(s => ({text: s.slice(1) + ' ', displayText: s})),
+          from: range.anchor,
+          to: range.head,
+        };
+      } else if (hintType === '[') {
+        // Current range includes [[ if nothing else has been typed.
+        // If we've typed something like [[mo only 'mo' is included in the range.
+        const prefix = (wordSoFar === '[[') ? '[[' : '';
+        return {
+          list: this.allNoteTitles
+              .filter(s => s.startsWith(wordSoFar === '[[' ? '' : wordSoFar))
+              // Because current range might or might not include [[ (see above for why) we need to manually add/remove it here
+              .map(s => ({text: prefix + s + ']] ', displayText: s})),
+          from: range.anchor,
+          to: range.head,
+        };
+      }
+
     });
 
     (CodeMirror as unknown as CodeMirrorHelper).commands.autocomplete = (cm) => {
@@ -115,6 +133,8 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       /* Enables keyboard navigation in autocomplete list */
       const keyboardNavigationInAutocompleteListEnabled = !cm.state.completionActive;
       if (keyboardNavigationInAutocompleteListEnabled && event.key === '[' && this.previousChar === '[') {
+        (CodeMirror as unknown as CodeMirrorHelper).commands.autocomplete(cm, null, {completeSingle: true});
+      } else if (keyboardNavigationInAutocompleteListEnabled && event.key === '#' && this.previousChar !== '#') {
         (CodeMirror as unknown as CodeMirrorHelper).commands.autocomplete(cm, null, {completeSingle: true});
       }
       this.previousChar = event.key;
