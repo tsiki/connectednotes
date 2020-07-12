@@ -121,9 +121,14 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     // this.codemirror.setSize('400px', '1000px'); // keep this here for performance testing codemirror resizing
     this.codemirror.setSize('100%', '100%');
 
-    fromEvent(this.codemirror, 'keyHandled')
+    fromEvent(this.codemirror, 'changes')
         .pipe(debounceTime(100))
-        .subscribe(() => this.notifications.unsavedChanged(this.selectedNote.id));
+        .subscribe(([cmReference, changes]) => {
+          const isInitialValueSet = changes[0].origin === 'setValue';
+          if (!isInitialValueSet) {
+            this.notifications.unsavedChanged(this.selectedNote.id);
+          }
+        });
     // TODO: this approach might show the note incorrectly as saved if there are modifications to the note when the
     //  'save note' request is in flight. To fix this we should compare the hash of the note to the current hashed
     //  version we have on the server or have saved
@@ -152,9 +157,15 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   // Save changes if the user has been idle for 10 seconds or some shit
-  saveChanges() {
-    if (this.selectedNote && this.selectedNote.content !== this.codemirror.getValue()) {
-      this.noteService.saveContent(this.selectedNote.id, this.codemirror.getValue());
+  async saveChanges() {
+    const valueToSave = this.codemirror.getValue();
+    const noteId = this.selectedNote?.id;
+    if (noteId && this.selectedNote.content !== valueToSave) {
+      await this.noteService.saveContent(this.selectedNote.id, valueToSave);
+      // If the note has changed while saving don't mark it as saved
+      if (valueToSave === this.codemirror.getValue()) {
+        this.notifications.noteSaved(noteId);
+      }
     }
   }
 

@@ -328,7 +328,7 @@ export class GoogleDriveService implements StorageBackend {
     }
   }
 
-  saveContent(fileId: string, content: string, notify: boolean, mimeType = 'text/plain') {
+  async saveContent(fileId: string, content: string, notify: boolean, mimeType = 'text/plain') {
     if (!content) {
       return; // Don't save empty content, just in case there's some bug which overwrites the notes
     }
@@ -340,17 +340,11 @@ export class GoogleDriveService implements StorageBackend {
       },
       body: content});
 
-    // Use note ID as the ID for the status update because if the same note
-    // is save twice we don't want to see two different notifications.
-    if (notify) {
-      this.notifications.unsavedChanged(fileId);
-    }
-    req.execute(resp => {
-      // TODO: cache this - we need the last changed timestamp from the server
-      if (notify) {
-        this.notifications.noteSaved(fileId);
-      }
-    });
+    // if (notify) { // TODO: notify shouldn't be used i think
+    //   this.notifications.unsavedChanged(fileId);
+    // }
+    // TODO: cache this - we need the last changed timestamp from the server
+    await req;
   }
 
   createFile(filename: string): Promise<NoteObject> {

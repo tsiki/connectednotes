@@ -7,10 +7,10 @@ import {BackendStatusNotification} from './types';
 })
 export class NotificationService {
 
-  private unsavedChangedNotes = new BehaviorSubject<string[]>([]);
+  private unsavedNotes = new BehaviorSubject<string[]>([]);
   private sidebarNotifications = new BehaviorSubject<BackendStatusNotification[]>([]);
 
-  unsaved = this.unsavedChangedNotes.asObservable();
+  unsaved = this.unsavedNotes.asObservable();
   sidebar = this.sidebarNotifications.asObservable();
 
   private clearStatusUpdateFns = new Map<string, number>();
@@ -44,14 +44,14 @@ export class NotificationService {
   }
 
   noteSaved(fileId: string) {
-    const curValues = this.unsavedChangedNotes.value;
+    const curValues = this.unsavedNotes.value;
     const newValues = curValues.filter(noteId => noteId !== fileId);
-    this.unsavedChangedNotes.next(newValues);
+    this.unsavedNotes.next(newValues);
   }
 
   unsavedChanged(fileId: string) {
-    const newValues = this.unsavedChangedNotes.value;
+    const newValues = this.unsavedNotes.value;
     newValues.push(fileId);
-    this.unsavedChangedNotes.next(newValues);
+    this.unsavedNotes.next(newValues);
   }
 }
