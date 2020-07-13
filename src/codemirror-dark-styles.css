@@ -3,6 +3,17 @@
     From IntelliJ IDEA by JetBrains
  */
 
+
+.CodeMirror.cm-s-darcula {
+    /* Set height, width, borders, and global font properties here */
+    /* font-family: monospace; */
+    font-family: Helvetica;
+    font-size: 16px;
+    font-weight: 400;
+    height: 300px;
+    direction: ltr;
+}
+
 .cm-s-darcula  { font-family: Consolas, Menlo, Monaco, 'Lucida Console', 'Liberation Mono', 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Courier New', monospace, serif;}
 .cm-s-darcula.CodeMirror { background: #2B2B2B; color: #A9B7C6; }
 
