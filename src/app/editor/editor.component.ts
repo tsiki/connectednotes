@@ -82,22 +82,28 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       const range = mirror.findWordAt(cur);
       const wordSoFar = mirror.getRange(range.anchor, range.head);
 
-      const hintTypeStart = {ch: range.anchor.ch - 1, line: range.anchor.line, sticky: range.anchor.sticky} as CodeMirror.Position;
-      const precedingChar = mirror.getRange(hintTypeStart, range.anchor);
-      const hintType = ['#', '['].includes(precedingChar) ? precedingChar : wordSoFar.slice(-1);
+      // Because '#' and '[' seem to be considered punctuation marks, some special handling is required.
+      const hintTypeStart = {
+        ch: range.anchor.ch - 1,
+        line: range.anchor.line,
+        sticky: range.anchor.sticky
+      } as CodeMirror.Position;
+      const charPrecedingCurWord = mirror.getRange(hintTypeStart, range.anchor);
+      const lettersTyped = ['#', '['].includes(charPrecedingCurWord);
+      const hintType = lettersTyped ? charPrecedingCurWord : wordSoFar.slice(-1);
 
       if (hintType === '#') {
         return {
           list: this.allTags
               .filter(tag => tag.startsWith(wordSoFar === '#' ? '' : '#' + wordSoFar))
-              .map(s => ({text: s.slice(1) + ' ', displayText: s})),
+              .map(s => ({text: (lettersTyped ? s.slice(1) : s) + ' ', displayText: s})),
           from: range.anchor,
           to: range.head,
         };
       } else if (hintType === '[') {
         // Current range includes [[ if nothing else has been typed.
         // If we've typed something like [[mo only 'mo' is included in the range.
-        const prefix = (wordSoFar === '[[') ? '[[' : '';
+        const prefix = lettersTyped ? '' : '[[';
         return {
           list: this.allNoteTitles
               .filter(s => s.startsWith(wordSoFar === '[[' ? '' : wordSoFar))
@@ -130,9 +136,6 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
             this.notifications.unsavedChanged(this.selectedNote.id);
           }
         });
-    // TODO: this approach might show the note incorrectly as saved if there are modifications to the note when the
-    //  'save note' request is in flight. To fix this we should compare the hash of the note to the current hashed
-    //  version we have on the server or have saved
     fromEvent(this.codemirror, 'changes').pipe(debounceTime(3_000)).subscribe(() => this.saveChanges());
 
     this.codemirror.on('keyup', (cm, event) => {
