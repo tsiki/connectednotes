@@ -83,7 +83,8 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       const wordSoFar = mirror.getRange(range.anchor, range.head);
 
       const hintTypeStart = {ch: range.anchor.ch - 1, line: range.anchor.line, sticky: range.anchor.sticky} as CodeMirror.Position;
-      const hintType: '#'|'[' = mirror.getRange(hintTypeStart, range.anchor) || wordSoFar.slice(-1);
+      const precedingChar = mirror.getRange(hintTypeStart, range.anchor);
+      const hintType = ['#', '['].includes(precedingChar) ? precedingChar : wordSoFar.slice(-1);
 
       if (hintType === '#') {
         return {
