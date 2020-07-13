@@ -113,7 +113,6 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
           to: range.head,
         };
       }
-
     });
 
     (CodeMirror as unknown as CodeMirrorHelper).commands.autocomplete = (cm) => {
@@ -149,7 +148,6 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       this.previousChar = event.key;
     });
 
-
     this.codemirror.on('change', (cm, event) => {
       this.contentChange.emit(cm.getValue());
     });
@@ -160,14 +158,14 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     window.removeEventListener('beforeunload', this.unloadListener);
   }
 
-  // Save changes if the user has been idle for 10 seconds or some shit
   async saveChanges() {
     const valueToSave = this.codemirror.getValue();
     const noteId = this.selectedNote?.id;
     if (noteId && this.selectedNote.content !== valueToSave) {
       await this.noteService.saveContent(this.selectedNote.id, valueToSave);
-      // If the note has changed while saving don't mark it as saved
-      if (valueToSave === this.codemirror.getValue()) {
+      const userSwitchedToOtherNote = noteId !== this.selectedNote?.id;
+      const noteChangedWhileSaving = valueToSave === this.codemirror.getValue();
+      if (noteChangedWhileSaving || userSwitchedToOtherNote) {
         this.notifications.noteSaved(noteId);
       }
     }
