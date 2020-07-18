@@ -79,38 +79,32 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   initializeCodeMirror() {
     CodeMirror.registerHelper('hint', 'notes', (mirror, options) => {
       const cur = mirror.getCursor();
-      const range = mirror.findWordAt(cur);
-      const wordSoFar = mirror.getRange(range.anchor, range.head);
+      const lineSoFar = mirror.getRange({ch: 0, line: cur.line}, cur);
+      const lastHashtag = lineSoFar.lastIndexOf('#');
+      const lastBrackets = lineSoFar.lastIndexOf('[[');
 
-      // Because '#' and '[' seem to be considered punctuation marks, some special handling is required.
-      const hintTypeStart = {
-        ch: range.anchor.ch - 1,
-        line: range.anchor.line,
-        sticky: range.anchor.sticky
-      } as CodeMirror.Position;
-      const charPrecedingCurWord = mirror.getRange(hintTypeStart, range.anchor);
-      const lettersTyped = ['#', '['].includes(charPrecedingCurWord);
-      const hintType = lettersTyped ? charPrecedingCurWord : wordSoFar.slice(-1);
+      if (lastHashtag === -1 && lastBrackets === -1) {
+        return;
+      }
 
+      const hintType: '#'|'[' = lastHashtag > lastBrackets ? '#' : '[';
       if (hintType === '#') {
+        const wordSoFar = lineSoFar.slice(lastHashtag);
         return {
           list: this.allTags
-              .filter(tag => tag.startsWith(wordSoFar === '#' ? '' : '#' + wordSoFar))
-              .map(s => ({text: (lettersTyped ? s.slice(1) : s) + ' ', displayText: s})),
-          from: range.anchor,
-          to: range.head,
+              .filter(tag => tag.startsWith(wordSoFar))
+              .map(s => ({text: s, displayText: s})),
+          from: {line: cur.line, ch: lastHashtag},
+          to: {line: cur.line, ch: cur.ch},
         };
       } else if (hintType === '[') {
-        // Current range includes [[ if nothing else has been typed.
-        // If we've typed something like [[mo only 'mo' is included in the range.
-        const prefix = lettersTyped ? '' : '[[';
+        const wordSoFar = lineSoFar.slice(lastBrackets + 2);
         return {
           list: this.allNoteTitles
-              .filter(s => s.startsWith(wordSoFar === '[[' ? '' : wordSoFar))
-              // Because current range might or might not include [[ (see above for why) we need to manually add/remove it here
-              .map(s => ({text: prefix + s + ']] ', displayText: s})),
-          from: range.anchor,
-          to: range.head,
+              .filter(s => s.startsWith(wordSoFar))
+              .map(s => ({text: '[[' + s + ']] ', displayText: s})),
+          from: {line: cur.line, ch: lastBrackets},
+          to: {line: cur.line, ch: cur.ch},
         };
       }
     });
