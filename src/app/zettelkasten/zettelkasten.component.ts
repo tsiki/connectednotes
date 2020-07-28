@@ -73,6 +73,9 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
 
     // Set up change in selected note
     this.noteService.selectedNote.subscribe(selected => {
+      if (selected === null) {
+        return;
+      }
       if (this.editorState === 'graph') {
         this.editorState = 'editor';
       }
@@ -132,7 +135,7 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
 
   openGraphView() {
     this.editorState = 'graph';
-    // It should be fine to just leave the editor state as it is
+    this.noteService.selectNote(null);
   }
 
   toggleSplitView() {

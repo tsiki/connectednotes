@@ -36,15 +36,8 @@ export class FilelistComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.selectedNoteId = this.noteService.currentSelectedNote?.id;
     this.notes = this.noteService.currentNotes;
-    this.noteService.selectedNote.subscribe(newSelectedNote => {
-      if (newSelectedNote !== null) {
-        this.selectedNoteId = newSelectedNote.id;
-      } else {
-        this.selectedNoteId = null;
-      }
-    });
+    this.noteService.selectedNote.subscribe(newSelectedNote => this.selectedNoteId = newSelectedNote?.id);
     this.noteService.notesAndTagGroups.asObservable().subscribe(notesAndTagGroups => {
       this.notes = notesAndTagGroups?.notes;
       this.tagGroups = notesAndTagGroups?.tagGroups;

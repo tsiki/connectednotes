@@ -25,15 +25,14 @@ export class NoteService {
   notesAndTagGroups: BehaviorSubject<NotesAndTagGroups> = new BehaviorSubject(null);
 
   currentNotes: NoteObject[];
-  selectedNote: Subject<NoteObject> = new Subject();
-  currentSelectedNote: NoteObject;
+  selectedNote: BehaviorSubject<NoteObject> = new BehaviorSubject(null);
   storedSettings = new BehaviorSubject<UserSettings>(null);
 
   private backendType: Backend;
   private backend?: StorageBackend;
   private noteIdToNote?: Map<string, NoteObject>;
 
-  constructor(private injector: Injector, private notifications: NotificationService) {}
+  constructor(private injector: Injector) {}
 
   async initialize(backendType: Backend) {
     if (backendType === Backend.FIREBASE) {
@@ -74,9 +73,8 @@ export class NoteService {
     return newNote.id;
   }
 
-  selectNote(noteId: string) {
-    const note = this.currentNotes.find(no => no.id === noteId);
-    this.currentSelectedNote = note;
+  selectNote(noteId: string|null) {
+    const note = this.currentNotes.find(no => no.id === noteId) || null;
     this.selectedNote.next(note);
   }
 
@@ -132,9 +130,11 @@ export class NoteService {
     // TODO: handle save failing
     const noteExists = !!this.currentNotes.find(n => n.id === noteId); // Might not exist if we just deleted it
     if (noteExists) {
-      await this.backend.saveContent(noteId, content, notify);
+      // Save the note locally before attempting to save it remotely. In case the remote save fails or takes a while
+      // we don't want the user to see old content.
       const note = this.currentNotes.find(n => n.id === noteId);
       note.content = content;
+      await this.backend.saveContent(noteId, content, notify);
       if (notify) {
         this.notes.next(this.currentNotes);
       }

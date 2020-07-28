@@ -183,7 +183,7 @@
 
     <as-split-area size="*">
       <div id="right-frame">
-        <div id="editor-container" *ngIf="['editor', 'split'].includes(editorState)">
+        <div id="editor-container" [hidden]="!['editor', 'split'].includes(editorState)">
           <app-editor
             id="editor"
             [class.split-state]="editorState === 'split'"

@@ -30,7 +30,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   @Output() contentChange = new EventEmitter();
 
   private codemirror: CodeMirror.EditorFromTextArea;
-  private selectedNote: NoteObject;
+  private selectedNote: NoteObject|null = null;
   private previousChar: string;
   private allNoteTitles: string[];
   private allTags: string[];
@@ -52,11 +52,16 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.selectedNote = this.noteService.currentSelectedNote;
     this.allNoteTitles = this.noteService?.currentNotes?.map(n => n.title);
     this.noteService.notesAndTagGroups.subscribe(val => this.allTags = val.tagGroups.map(t => t.tag));
     this.noteService.selectedNote.subscribe(newSelectedNote => {
-      this.saveChanges();
+      if (newSelectedNote === null) {
+        this.selectedNote = null;
+        return;
+      }
+      if (this.selectedNote !== null) {
+        this.saveChanges();
+      }
       this.selectedNote = newSelectedNote;
       this.codemirror.setValue(newSelectedNote.content);
       this.codemirror.focus();

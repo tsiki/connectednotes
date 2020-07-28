@@ -340,9 +340,6 @@ export class GoogleDriveService implements StorageBackend {
       },
       body: content});
 
-    // if (notify) { // TODO: notify shouldn't be used i think
-    //   this.notifications.unsavedChanged(fileId);
-    // }
     // TODO: cache this - we need the last changed timestamp from the server
     await req;
   }

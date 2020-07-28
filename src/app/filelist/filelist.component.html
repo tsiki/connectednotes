@@ -75,7 +75,7 @@
       {{ tagGroup.tag }}
     </button>
 
-    <span *ngFor="let noteId of tagGroup.noteIds">
+    <ng-container *ngFor="let noteId of tagGroup.noteIds">
       <button *ngIf="noteId !== noteToBeRenamed"
               [class.mat-button-toggle-checked]="selectedNoteId===noteId"
               class="note-link tag-group-note"
@@ -84,7 +84,7 @@
               mat-button>
         {{ noteService.getNote(noteId).title }}<span *ngIf="unsavedNotes.has(noteId)">*</span>
       </button>
-    </span>
+    </ng-container>
   </span>
 
   <span *ngFor="let note of notes">
