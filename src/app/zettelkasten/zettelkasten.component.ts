@@ -189,6 +189,6 @@ export class CreateNoteDialog {
   constructor(public dialogRef: MatDialogRef<CreateNoteDialog>) {}
 
   close() {
-    this.dialogRef.close(this.noteTitle);
+    this.dialogRef.close(this.noteTitle.trim());
   }
 }

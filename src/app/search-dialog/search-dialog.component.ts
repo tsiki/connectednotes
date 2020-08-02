@@ -2,14 +2,18 @@ import {Component, HostBinding, OnInit} from '@angular/core';
 import {MatDialogRef} from '@angular/material/dialog';
 import {NoteService} from '../note.service';
 import {HighlightedSegment, SearchResult} from '../types';
-import {SettingsService, Theme} from "../settings.service";
+import {SettingsService, Theme} from '../settings.service';
 
 @Component({
   selector: 'app-search-dialog',
   template: `
     <mat-form-field>
       <mat-label>File search</mat-label>
-      <input matInput [(ngModel)]="noteTitle" (keyup.enter)="close()" (keyup)="searchTermChanged($event)">
+      <input autocomplete="off"
+             matInput
+             [(ngModel)]="noteTitle"
+             (keyup.enter)="close()"
+             (keyup)="searchTermChanged($event)">
     </mat-form-field>
     <div id="results-container">
       <button class="result-link"
@@ -24,7 +28,7 @@ import {SettingsService, Theme} from "../settings.service";
     .highlighted {
       background-color: var(--highlight-color);
     }
-    
+
     .result-link {
       display: block;
     }
