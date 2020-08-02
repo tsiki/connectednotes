@@ -9,6 +9,7 @@ import {
   StorageBackend,
   TagGroup, UserSettings
 } from './types';
+import {Router} from "@angular/router";
 
 export enum Backend {
   FIREBASE,
@@ -31,7 +32,7 @@ export class NoteService {
   private backend?: StorageBackend;
   private noteIdToNote?: Map<string, NoteObject>;
 
-  constructor(private injector: Injector) {}
+  constructor(private injector: Injector, private router: Router) {}
 
   async initialize(backendType: Backend) {
     if (backendType === Backend.FIREBASE) {
@@ -72,8 +73,16 @@ export class NoteService {
     return newNote.id;
   }
 
-  selectNote(noteId: string|null) {
+  selectNote(noteId: string|null, updateUrl = true) {
+    // TODO: if notes aren't loaded yet we might not be able to load anything (eg. if noteid is defined in query param)
     const note = this.currentNotes.find(no => no.id === noteId) || null;
+    if (updateUrl) {
+      this.router.navigate(
+          [],
+          {
+            queryParams: { noteid: note.id },
+          });
+    }
     this.selectedNote.next(note);
   }
 

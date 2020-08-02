@@ -1,8 +1,6 @@
 import {Component, HostBinding} from '@angular/core';
 import {SettingsService, Theme} from './settings.service';
 
-
-
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',

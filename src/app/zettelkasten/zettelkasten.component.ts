@@ -48,7 +48,6 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
   unCollapsedSidebarWidth: number;
   currentNoteTitle: string;
   activeStatusUpdates: BackendStatusNotification[] = [];
-  clearStatusUpdateFns = new Map<string, number>();
 
   constructor(
     private fireAuth: AngularFireAuth,
@@ -63,7 +62,7 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
   ngOnInit(): void {
     this.settingsService.themeSetting.subscribe(newTheme => this.theme = newTheme);
 
-    if (this.router.url === '/gd') {
+    if (this.router.url.split('?')[0] === '/gd') {
       this.noteService.initialize(Backend.GOOGLE_DRIVE);
     } else {
       this.noteService.initialize(Backend.FIREBASE);
@@ -80,6 +79,14 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
         this.editorState = 'editor';
       }
       this.currentNoteTitle = selected.title;
+    });
+
+    this.route.queryParams.subscribe(params => {
+      // TODO: if we change the noteid in the url and change it back to the old, it might trigger this and overwrite
+      //  the new version of the note with the old.
+      if (params.noteid) {
+        this.noteService.selectNote(params.noteid, false);
+      }
     });
   }
 
