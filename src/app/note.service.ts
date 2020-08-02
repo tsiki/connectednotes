@@ -9,7 +9,6 @@ import {
   StorageBackend,
   TagGroup, UserSettings
 } from './types';
-import {NotificationService} from './notification.service';
 
 export enum Backend {
   FIREBASE,

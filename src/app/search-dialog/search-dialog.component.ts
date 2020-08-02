@@ -83,20 +83,24 @@ export class SearchDialogComponent implements OnInit {
 
     // First try full match.
     const matchingNotes = notes
-      .filter(note => note.title.includes(searchTerm))
+      .filter(note => note.title.toLowerCase().includes(searchTerm.toLowerCase()))
       .map(note => (
         {
           noteId: note.id,
-          segments: this.splitToHighlightedParts(note.title, this.getIndicesCoveredByWords(note.title, [searchTerm]))
+          segments: this.splitToHighlightedParts(
+              note.title,
+              this.getIndicesCoveredByWords(note.title.toLowerCase(), [searchTerm.toLowerCase()]))
         })
       );
 
     // If we don't have that many full matches then try splitting the search term and checking the coverage
     if (matchingNotes.length < 5) {
-      const splitTerms = searchTerm.split(' ').filter(term => term.length > 0);
+      const splitTerms = searchTerm.toLowerCase().split(' ').filter(term => term.length > 0);
       const alreadyAdded = new Set(matchingNotes.map(n => n.noteId));
-      const notesWithAtLeastOneTerm = notes.filter(n => !alreadyAdded.has(n.id) && splitTerms.some(term => n.title.includes(term)));
-      const highlightedTitleIndices = notesWithAtLeastOneTerm.map(note => this.getIndicesCoveredByWords(note.title, splitTerms));
+      const notesWithAtLeastOneTerm =
+          notes.filter(n => !alreadyAdded.has(n.id) && splitTerms.some(term => n.title.toLowerCase().includes(term)));
+      const highlightedTitleIndices =
+          notesWithAtLeastOneTerm.map(note => this.getIndicesCoveredByWords(note.title.toLowerCase(), splitTerms));
       const trueCounts = highlightedTitleIndices.map(indices => indices.reduce((prev, cur) => cur ? prev + 1 : prev, 0));
       const trueCountPerLength = notesWithAtLeastOneTerm.map((note, idx) => trueCounts[idx] / note.title.length);
       const largestElementIndices = this.getLargestElementIndices(trueCountPerLength, 5);
