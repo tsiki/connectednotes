@@ -64,6 +64,27 @@
     padding: 0 16px;
   }
 
+  .unsaved-marker {
+    position: sticky;
+    right: 0;
+  }
+
+  .mat-button-toggle-checked {
+    background-color: var(--selected-note-color);
+  }
+
+  .mat-button-toggle-checked .unsaved-marker {
+    background-color: var(--selected-note-color);
+  }
+
+  .unsaved-marker {
+    background-color: var(--low-contrast-background-color);
+  }
+
+  .note-link:hover .unsaved-marker {
+    background-color: initial;
+  }
+
 </style>
 
 <div id="note-list-container">
@@ -82,7 +103,8 @@
               (click)="openNote(noteId)"
               (contextmenu)="onRightClick($event, noteId)"
               mat-button>
-        {{ noteService.getNote(noteId).title }}<span *ngIf="unsavedNotes.has(noteId)">*</span>
+        <span>{{ noteService.getNote(noteId).title }}</span>
+        <span class="unsaved-marker" *ngIf="unsavedNotes.has(noteId)">*</span>
       </button>
     </ng-container>
   </span>
@@ -94,7 +116,7 @@
             (click)="openNote(note.id)"
             (contextmenu)="onRightClick($event, note.id)"
             mat-button>
-      {{ note.title }}<span *ngIf="unsavedNotes.has(note.id)">*</span>
+      <span>{{ note.title }}</span><span class="unsaved-marker" *ngIf="unsavedNotes.has(note.id)">*</span>
     </button>
     <mat-form-field id="new-title-input" *ngIf="note.id === noteToBeRenamed">
       <input matInput #titleRenameInput [value]="note.title" (keyup.enter)="executeRename(note.id, $event.target.value)">
