@@ -34,6 +34,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   private previousChar: string;
   private allNoteTitles: string[];
   private allTags: string[];
+  private mouseEventWithCtrlActive = false;
   private unloadListener = () => this.saveChanges();
 
   constructor(
@@ -92,6 +93,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
         return;
       }
 
+      // Set up autocomplete
       const hintType: '#'|'[' = lastHashtag > lastBrackets ? '#' : '[';
       if (hintType === '#') {
         const wordSoFar = lineSoFar.slice(lastHashtag);
@@ -126,6 +128,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     // this.codemirror.setSize('400px', '1000px'); // keep this here for performance testing codemirror resizing
     this.codemirror.setSize('100%', '100%');
 
+    // Set up notification of unsaved changes
     fromEvent(this.codemirror, 'changes')
         .pipe(debounceTime(100))
         .subscribe(([cmReference, changes]) => {
@@ -134,10 +137,12 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
             this.notifications.unsavedChanged(this.selectedNote.id);
           }
         });
+
+    // Autosave after some inacitivity
     fromEvent(this.codemirror, 'changes').pipe(debounceTime(3_000)).subscribe(() => this.saveChanges());
 
+    // Enables keyboard navigation in autocomplete list
     this.codemirror.on('keyup', (cm, event) => {
-      /* Enables keyboard navigation in autocomplete list */
       const keyboardNavigationInAutocompleteListEnabled = !cm.state.completionActive;
       if (keyboardNavigationInAutocompleteListEnabled && event.key === '[' && this.previousChar === '[') {
         (CodeMirror as unknown as CodeMirrorHelper).commands.autocomplete(cm, null, {completeSingle: true});
@@ -147,8 +152,45 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       this.previousChar = event.key;
     });
 
+    // Emit content on every change to enable autosave
     this.codemirror.on('change', (cm, event) => {
       this.contentChange.emit(cm.getValue());
+    });
+
+    // Enable ctrl/cmd + click to jump to a note or create new one
+    this.codemirror.on('mousedown', (cm, event) => {
+      this.mouseEventWithCtrlActive = event.metaKey || event.ctrlKey;
+    });
+    this.codemirror.on('cursorActivity', async (cm, event) => {
+      if (this.mouseEventWithCtrlActive) {
+        const line = cm.getLine(cm.getCursor().line);
+        const pos = cm.getCursor().ch;
+        const start = line.substr(0, pos);
+        const end = line.substr(pos);
+        let startIdx;
+        for (startIdx = start.length; startIdx > 0; startIdx--) {
+          if (start.substr(startIdx - 2, 2) === '[[') {
+            break;
+          }
+        }
+        let endIdx;
+        for (endIdx = 0; endIdx < end.length; endIdx++) {
+          if (end.substr(endIdx, 2) === ']]') {
+            break;
+          }
+        }
+        if (startIdx !== 0 && endIdx !== end.length) {
+          const noteTitle = start.substr(startIdx) + end.substr(0, endIdx);
+          const note = this.noteService.currentNotes.find(n => n.title === noteTitle);
+          if (note) {
+            this.noteService.selectNote(note.id);
+          } else {
+            const noteId = await this.noteService.createNote(noteTitle);
+            this.noteService.selectNote(noteId);
+          }
+        }
+      }
+      this.mouseEventWithCtrlActive = false;
     });
   }
 
