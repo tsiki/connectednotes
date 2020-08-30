@@ -21,7 +21,12 @@ export class FrontpageComponent implements AfterViewInit {
 
   constructor(private router: Router, private injector: Injector) {
     this.googleDriveBackend = this.injector.get(GoogleDriveService);
-    if (this.googleDriveBackend.isSignedIn()) {
+    this.checkIfSignedInAndMaybeRedirect();
+  }
+
+  async checkIfSignedInAndMaybeRedirect() {
+    const signedIn = await this.googleDriveBackend.isSignedIn();
+    if (signedIn) {
       this.googleDriveBackend.signInIfNotSignedIn().then(() =>
           this.router.navigate(['gd'])
       );
