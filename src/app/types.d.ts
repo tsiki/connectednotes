@@ -71,6 +71,7 @@ interface StorageBackend {
   storedSettings: BehaviorSubject<UserSettings>;
   initialize();
   signInIfNotSignedIn();
+  isSignedIn(): Promise<boolean>;
   requestRefreshAllNotes();
   updateSettings(settingKey: string, settingValue: string);
   createNote(title: string): Promise<NoteObject>;

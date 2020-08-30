@@ -5,6 +5,7 @@ import 'firebase/auth';
 import {Router} from '@angular/router';
 import {GoogleDriveService} from '../backends/google-drive.service';
 import {EditorComponent} from '../editor/editor.component';
+import {StorageBackend} from '../types';
 
 const RADIUS = 8;
 const LINE_WIDTH = 15;
@@ -16,7 +17,16 @@ const LINE_WIDTH = 15;
 export class FrontpageComponent implements AfterViewInit {
   @ViewChild('canvas') canvas: ElementRef<HTMLCanvasElement>;
 
-  constructor(private router: Router, private injector: Injector) { }
+  private googleDriveBackend: StorageBackend;
+
+  constructor(private router: Router, private injector: Injector) {
+    this.googleDriveBackend = this.injector.get(GoogleDriveService);
+    if (this.googleDriveBackend.isSignedIn()) {
+      this.googleDriveBackend.signInIfNotSignedIn().then(() =>
+          this.router.navigate(['gd'])
+      );
+    }
+  }
 
   ngAfterViewInit(): void {
     // this.drawLoop();
@@ -187,8 +197,7 @@ export class FrontpageComponent implements AfterViewInit {
   async toGd() {
     // Initialize service here - if we initialize immediately after redirecting to new URL the popup is more likely to
     // get blocked by the browser and it'll be confusing when the user lands on the page and can't create notes.
-    const service = this.injector.get(GoogleDriveService);
-    await service.signInIfNotSignedIn();
+    await this.googleDriveBackend.signInIfNotSignedIn();
     this.router.navigate(['gd']);
   }
 }

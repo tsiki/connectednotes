@@ -20,7 +20,6 @@ export class DndDirective {
     }
     const file = files[0];
     const name = file.name;
-    // TODO: make sure the image name is unique, otherwise it'll just be overwritten
     const url = await this.noteService.saveImage(file, file.type, file.name);
     this.imageDropped.emit({name, url});
   }

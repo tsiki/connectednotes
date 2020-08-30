@@ -26,8 +26,7 @@ export class GoogleDriveService implements StorageBackend {
 
   // This service should be created when it's actually needed, ie. user has decided they want to use Google Drive as
   // backend - that way we can go straight to the authentication.
-  constructor(private http: HttpClient, private cache: LocalCacheService, private notifications: NotificationService) {
-  }
+  constructor(private http: HttpClient, private cache: LocalCacheService, private notifications: NotificationService) {}
 
   initialize() {
     this.signInIfNotSignedIn().then(() => {
@@ -113,20 +112,40 @@ export class GoogleDriveService implements StorageBackend {
     }
   }
 
-  signInIfNotSignedIn() {
+  isSignedIn(): Promise<boolean> {
     return new Promise((resolve, reject) => {
-      gapi.load('client:auth2', () => this.checkAndListenForSignIn().then(() => resolve()));
+      gapi.load('client:auth2', async () => {
+        await gapi.client.init({
+          apiKey: GDRIVE_API_KEY,
+          clientId: GDRIVE_CLIENT_ID,
+          discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+          scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.install'
+        });
+        resolve(gapi.auth2.getAuthInstance().isSignedIn.get());
+      });
     });
   }
 
-  private async checkAndListenForSignIn() {
-    await gapi.client.init({
-      apiKey: GDRIVE_API_KEY,
-      clientId: GDRIVE_CLIENT_ID,
-      discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
-      scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.install'
-    });
+  async signInIfNotSignedIn() {
+    await this.loadAndInitGapiAuth();
+    await this.signIn();
+  }
 
+  private async loadAndInitGapiAuth() {
+    return new Promise((resolve) => {
+      gapi.load('client:auth2', async () => {
+        await gapi.client.init({
+          apiKey: GDRIVE_API_KEY,
+          clientId: GDRIVE_CLIENT_ID,
+          discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+          scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.install'
+        });
+        resolve();
+      });
+    });
+  }
+
+  private async signIn() {
     const isSignedIn = gapi.auth2.getAuthInstance().isSignedIn.get();
     if (!isSignedIn) {
       await this.initiateSignIn();
