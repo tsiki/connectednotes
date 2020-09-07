@@ -6,15 +6,99 @@
 
   #codemirror-container {
     display: flex;
-    height: 100%;
+    height: calc(100% - var(--top-bar-height));
     max-width: 700px;
+    padding: 10px;
   }
 
   #codemirror {
     height: 100%;
   }
+
+  #top-bar {
+    height: var(--top-bar-height);
+    background: var(--low-contrast-background-color);
+    border-bottom: 1px solid var(--gutter-color);
+  }
+
+  #container {
+    display: flex;
+  }
+
+  #container > * {
+  }
+
+  .space-evenly {
+    display: inline-block;
+    width: 50%;
+    vertical-align: top;
+  }
+
+  #codemirror-container.split-state {
+    border-right: 1px solid #bdbdbd;
+    width: 50%;
+  }
+
+  #codemirror-container {
+    width: 100%;
+  }
+
+  #top-bar {
+    display: flex;
+    /* TODO: doesn't actually stick when it scrolls out of #right-frame */
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  #top-bar > button {
+    height: 100%;
+    flex-grow: 0;
+  }
+
+  #attachment-count {
+    bottom: 0;
+    right: 10px;
+    position: absolute;
+  }
+
+  .title {
+    background-color: inherit;
+    border: 0;
+    flex-grow: 1;
+    font-size: 22px;
+    height: calc(100% - 1px);
+    margin: 1px 0 0 10px;
+    text-overflow: ellipsis;
+  }
 </style>
 
-<div id="codemirror-container" class="dark-theme" appDnd (imageDropped)="onImageDropped($event)">
-  <textarea #codemirror id="codemirror"></textarea>
+<div id="top-bar">
+  <input class="title"
+         type="text"
+         matInput
+         #titleRenameInput
+         [value]="selectedNote?.title"
+         (keyup.enter)="executeRename($event.target.value)">
+  <button (click)="toggleSplitView()" mat-button matTooltip="show/hide rendered note">
+    <mat-icon>border_vertical</mat-icon>
+  </button>
+  <button (click)="openAttachmentsDialog()" mat-button matTooltip="attachments for this note">
+    <mat-icon>attachment</mat-icon>
+    <span id="attachment-count">{{this.attachedFiles?.length || ''}}</span>
+  </button>
+  <button (click)="openBackreferencesDialog()" mat-button matTooltip="backreferences">
+    <mat-icon>360</mat-icon>
+  </button>
+  <button (click)="deleteNote()" mat-button matTooltip="delete note">
+    <mat-icon>delete_outline</mat-icon>
+  </button>
+</div>
+<div id="container">
+  <div id="codemirror-container"
+       class="dark-theme"
+       [class.split-state]="editorState === 'split'">
+    <textarea #codemirror id="codemirror"></textarea>
+  </div>
+  <div id="markdown-renderer" class="space-evenly" *ngIf="editorState === 'split'" #markdown></div>
 </div>

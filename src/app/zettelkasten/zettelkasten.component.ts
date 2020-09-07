@@ -38,7 +38,6 @@ import {NotificationService} from '../notification.service';
 })
 export class ZettelkastenComponent implements OnInit, AfterViewInit {
   @ViewChild('editor') editor: EditorComponent;
-  @ViewChild('markdown') markdown: ElementRef;
   @ViewChild('sidebarArea') sidebarArea: SplitAreaDirective;
   @ViewChild('sidebar') sidebar: ElementRef;
 
@@ -98,12 +97,6 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit() {
-    this.editor.contentChange.pipe(debounceTime(100)).subscribe(newContent => {
-      if (this.editorState === 'split') {
-        // Currently not sanitizing html since you need to be logged into see anything and nothing's shareable
-        this.markdown.nativeElement.innerHTML = (marked as any)(newContent);
-      }
-    });
   }
 
   logout() {
@@ -143,19 +136,6 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
   openGraphView() {
     this.editorState = 'graph';
     this.noteService.selectNote(null);
-  }
-
-  toggleSplitView() {
-    if (this.editorState !== 'split') {
-      this.editorState = 'split';
-      // Needs to be async since markdown isn't inserted into the dom at this point yet
-      setTimeout(() => {
-        const content = this.editor.getContent();
-        this.markdown.nativeElement.innerHTML = (marked as any)(content);
-      });
-    } else {
-      this.editorState = 'editor';
-    }
   }
 
   dragEnd(unit, {sizes}) {

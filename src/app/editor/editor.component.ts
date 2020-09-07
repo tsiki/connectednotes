@@ -1,12 +1,27 @@
-import {AfterViewInit, Component, ElementRef, EventEmitter, OnDestroy, OnInit, Output, ViewChild} from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  EventEmitter,
+  HostListener,
+  OnDestroy,
+  OnInit,
+  Output,
+  ViewChild
+} from '@angular/core';
 import * as CodeMirror from 'codemirror';
 import {NoteService} from '../note.service';
 import {fromEvent} from 'rxjs';
 import {debounceTime} from 'rxjs/operators';
 import 'codemirror/addon/hint/show-hint';
-import {DragAndDropImage, NoteObject} from '../types';
+import {AttachedFile, DragAndDropImage, NoteObject} from '../types';
 import {SettingsService, Theme} from '../settings.service';
 import {NotificationService} from '../notification.service';
+import * as marked from 'marked';
+import {MatDialog} from '@angular/material/dialog';
+import {AttachmentsDialogComponent} from '../attachments-dialog/attachments-dialog.component';
+import {MatSnackBar} from '@angular/material/snack-bar';
+import {BackreferencesDialogComponent} from "../backreferences-dialog/backreferences-dialog.component";
 
 declare interface CodeMirrorHelper {
   commands: {
@@ -27,20 +42,29 @@ const LIGHT_THEME = 'default';
 })
 export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   @ViewChild('codemirror') cm: ElementRef;
+  @ViewChild('markdown') markdown: ElementRef;
+  @ViewChild('titleRenameInput') titleRenameInput: ElementRef;
   @Output() contentChange = new EventEmitter();
 
+  editorState: 'editor'|'split' = 'editor';
+  attachedFiles: AttachedFile[]|null = null;
+  selectedNote: NoteObject|null = null;
+  noteDeleted = false;
+
   private codemirror: CodeMirror.EditorFromTextArea;
-  private selectedNote: NoteObject|null = null;
   private previousChar: string;
   private allNoteTitles: string[];
   private allTags: string[];
   private mouseEventWithCtrlActive = false;
+
   private unloadListener = () => this.saveChanges();
 
   constructor(
+      public dialog: MatDialog,
       private readonly noteService: NoteService,
       private readonly settingsService: SettingsService,
-      private readonly notifications: NotificationService) {
+      private readonly notifications: NotificationService,
+      private snackBar: MatSnackBar) {
     this.settingsService.themeSetting.subscribe(theme => {
       switch (theme) {
         case Theme.DARK:
@@ -55,22 +79,38 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   ngOnInit(): void {
     this.allNoteTitles = this.noteService?.currentNotes?.map(n => n.title);
     this.noteService.notesAndTagGroups.subscribe(val => this.allTags = val.tagGroups.map(t => t.tag));
+
     this.noteService.selectedNote.subscribe(newSelectedNote => {
       if (newSelectedNote === null) {
         this.selectedNote = null;
+        this.codemirror?.setValue('');
         return;
       }
+      // Save changes for previous
       if (this.selectedNote !== null) {
         this.saveChanges();
       }
       this.selectedNote = newSelectedNote;
+
+      if (this.noteService.attachmentMetadata.value) {
+        this.attachedFiles = this.noteService.attachmentMetadata.value[this.selectedNote.id];
+      }
+
       this.codemirror.setValue(newSelectedNote.content);
       this.codemirror.focus();
       this.codemirror.setCursor(0, 0);
     });
+
+    this.noteService.attachmentMetadata.subscribe(metadata => {
+      if (this.selectedNote && metadata && metadata.hasOwnProperty(this.selectedNote.id)) {
+        this.attachedFiles = metadata[this.selectedNote.id];
+      }
+    });
+
     this.noteService.notes.subscribe(newNotes => {
       this.allNoteTitles = newNotes.map(note => note.title);
     });
+
     window.addEventListener('beforeunload', this.unloadListener);
   }
 
@@ -80,6 +120,14 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       // TODO: we need to show something like 'no notes selected/created' or something
       this.codemirror.setValue(this.selectedNote.content);
     }
+
+    this.contentChange.pipe(debounceTime(100)).subscribe(newContent => {
+      if (this.editorState === 'split') {
+        // Currently not sanitizing html since you need to be logged into see anything and nothing's shareable
+        // Maybe one day when we enable shared notes this needs to be fixed
+        this.markdown.nativeElement.innerHTML = (marked as any)(newContent);
+      }
+    });
   }
 
   initializeCodeMirror() {
@@ -212,7 +260,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     }
   }
 
-  onImageDropped(urlAndName: DragAndDropImage) {
+  insertImageLinkToCursorPosition(imageUrl: string, imageName: string) {
     const doc = this.codemirror.getDoc();
     const cursor = doc.getCursor();
 
@@ -221,10 +269,77 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       ch: cursor.ch
     };
 
-    doc.replaceRange(`![${urlAndName.name}](${urlAndName.url})`, pos);
+    doc.replaceRange(`![${imageName}](${imageUrl})`, pos);
+  }
+
+  openAttachmentsDialog() {
+    this.dialog.open(AttachmentsDialogComponent, {
+      position: { top: '10px' },
+      data: { noteId: this.selectedNote.id },
+    });
+  }
+
+  openBackreferencesDialog() {
+    this.dialog.open(BackreferencesDialogComponent, {
+      position: { top: '10px' },
+      data: { noteId: this.selectedNote.id },
+    });
+  }
+
+  toggleSplitView() {
+    if (this.editorState !== 'split') {
+      this.editorState = 'split';
+      // Needs to be async since markdown isn't inserted into the dom at this point yet
+      setTimeout(() => {
+        const content = this.getContent();
+        this.markdown.nativeElement.innerHTML = (marked as any)(content);
+      });
+    } else {
+      this.editorState = 'editor';
+    }
   }
 
   getContent() {
     return this.codemirror.getValue();
+  }
+
+  @HostListener('drop', ['$event'])
+  async evtDrop(e: DragEvent) {
+    const files = e.dataTransfer.files;
+    if (files.length !== 1) {
+      throw new Error(`Was expecting 1 file. Got ${files.length}.`);
+    }
+    const file = files[0];
+    const name = file.name;
+    const notificationId = new Date().getMilliseconds().toString();
+    this.notifications.toSidebar(notificationId, 'Uploading file');
+    const fileId = await this.noteService.uploadFile(file, file.type, file.name);
+    await this.noteService.attachUploadedFileToNote(
+        this.noteService?.selectedNote.value.id, fileId, file.name, file.type);
+    this.notifications.toSidebar(notificationId, 'File uploaded', 3000);
+    if (file.type.startsWith('image/')) {
+      this.insertImageLinkToCursorPosition(NoteService.fileIdToLink(fileId), name);
+    }
+  }
+
+  async executeRename(newTitle) {
+    this.titleRenameInput.nativeElement.blur();
+    const noteId = this.selectedNote.id;
+    const curTitle = this.noteService.currentNotes.find(n => n.id === noteId).title;
+    if (newTitle !== curTitle) {
+      const res = await this.noteService.renameNote(noteId, newTitle);
+      this.snackBar.open(
+          `Renamed ${res.renamedBackRefCount} references in ${res.renamedNoteCount} notes`,
+          null,
+          {duration: 5000});
+    }
+  }
+
+  async deleteNote() {
+    const result = window.confirm(`Delete ${this.selectedNote.title}?`);
+    if (result) {
+      await this.noteService.deleteNote(this.selectedNote.id);
+      this.noteDeleted = true;
+    }
   }
 }

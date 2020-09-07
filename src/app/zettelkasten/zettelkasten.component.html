@@ -4,7 +4,7 @@
     align-items: stretch;
     display: flex;
     justify-content: space-around;
-    min-height: 50px;
+    min-height: var(--top-bar-height);
   }
 
   #left-end-button-container > button,
@@ -61,17 +61,10 @@
 
   #editor {
     height: 100%;
-    padding: 10px;
   }
 
   #markdown-renderer {
     padding: 10px;
-  }
-
-  .space-evenly {
-    display: inline-block;
-    width: 50%;
-    vertical-align: top;
   }
 
   #logout-icon {
@@ -82,6 +75,7 @@
   /* make the draggable divider a bit narrower */
   ::ng-deep .as-split-gutter {
     flex-basis: 5px !important;
+    background: var(--gutter-color) !important;
   }
 
   #left-end-button-container {
@@ -90,15 +84,6 @@
 
   #left-end-button-container > * {
     flex-grow: 1;
-  }
-
-  #editor.split-state {
-    border-right: 1px solid #bdbdbd;
-    width: 50%;
-  }
-
-  #editor {
-    width: 100%;
   }
 
   .vertical #notifications {
@@ -156,9 +141,6 @@
             <button (click)="openGraphView()" mat-button matTooltip="view notes as a graph">
               <mat-icon><img alt="graph" id="graph-icon" [class.dark-theme]="theme === 'dark'" src="./assets/img/graph-icon.png"></mat-icon>
             </button>
-            <button (click)="toggleSplitView()" mat-button matTooltip="show/hide rendered note">
-              <mat-icon>border_vertical</mat-icon>
-            </button>
           </div>
           <app-filelist id="note-list" *ngIf="!sidebarCollapsed"></app-filelist>
         </div>
@@ -186,11 +168,9 @@
         <div id="editor-container" [hidden]="!['editor', 'split'].includes(editorState)">
           <app-editor
             id="editor"
-            [class.split-state]="editorState === 'split'"
             class="space-evenly"
             #editor>
           </app-editor>
-          <div id="markdown-renderer" class="space-evenly" *ngIf="editorState === 'split'" #markdown></div>
         </div>
         <app-graph *ngIf="editorState === 'graph'"></app-graph>
       </div>

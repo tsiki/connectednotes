@@ -2,6 +2,7 @@ import {Injectable, Injector} from '@angular/core';
 import {BehaviorSubject, Subject} from 'rxjs';
 import {GoogleDriveService} from './backends/google-drive.service';
 import {
+  AttachmentMetadata,
   NoteAndLinks,
   NoteObject,
   NotesAndTagGroups,
@@ -9,7 +10,7 @@ import {
   StorageBackend,
   TagGroup, UserSettings
 } from './types';
-import {Router} from "@angular/router";
+import {Router} from '@angular/router';
 
 export enum Backend {
   FIREBASE,
@@ -23,16 +24,20 @@ export class NoteService {
 
   notes: Subject<NoteObject[]> = new Subject();
   notesAndTagGroups: BehaviorSubject<NotesAndTagGroups> = new BehaviorSubject(null);
-
   currentNotes: NoteObject[];
   selectedNote: BehaviorSubject<NoteObject> = new BehaviorSubject(null);
   storedSettings = new BehaviorSubject<UserSettings>(null);
+  attachmentMetadata = new BehaviorSubject<AttachmentMetadata>(null);
 
   private backendType: Backend;
   private backend?: StorageBackend;
   private noteIdToNote?: Map<string, NoteObject>;
 
   constructor(private injector: Injector, private router: Router) {}
+
+  static fileIdToLink(fileId: string) {
+    return `https://drive.google.com/uc?id=${fileId}`;
+  }
 
   async initialize(backendType: Backend) {
     if (backendType === Backend.FIREBASE) {
@@ -47,6 +52,7 @@ export class NoteService {
     this.backend.requestRefreshAllNotes();
     this.notes = this.backend.notes;
     this.backend.storedSettings.subscribe(newSettings => this.storedSettings.next(newSettings));
+    this.backend.attachmentMetadata.subscribe(newVal => this.attachmentMetadata.next(newVal));
     this.notes.subscribe(newNotes => {
       this.noteIdToNote = new Map();
       for (const note of newNotes) {
@@ -86,6 +92,15 @@ export class NoteService {
     this.selectedNote.next(note);
   }
 
+  getBackreferences(noteId: string) {
+    const noteTitle = this.currentNotes.find(n => n.id === noteId).title;
+    const backrefTitles = this.getGraphRepresentation()
+        .filter(noteAndLinks => noteAndLinks.connectedTo.includes(noteTitle))
+        .map(noteAndLinks => noteAndLinks.noteTitle);
+    const backrefTitleSet = new Set(backrefTitles);
+    return this.currentNotes.filter(n => backrefTitleSet.has(n.title));
+  }
+
   getGraphRepresentation(): NoteAndLinks[] {
     const titleToId = new Map<string, string>();
     for (const note of this.currentNotes) {
@@ -104,7 +119,7 @@ export class NoteService {
     const noteToRename = this.currentNotes.find(n => n.id === noteId);
     const prevTitle = noteToRename.title;
     const currentNotesAndLinks = this.getGraphRepresentation();
-    await this.backend.renameNote(noteId, newTitle);
+    await this.backend.renameFile(noteId, newTitle);
     noteToRename.title = newTitle;
 
     // Rename backreferences
@@ -129,9 +144,17 @@ export class NoteService {
   }
 
   async deleteNote(noteId: string) {
-    this.backend.deleteNote(noteId);
+    await this.backend.deleteFile(noteId);
+    if (this.selectedNote.value.id === noteId) {
+      this.selectedNote.next(null);
+    }
     this.currentNotes = this.currentNotes.filter(n => n.id !== noteId);
     this.notes.next(this.currentNotes);
+  }
+
+  async deleteAttachment(noteId: string, fileId: string) {
+    await this.backend.removeAttachmentFromNote(noteId, fileId);
+    this.backend.deleteFile(fileId);
   }
 
   async saveContent(noteId: string, content: string, notify = true) {
@@ -150,8 +173,12 @@ export class NoteService {
     return null;
   }
 
-  async saveImage(img: any, fileType: string, fileName: string): Promise<string> {
-    return this.backend.saveImage(img, fileType, fileName);
+  async uploadFile(content: any, fileType: string, fileName: string): Promise<string> {
+    return this.backend.uploadFile(content, fileType, fileName);
+  }
+
+  async attachUploadedFileToNote(noteId: string, uploadedFileId: string, fileName: string, mimeType: string): Promise<string> {
+    return await this.backend.addAttachmentToNote(noteId, uploadedFileId, fileName, mimeType);
   }
 
   async updateSettings(settingKey: string, settingValue: string) {
@@ -188,7 +215,6 @@ export class NoteService {
         tagToNotes.get(tag).add(note.id);
       }
     }
-
     const ans = [];
     for (const [tag, noteIds] of tagToNotes) {
       ans.push({tag, noteIds: Array.from(noteIds)});

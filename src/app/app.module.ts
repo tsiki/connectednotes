@@ -31,12 +31,14 @@ import {MatMenuModule} from '@angular/material/menu';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {MatListModule} from '@angular/material/list';
 import {MatCardModule} from '@angular/material/card';
-import { DndDirective } from './dnd.directive';
 import {AngularFireStorageModule} from '@angular/fire/storage';
 import {MatSnackBarModule} from '@angular/material/snack-bar';
 import {HttpClientModule} from '@angular/common/http';
 import { SettingsComponent } from './settings/settings.component';
-import {MatSelectModule} from "@angular/material/select";
+import {MatSelectModule} from '@angular/material/select';
+import { AttachmentsDialogComponent } from './attachments-dialog/attachments-dialog.component';
+import {MatSortModule} from '@angular/material/sort';
+import { BackreferencesDialogComponent } from './backreferences-dialog/backreferences-dialog.component';
 
 @NgModule({
   entryComponents: [CreateNoteDialog], // Not declared in template to must be here
@@ -49,8 +51,9 @@ import {MatSelectModule} from "@angular/material/select";
     CreateNoteDialog,
     GraphComponent,
     SearchDialogComponent,
-    DndDirective,
     SettingsComponent,
+    AttachmentsDialogComponent,
+    BackreferencesDialogComponent,
   ],
     imports: [
         BrowserModule,
@@ -82,6 +85,7 @@ import {MatSelectModule} from "@angular/material/select";
         MatDialogModule,
         MatOptionModule,
         MatSelectModule,
+        MatSortModule,
     ],
   providers: [],
   bootstrap: [AppComponent]

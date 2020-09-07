@@ -16,11 +16,15 @@ import {SettingsService, Theme} from '../settings.service';
              (keyup)="searchTermChanged($event)">
     </mat-form-field>
     <div id="results-container">
-      <button class="result-link"
+      <button *ngFor="let result of this.searchResults; let idx = index"
+              (click)="onButtonPressed(result.noteId)"
+              class="result-link"
               [class.mat-button-toggle-checked]="idx==selectedListIndex"
-              *ngFor="let result of this.searchResults; let idx = index"
               mat-button>
-        <span [ngClass]="segment.highlighted ? 'highlighted' : ''" *ngFor="let segment of result.segments">{{segment.text}}</span>
+        <span *ngFor="let segment of result.segments"
+              [ngClass]="segment.highlighted ? 'highlighted' : ''">
+          {{segment.text}}
+        </span>
       </button>
     </div>
   `,
@@ -65,8 +69,12 @@ export class SearchDialogComponent implements OnInit {
   ngOnInit(): void {
   }
 
+  onButtonPressed(noteId: string) {
+    this.noteService.selectNote(noteId);
+    this.close();
+  }
+
   searchTermChanged(e) {
-    // TODO: out of bounds and list empty handling
     if (e.key === 'Enter') {
       const newNoteId = this.searchResults[this.selectedListIndex].noteId;
       this.noteService.selectNote(newNoteId);

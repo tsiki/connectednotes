@@ -69,19 +69,32 @@ interface BackendStatusNotification {
 interface StorageBackend {
   notes: Subject<NoteObject[]>;
   storedSettings: BehaviorSubject<UserSettings>;
+  attachmentMetadata: BehaviorSubject<AttachmentMetadata>;
   initialize();
   signInIfNotSignedIn();
   isSignedIn(): Promise<boolean>;
   requestRefreshAllNotes();
   updateSettings(settingKey: string, settingValue: string);
   createNote(title: string): Promise<NoteObject>;
-  renameNote(noteId: string, newTitle: string): Promise<void>;
-  deleteNote(noteId: string);
+  renameFile(noteId: string, newTitle: string): Promise<void>;
+  deleteFile(noteId: string);
   saveContent(noteId: string, content: string, notify: boolean);
-  saveImage(image: any, fileType: string, fileName: string): Promise<string>;
+  uploadFile(content: any, fileType: string, fileName: string): Promise<string>;
+  addAttachmentToNote(noteId: string, fileId: string, fileName: string, mimeType: string);
+  removeAttachmentFromNote(noteId: string, fileId: string);
   logout();
 }
 
 interface UserSettings {
   theme?: Theme;
+}
+
+interface AttachmentMetadata {
+  [noteId: string]: AttachedFile[];
+}
+
+interface AttachedFile {
+  name: string;
+  fileId: string;
+  mimeType: string;
 }

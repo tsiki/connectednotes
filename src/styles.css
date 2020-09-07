@@ -9,6 +9,8 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   --low-contrast-background-color: #fafafa;
   --highlight-color: #ffed61;
   --selected-note-color: rgb(224, 224, 224);
+  --top-bar-height: 50px;
+  --gutter-color: #e6e6e6;
 }
 
 .dark-theme {
@@ -17,4 +19,5 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   --low-contrast-background-color: #1c1c1c;
   --highlight-color: #bd9400;
   --selected-note-color: rgb(50, 50, 50);
+  --gutter-color: #666666;
 }

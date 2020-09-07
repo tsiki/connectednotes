@@ -2,13 +2,23 @@ import { Injectable } from '@angular/core';
 import {BehaviorSubject, Subject, Subscription} from 'rxjs';
 import {GDRIVE_API_KEY, GDRIVE_CLIENT_ID} from '../../environments/environment';
 import {HttpClient} from '@angular/common/http';
-import {BackendStatusNotification, NoteMetadata, NoteObject, StorageBackend, UserSettings} from '../types';
+import {
+  AttachedFile,
+  AttachmentMetadata,
+  BackendStatusNotification,
+  NoteMetadata,
+  NoteObject,
+  StorageBackend,
+  UserSettings
+} from '../types';
 import {LocalCacheService} from './local-cache.service';
 import {NotificationService} from '../notification.service';
 
 const ROOT_FOLDER_NAME = 'Connected Notes';
 const SETTINGS_AND_METADATA_FOLDER_NAME = 'Settings and Metadata';
+const ATTACHMENTS_FOLDER_NAME = 'Attachments';
 const SETTINGS_FILE_NAME = 'settings.json';
+const ATTACHMENT_METADATA_FILE_NAME = 'attachment_metadata.json';
 
 @Injectable({
   providedIn: 'root'
@@ -17,21 +27,22 @@ export class GoogleDriveService implements StorageBackend {
 
   notes = new BehaviorSubject<NoteObject[]>([]);
   storedSettings = new BehaviorSubject<UserSettings>(null);
+  attachmentMetadata = new BehaviorSubject<AttachmentMetadata>(null);
 
-  private rootFolderId = new Subject<string>();
+  private rootFolderId = new BehaviorSubject<string>(null);
   private settingAndMetadataFolderId = new BehaviorSubject<string>(null);
+  private attachmentsFolderId = new BehaviorSubject<string>(null);
   private storedSettingsFileId: string; // Not observable since we assume any settings update is done with delay
-  private currentRootFolderId: string;
+  private attachmentMetadataFileId: string;
   private refreshSubscription: Subscription;
 
-  // This service should be created when it's actually needed, ie. user has decided they want to use Google Drive as
-  // backend - that way we can go straight to the authentication.
   constructor(private http: HttpClient, private cache: LocalCacheService, private notifications: NotificationService) {}
 
   initialize() {
     this.signInIfNotSignedIn().then(() => {
-      this.createFoldersIfNotExist();
       this.requestRefreshAllNotes();
+      this.createFoldersAndFilesIfNotExist();
+      this.refreshAttachmentMetadata();
     }).catch(async err => {
       this.notes.next(await this.cache.getAllNotesInCache());
     });
@@ -45,71 +56,28 @@ export class GoogleDriveService implements StorageBackend {
     gapi.auth2.getAuthInstance().signOut();
   }
 
-  private async createFoldersIfNotExist() {
-    const rootFolderReq = await gapi.client.drive.files.list({
-      q: `trashed = false and mimeType='application/vnd.google-apps.folder' and name='${ROOT_FOLDER_NAME}'`,
-      fields: 'files(id, name)',
-    });
-    if (rootFolderReq.result.files.length > 0) {
-      this.currentRootFolderId = rootFolderReq.result.files[0].id;
-      this.rootFolderId.next(this.currentRootFolderId);
-    } else {
-      const rootFolderCreationResp = await gapi.client.drive.files.create({
-        resource: {
-          name: ROOT_FOLDER_NAME,
-          mimeType: 'application/vnd.google-apps.folder'
-        },
-        fields: 'id'
-      });
-      this.currentRootFolderId = rootFolderCreationResp.result.id;
-      this.rootFolderId.next(rootFolderCreationResp.result.id);
-    }
+  private async createFoldersAndFilesIfNotExist() {
+    const rootFolderId = await this.fetchOrCreateFolder(ROOT_FOLDER_NAME);
+    this.rootFolderId.next(rootFolderId);
 
-    const settingsFolderListResp = await gapi.client.drive.files.list({
-      q: `trashed = false and mimeType='application/vnd.google-apps.folder' and `
-          + `name='${SETTINGS_AND_METADATA_FOLDER_NAME}' and '${this.currentRootFolderId}' in parents`,
-      fields: 'files(id, name)',
-    });
-    if (settingsFolderListResp.result.files.length > 0) {
-      const folderId = settingsFolderListResp.result.files[0].id;
-      this.settingAndMetadataFolderId.next(folderId);
-    } else {
-      // Also create settings/metadata folder
-      const settingsFolderCreationResp = await gapi.client.drive.files.create({
-        resource: {
-          name: SETTINGS_AND_METADATA_FOLDER_NAME,
-          mimeType: 'application/vnd.google-apps.folder',
-          parents: [this.currentRootFolderId],
-        },
-        fields: 'id'
-      });
-      this.settingAndMetadataFolderId.next(settingsFolderCreationResp.result.id);
-    }
+    const settingsAndMetadata = this.fetchOrCreateFolder(SETTINGS_AND_METADATA_FOLDER_NAME, this.rootFolderId.value);
+    const attachments = this.fetchOrCreateFolder(ATTACHMENTS_FOLDER_NAME, this.rootFolderId.value);
+    const resp = await Promise.all([settingsAndMetadata, attachments]);
 
-    const storedSettingsListResp = await gapi.client.drive.files.list({
-      q: `trashed = false and mimeType='application/json' and `
-          + `name='${SETTINGS_FILE_NAME}' and '${this.settingAndMetadataFolderId.getValue()}' in parents`,
-      fields: 'files(id, name,  parents)',
-    });
-    if (storedSettingsListResp.result.files.length > 0) {
-      const storedSettingsFileId = storedSettingsListResp.result.files[0].id;
-      this.storedSettingsFileId = storedSettingsFileId;
-      const settingsPromise = this.fetchContents([storedSettingsFileId]).next().value;
-      // If the file is new it doesn't contain any settings, and isn't JSON parseable -> use empty object as placeholder
-      this.storedSettings.next(JSON.parse(await settingsPromise || '{}'));
-    } else {
-      // Finally, create settings file
-      const settingsFileCreationResp = await gapi.client.drive.files.create({
-        resource: {
-          name: SETTINGS_FILE_NAME,
-          mimeType: 'application/json',
-          parents: [this.settingAndMetadataFolderId.getValue()],
-        },
-        fields: 'id'
-      });
-      this.storedSettingsFileId = settingsFileCreationResp.result.id;
-      this.storedSettings.next({});
-    }
+    this.settingAndMetadataFolderId.next(resp[0]);
+    this.attachmentsFolderId.next(resp[1]);
+
+    // After folders, create files
+
+    const [settingsFileId, settings] =
+        await this.fetchOrCreateJsonFile(SETTINGS_FILE_NAME, this.settingAndMetadataFolderId.value);
+    this.storedSettings.next(settings);
+    this.storedSettingsFileId = settingsFileId;
+
+    const [attachmentMetadataFileId, attachmentMetadata] =
+        await this.fetchOrCreateJsonFile(ATTACHMENT_METADATA_FILE_NAME, this.settingAndMetadataFolderId.value);
+    this.attachmentMetadata.next(attachmentMetadata);
+    this.attachmentMetadataFileId = attachmentMetadataFileId;
   }
 
   isSignedIn(): Promise<boolean> {
@@ -159,7 +127,7 @@ export class GoogleDriveService implements StorageBackend {
   }
 
   requestRefreshAllNotes() {
-    if (!this.currentRootFolderId) {
+    if (!this.rootFolderId.value) {
       if (!this.refreshSubscription) {
         this.refreshSubscription = this.rootFolderId.subscribe(() => {
           this.refreshAllNotes();
@@ -182,14 +150,14 @@ export class GoogleDriveService implements StorageBackend {
     return this.createFile(filename);
   }
 
-  renameNote(noteId: string, newTitle: string) {
+  renameFile(noteId: string, newTitle: string) {
     const req = gapi.client.drive.files.update({fileId: noteId, name: newTitle});
     return new Promise<void>((resolve, reject) => {
       req.execute(() => resolve());
     });
   }
 
-  deleteNote(noteId: string) {
+  deleteFile(noteId: string) {
     const req = gapi.client.drive.files.delete({fileId: noteId});
     return new Promise<void>((resolve, reject) => {
       req.execute(() => resolve());
@@ -217,6 +185,78 @@ export class GoogleDriveService implements StorageBackend {
       noteMetadata.push(...notes);
     } while (pageToken);
     return noteMetadata;
+  }
+
+  private async fetchOrCreateFolder(folderName: string, parentFolder?: string) {
+    let query = `trashed = false and mimeType='application/vnd.google-apps.folder' and name='${folderName}'`;
+    if (parentFolder) {
+      query += ` and '${parentFolder}' in parents`;
+    }
+
+    const folderListResp = await gapi.client.drive.files.list({
+      q: query,
+      fields: 'files(id, name)',
+    });
+    if (folderListResp.result.files.length > 0) {
+      const folderId = folderListResp.result.files[0].id;
+      return folderId;
+    }
+    const folderCreationResp = await gapi.client.drive.files.create({
+      resource: {
+        name: folderName,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: parentFolder ? [parentFolder] : []
+      },
+      fields: 'id'
+    });
+    return folderCreationResp.result.id;
+  }
+
+  private async fetchOrCreateJsonFile(fileName: string, parentFolder: string): Promise<[string, {}]> {
+    const metadataReq = await gapi.client.drive.files.list({
+      q: `trashed = false and
+          mimeType='application/json' and
+          '${parentFolder}' in parents and
+          name='${fileName}'`,
+      fields: `nextPageToken, files(id, name, parents, modifiedTime)`,
+      pageSize: 1000 // 1000 is the max value
+    });
+
+    if (metadataReq.result.files.length > 0) {
+      const fileId = metadataReq.result.files[0].id;
+      const promise = this.fetchContents([fileId]).next().value;
+      // If the file is new it doesn't contain any settings, and isn't JSON parseable -> use empty object as placeholder
+      return [fileId, JSON.parse(await promise || '{}')];
+    }
+    const creationResp = await gapi.client.drive.files.create({
+      resource: {
+        name: fileName,
+        mimeType: 'application/json',
+        parents: [parentFolder],
+      },
+      fields: 'id'
+    });
+    return [creationResp.result.id, {}];
+  }
+
+  async refreshAttachmentMetadata() {
+    this.settingAndMetadataFolderId.subscribe(async folderId => {
+      if (folderId) {
+        const [fileId, content] =
+            await this.fetchOrCreateJsonFile(ATTACHMENT_METADATA_FILE_NAME, this.settingAndMetadataFolderId.value);
+        this.attachmentMetadata.next(content);
+      }
+    });
+  }
+
+  private getToken() {
+    return gapi
+        .auth2
+        .getAuthInstance()
+        .currentUser
+        .get()
+        .getAuthResponse(true)
+        .access_token;
   }
 
   /**
@@ -300,17 +340,9 @@ export class GoogleDriveService implements StorageBackend {
   }
 
   private *fetchContents(fileIds: string[]): IterableIterator<Promise<string>> {
-    const token = gapi
-      .auth2
-      .getAuthInstance()
-      .currentUser
-      .get()
-      .getAuthResponse(true)
-      .access_token;
-
     const requestIntervalMillis = 200;
     for (let i = 0; i < fileIds.length; i++) {
-      const promise = this.fetchSingleFileContents(fileIds[i], token, i * requestIntervalMillis);
+      const promise = this.fetchSingleFileContents(fileIds[i], this.getToken(), i * requestIntervalMillis);
       yield promise;
     }
   }
@@ -374,7 +406,7 @@ export class GoogleDriveService implements StorageBackend {
     const metadata = {
       name: filename,
       mimeType: contentType,
-      parents: [this.currentRootFolderId],
+      parents: [this.rootFolderId.value],
     };
 
     const multipartRequestBody =
@@ -409,34 +441,28 @@ export class GoogleDriveService implements StorageBackend {
   }
 
   /**
-   * Saves image to google drive.
+   * Saves file to google drive.
    *
    * First created the file and, in a separate request, updates the file with the
    * contents of the image. This is because I couldn't find a nice way to upload
    * everything in a single request.
    */
-  saveImage(img: any, fileType: string, fileName: string): Promise<string> {
+  uploadFile(content: any, fileType: string, fileName: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const fileMetadata = {
         name: fileName,
         mimeType: fileType,
-        parents: [this.currentRootFolderId],
+        parents: [this.attachmentsFolderId.value],
       };
-      const req = gapi.client.drive.files.create({
+      const newFileCreationReq = gapi.client.drive.files.create({
         resource: fileMetadata,
         fields: 'id'
       });
-      req.execute(newFile => {
+      newFileCreationReq.execute(newFile => {
         const newFileId = newFile.result.id;
         const reader = new FileReader();
         reader.onload = (e2) => {
-          const token = gapi
-            .auth2
-            .getAuthInstance()
-            .currentUser
-            .get()
-            .getAuthResponse(true)
-            .access_token;
+          const token = this.getToken();
           const asBlob = new Blob([e2.target.result], {type: fileType});
           this.http.patch(`https://www.googleapis.com/upload/drive/v3/files/${newFileId}?uploadType=media`, asBlob, {
             headers: {
@@ -444,10 +470,32 @@ export class GoogleDriveService implements StorageBackend {
               Authorization: 'Bearer ' + token
             },
             withCredentials: true
-          }).subscribe(resp => resolve(`https://drive.google.com/uc?id=${(resp as any).id}`));
+          }).subscribe(resp => resolve((resp as any).id));
         };
-        reader.readAsArrayBuffer(img);
+        reader.readAsArrayBuffer(content);
       });
     });
+  }
+
+  async addAttachmentToNote(noteId: string, fileId: string, fileName: string, mimeType: string) {
+    const val = this.attachmentMetadata.value;
+    if (!val.hasOwnProperty(noteId)) {
+      val[noteId] = [];
+    }
+    const attachedFile: AttachedFile = {
+      name: fileName,
+      fileId,
+      mimeType,
+    };
+    val[noteId].push(attachedFile);
+    this.attachmentMetadata.next(val);
+    await this.saveContent(this.attachmentMetadataFileId, JSON.stringify(val), false, 'application/json');
+  }
+
+  async removeAttachmentFromNote(noteId: string, fileId: string) {
+    const val = this.attachmentMetadata.value;
+    val[noteId] = val[noteId].filter(attachment => attachment.fileId !== fileId);
+    this.attachmentMetadata.next(val);
+    await this.saveContent(this.attachmentMetadataFileId, JSON.stringify(val), false, 'application/json');
   }
 }

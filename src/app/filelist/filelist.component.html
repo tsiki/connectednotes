@@ -40,16 +40,8 @@
     outline: none;
   }
 
-  #context-menu {
-    position: absolute;
-  }
-
   #context-menu > mat-card {
     padding: 0;
-  }
-
-  .context-menu-button {
-    width: 100%;
   }
 
   .expand-icon {
@@ -58,10 +50,6 @@
 
   .expanded .expand-icon {
     transform: initial;
-  }
-
-  #new-title-input {
-    padding: 0 16px;
   }
 
   .unsaved-marker {
@@ -97,11 +85,9 @@
     </button>
 
     <ng-container *ngFor="let noteId of tagGroup.noteIds">
-      <button *ngIf="noteId !== noteToBeRenamed"
-              [class.mat-button-toggle-checked]="selectedNoteId===noteId"
+      <button [class.mat-button-toggle-checked]="selectedNoteId===noteId"
               class="note-link tag-group-note"
               (click)="openNote(noteId)"
-              (contextmenu)="onRightClick($event, noteId)"
               mat-button>
         <span>{{ noteService.getNote(noteId).title }}</span>
         <span class="unsaved-marker" *ngIf="unsavedNotes.has(noteId)">*</span>
@@ -112,21 +98,16 @@
   <span *ngFor="let note of notes">
     <button [class.mat-button-toggle-checked]="selectedNoteId==note.id"
             class="note-link"
-            *ngIf="note.id !== noteToBeRenamed"
             (click)="openNote(note.id)"
-            (contextmenu)="onRightClick($event, note.id)"
             mat-button>
       <span>{{ note.title }}</span><span class="unsaved-marker" *ngIf="unsavedNotes.has(note.id)">*</span>
     </button>
-    <mat-form-field id="new-title-input" *ngIf="note.id === noteToBeRenamed">
-      <input matInput #titleRenameInput [value]="note.title" (keyup.enter)="executeRename(note.id, $event.target.value)">
-    </mat-form-field>
   </span>
 </div>
 
-<div id="context-menu" #contextMenu [ngStyle]="{ left: contextMenuX, top: contextMenuY, zIndex: 100 }" *ngIf="showContextMenu">
-  <mat-card>
-    <mat-list-item><button class="context-menu-button" mat-button (click)="openNoteRenameInput()">Rename</button></mat-list-item>
-    <mat-list-item><button class="context-menu-button" mat-button (click)="deleteNote()">Delete</button></mat-list-item>
-  </mat-card>
-</div>
+<!--<div id="context-menu" #contextMenu [ngStyle]="{ left: contextMenuX, top: contextMenuY, zIndex: 100 }" *ngIf="showContextMenu">-->
+<!--  <mat-card>-->
+<!--    <mat-list-item><button class="context-menu-button" mat-button (click)="openNoteRenameInput()">Rename</button></mat-list-item>-->
+<!--    <mat-list-item><button class="context-menu-button" mat-button (click)="deleteNote()">Delete</button></mat-list-item>-->
+<!--  </mat-card>-->
+<!--</div>-->
