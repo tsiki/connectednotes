@@ -31,6 +31,8 @@ export class NoteService {
   private backendType: Backend;
   private backend?: StorageBackend;
   private noteIdToNote?: Map<string, NoteObject>;
+  private noteTitleToNote?: Map<string, NoteObject>;
+  private noteTitleToNoteCaseInsensitive?: Map<string, NoteObject>;
 
   constructor(private injector: Injector, private router: Router) {}
 
@@ -56,8 +58,12 @@ export class NoteService {
     });
     this.notes.subscribe(newNotes => {
       this.noteIdToNote = new Map();
+      this.noteTitleToNote = new Map();
+      this.noteTitleToNoteCaseInsensitive = new Map();
       for (const note of newNotes) {
         this.noteIdToNote.set(note.id, note);
+        this.noteTitleToNote.set(note.title, note);
+        this.noteTitleToNoteCaseInsensitive.set(note.title.toLowerCase(), note);
       }
       const tagGroups = this.extractTagGroups(newNotes);
       this.notesAndTagGroups.next({tagGroups, notes: newNotes});
@@ -68,6 +74,14 @@ export class NoteService {
 
   getNote(noteId: string) {
     return this.noteIdToNote.get(noteId);
+  }
+
+  getNoteForTitle(title: string) {
+    return this.noteTitleToNote.get(title);
+  }
+
+  getNoteForTitleCaseInsensitive(title: string) {
+    return this.noteTitleToNoteCaseInsensitive.get(title.toLowerCase());
   }
 
   logout() {

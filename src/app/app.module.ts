@@ -19,7 +19,7 @@ import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatInputModule} from '@angular/material/input';
 import {MatOptionModule, MatRippleModule} from '@angular/material/core';
 import {MatDialogModule} from '@angular/material/dialog';
-import {FormsModule} from '@angular/forms';
+import {FormsModule, ReactiveFormsModule} from '@angular/forms';
 import {MatIconModule} from '@angular/material/icon';
 import {MatSidenavModule} from '@angular/material/sidenav';
 import {MatButtonToggleModule} from '@angular/material/button-toggle';
@@ -39,6 +39,7 @@ import {MatSelectModule} from '@angular/material/select';
 import { AttachmentsDialogComponent } from './attachments-dialog/attachments-dialog.component';
 import {MatSortModule} from '@angular/material/sort';
 import { BackreferencesDialogComponent } from './backreferences-dialog/backreferences-dialog.component';
+import { AlreadyExistingNoteDirective } from './already-existing-note.directive';
 
 @NgModule({
   entryComponents: [CreateNoteDialog], // Not declared in template to must be here
@@ -54,6 +55,7 @@ import { BackreferencesDialogComponent } from './backreferences-dialog/backrefer
     SettingsComponent,
     AttachmentsDialogComponent,
     BackreferencesDialogComponent,
+    AlreadyExistingNoteDirective,
   ],
     imports: [
         BrowserModule,
@@ -86,6 +88,7 @@ import { BackreferencesDialogComponent } from './backreferences-dialog/backrefer
         MatOptionModule,
         MatSelectModule,
         MatSortModule,
+        ReactiveFormsModule,
     ],
   providers: [],
   bootstrap: [AppComponent]

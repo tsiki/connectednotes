@@ -66,20 +66,34 @@
     background-color: inherit;
     border: 0;
     flex-grow: 1;
-    font-size: 22px;
-    height: calc(100% - 1px);
-    margin: 1px 0 0 10px;
+    margin: -5px 0 0 10px;
+  }
+
+  .title-text {
+    font-size: 24px;
     text-overflow: ellipsis;
   }
 </style>
 
 <div id="top-bar">
-  <input class="title"
-         type="text"
-         matInput
-         #titleRenameInput
-         [value]="selectedNote?.title"
-         (keyup.enter)="executeRename($event.target.value)">
+  <mat-form-field class="title" appearance="none">
+    <input class="title-text"
+           type="text"
+           matInput
+           appAlreadyExistingNote
+           [alreadyExistingTitle]="selectedNote?.title"
+           [errorStateMatcher]="matcher"
+           [(ngModel)]="noteTitle"
+           #titleRenameInput="ngModel"
+           autocomplete="off"
+           [value]="selectedNote?.title"
+           (keyup.enter)="executeRename($event.target.value)">
+    <mat-error *ngIf="titleRenameInput.errors?.forbiddenName">
+      Note name must be unique
+    </mat-error>
+  </mat-form-field>
+
+
   <button (click)="toggleSplitView()" mat-button matTooltip="show/hide rendered note">
     <mat-icon>border_vertical</mat-icon>
   </button>

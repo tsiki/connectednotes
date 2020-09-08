@@ -22,6 +22,7 @@ import {MatDialog} from '@angular/material/dialog';
 import {AttachmentsDialogComponent} from '../attachments-dialog/attachments-dialog.component';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {BackreferencesDialogComponent} from '../backreferences-dialog/backreferences-dialog.component';
+import {ValidateImmediatelyMatcher} from '../already-existing-note.directive';
 
 declare interface CodeMirrorHelper {
   commands: {
@@ -46,10 +47,12 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   @ViewChild('titleRenameInput') titleRenameInput: ElementRef;
   @Output() contentChange = new EventEmitter();
 
+  noteTitle: string;
   editorState: 'editor'|'split' = 'editor';
   attachedFiles: AttachedFile[]|null = null;
   selectedNote: NoteObject|null = null;
   noteDeleted = false;
+  matcher = new ValidateImmediatelyMatcher();
 
   private codemirror: CodeMirror.EditorFromTextArea;
   private previousChar: string;

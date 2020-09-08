@@ -16,6 +16,9 @@ import {SettingsService, Theme} from '../settings.service';
 import {NotificationService} from '../notification.service';
 import {MatSelect} from '@angular/material/select';
 import {FilelistComponent} from '../filelist/filelist.component';
+import {AbstractControl, FormControl, FormGroupDirective, NgForm, ValidatorFn} from "@angular/forms";
+import {ErrorStateMatcher} from "@angular/material/core";
+import {ValidateImmediatelyMatcher} from "../already-existing-note.directive";
 
 
 export enum SortDirection {
@@ -175,13 +178,22 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
   template: `
   <mat-form-field>
     <mat-label>Note title</mat-label>
-    <input matInput [(ngModel)]="noteTitle" (keyup.enter)="close()">
+    <input matInput
+           [(ngModel)]="noteTitle"
+           (keyup.enter)="close()"
+           appAlreadyExistingNote
+           [errorStateMatcher]="matcher"
+           autocomplete="off"
+           #name="ngModel">
+    <mat-error *ngIf="name.errors?.forbiddenName">
+      Note name must be unique
+    </mat-error>
   </mat-form-field>`
 })
 // tslint:disable-next-line:component-class-suffix
 export class CreateNoteDialog {
-
   noteTitle: string;
+  matcher = new ValidateImmediatelyMatcher();
 
   constructor(public dialogRef: MatDialogRef<CreateNoteDialog>) {}
 
