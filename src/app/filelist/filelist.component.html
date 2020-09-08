@@ -95,14 +95,14 @@
     </ng-container>
   </span>
 
-  <span *ngFor="let note of notes">
-    <button [class.mat-button-toggle-checked]="selectedNoteId==note.id"
-            class="note-link"
-            (click)="openNote(note.id)"
-            mat-button>
-      <span>{{ note.title }}</span><span class="unsaved-marker" *ngIf="unsavedNotes.has(note.id)">*</span>
-    </button>
-  </span>
+<!--  <span *ngFor="let note of notes">-->
+<!--    <button [class.mat-button-toggle-checked]="selectedNoteId==note.id"-->
+<!--            class="note-link"-->
+<!--            (click)="openNote(note.id)"-->
+<!--            mat-button>-->
+<!--      <span>{{ note.title }}</span><span class="unsaved-marker" *ngIf="unsavedNotes.has(note.id)">*</span>-->
+<!--    </button>-->
+<!--  </span>-->
 </div>
 
 <!--<div id="context-menu" #contextMenu [ngStyle]="{ left: contextMenuX, top: contextMenuY, zIndex: 100 }" *ngIf="showContextMenu">-->

@@ -212,20 +212,24 @@ export class NoteService {
     const tagToNewestTimestamp = new Map<string, number>();
     const tagToOldestTimestamp = new Map<string, number>();
     for (const note of notes) {
-      const tags = note.content.match(/(^|\W)(#((?![#])[\S])+)/ig) || [];
+      let tags = note.content.match(/(^|\W)(#((?![#])[\S])+)/ig) || [];
+      if (tags.length === 0) {
+        tags = ['untagged'];
+      }
+      tags.push('all');
       for (const untrimmedTag of tags) {
         const tag = untrimmedTag.trim();
         if (!tagToNotes.has(tag)) {
           tagToNotes.set(tag, new Set<string>());
-          tagToNewestTimestamp.set(tag, 1e15);
-          tagToOldestTimestamp.set(tag, 0);
+          tagToNewestTimestamp.set(tag, 0);
+          tagToOldestTimestamp.set(tag, 1e15);
         }
-        tagToNewestTimestamp.set(tag, Math.min(tagToNewestTimestamp.get(tag), note.lastChangedEpochMillis));
-        tagToOldestTimestamp.set(tag, Math.max(tagToNewestTimestamp.get(tag), note.lastChangedEpochMillis))
+        tagToNewestTimestamp.set(tag, Math.max(tagToNewestTimestamp.get(tag), note.lastChangedEpochMillis));
+        tagToOldestTimestamp.set(tag, Math.min(tagToNewestTimestamp.get(tag), note.lastChangedEpochMillis));
         tagToNotes.get(tag).add(note.id);
       }
     }
-    const ans = [];
+    const ans: TagGroup[] = [];
     for (const [tag, noteIds] of tagToNotes) {
       const tagGroup = {
         tag,
