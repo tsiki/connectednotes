@@ -118,6 +118,13 @@
     flex-grow: 1;
   }
 
+  #sort-button {
+    /*position: relative;*/
+  }
+
+  #sort-options {
+    position: absolute;
+  }
 </style>
 
 <div id="container">
@@ -139,10 +146,25 @@
               <mat-icon>search</mat-icon>
             </button>
             <button (click)="openGraphView()" mat-button matTooltip="view notes as a graph">
-              <mat-icon><img alt="graph" id="graph-icon" [class.dark-theme]="theme === 'dark'" src="./assets/img/graph-icon.png"></mat-icon>
+              <mat-icon>
+                <img alt="graph"
+                     id="graph-icon"
+                     [class.dark-theme]="theme === 'dark'"
+                     src="./assets/img/graph-icon.png">
+              </mat-icon>
+            </button>
+
+            <button id="sort-button" mat-button matTooltip="sort notes" [matMenuTriggerFor]="sortMenu">
+              <mat-icon>sort</mat-icon>
+              <mat-menu #sortMenu="matMenu">
+                <button mat-menu-item (click)="doSort(0)">Modified (newest first)</button>
+                <button mat-menu-item (click)="doSort(1)">Modified (oldest first)</button>
+                <button mat-menu-item (click)="doSort(2)">Alphabetical</button>
+                <button mat-menu-item (click)="doSort(3)">Alphabetical (reversed)</button>
+              </mat-menu>
             </button>
           </div>
-          <app-filelist id="note-list" *ngIf="!sidebarCollapsed"></app-filelist>
+          <app-filelist #filelist id="note-list" *ngIf="!sidebarCollapsed" [sortDirection]="currentSortDirection"></app-filelist>
         </div>
 
         <div id="left-frame-end">

@@ -91,7 +91,7 @@ export class SearchDialogComponent implements OnInit {
 
   // Searches notes for the corresponding term. Just search titles for now.
   public searchForNotesByTitle(searchTerm: string): SearchResult[] {
-    const notes = this.noteService.currentNotes;
+    const notes = this.noteService.notes.value;
 
     // First try full match.
     const matchingNotes = notes

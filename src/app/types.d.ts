@@ -15,6 +15,8 @@ declare interface NoteObject extends NoteFile {
 declare interface TagGroup {
   tag: string;
   noteIds: string[];
+  oldestTimestamp: number;
+  newestTimestamp: number;
 }
 
 interface NotesAndTagGroups {
@@ -50,11 +52,6 @@ interface HighlightedSegment {
   highlighted: boolean;
 }
 
-interface DragAndDropImage {
-  name: string;
-  url: string;
-}
-
 interface RenameResult {
   renamedBackRefCount: number;
   renamedNoteCount: number;
@@ -67,7 +64,7 @@ interface BackendStatusNotification {
 }
 
 interface StorageBackend {
-  notes: Subject<NoteObject[]>;
+  notes: BehaviorSubject<NoteObject[]>;
   storedSettings: BehaviorSubject<UserSettings>;
   attachmentMetadata: BehaviorSubject<AttachmentMetadata>;
   initialize();

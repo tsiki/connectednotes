@@ -14,14 +14,14 @@ import {NoteService} from '../note.service';
 import {fromEvent} from 'rxjs';
 import {debounceTime} from 'rxjs/operators';
 import 'codemirror/addon/hint/show-hint';
-import {AttachedFile, DragAndDropImage, NoteObject} from '../types';
+import {AttachedFile, NoteObject} from '../types';
 import {SettingsService, Theme} from '../settings.service';
 import {NotificationService} from '../notification.service';
 import * as marked from 'marked';
 import {MatDialog} from '@angular/material/dialog';
 import {AttachmentsDialogComponent} from '../attachments-dialog/attachments-dialog.component';
 import {MatSnackBar} from '@angular/material/snack-bar';
-import {BackreferencesDialogComponent} from "../backreferences-dialog/backreferences-dialog.component";
+import {BackreferencesDialogComponent} from '../backreferences-dialog/backreferences-dialog.component';
 
 declare interface CodeMirrorHelper {
   commands: {
@@ -77,7 +77,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.allNoteTitles = this.noteService?.currentNotes?.map(n => n.title);
+    this.allNoteTitles = this.noteService?.notes.value?.map(n => n.title);
     this.noteService.notesAndTagGroups.subscribe(val => this.allTags = val.tagGroups.map(t => t.tag));
 
     this.noteService.selectedNote.subscribe(newSelectedNote => {
@@ -229,7 +229,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
         }
         if (startIdx !== 0 && endIdx !== end.length) {
           const noteTitle = start.substr(startIdx) + end.substr(0, endIdx);
-          const note = this.noteService.currentNotes.find(n => n.title === noteTitle);
+          const note = this.noteService.notes.value.find(n => n.title === noteTitle);
           if (note) {
             this.noteService.selectNote(note.id);
           } else {
@@ -311,7 +311,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     }
     const file = files[0];
     const name = file.name;
-    const notificationId = new Date().getMilliseconds().toString();
+    const notificationId = new Date().getTime().toString();
     this.notifications.toSidebar(notificationId, 'Uploading file');
     const fileId = await this.noteService.uploadFile(file, file.type, file.name);
     await this.noteService.attachUploadedFileToNote(
@@ -325,7 +325,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   async executeRename(newTitle) {
     this.titleRenameInput.nativeElement.blur();
     const noteId = this.selectedNote.id;
-    const curTitle = this.noteService.currentNotes.find(n => n.id === noteId).title;
+    const curTitle = this.noteService.notes.value.find(n => n.id === noteId).title;
     if (newTitle !== curTitle) {
       const res = await this.noteService.renameNote(noteId, newTitle);
       this.snackBar.open(

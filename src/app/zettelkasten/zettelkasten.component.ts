@@ -14,7 +14,16 @@ import {SettingsComponent} from '../settings/settings.component';
 import {BackendStatusNotification} from '../types';
 import {SettingsService, Theme} from '../settings.service';
 import {NotificationService} from '../notification.service';
+import {MatSelect} from '@angular/material/select';
+import {FilelistComponent} from '../filelist/filelist.component';
 
+
+export enum SortDirection {
+  MODIFIED_NEWEST_FIRST,
+  MODIFIED_OLDEST_FIRST,
+  ALPHABETICAL,
+  ALPHABETICAL_REVERSED,
+}
 
 @Component({
   selector: 'app-zettelkasten',
@@ -40,6 +49,8 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
   @ViewChild('editor') editor: EditorComponent;
   @ViewChild('sidebarArea') sidebarArea: SplitAreaDirective;
   @ViewChild('sidebar') sidebar: ElementRef;
+  @ViewChild('sortOptions') sortOptions: MatSelect;
+  @ViewChild('filelist') filelist: FilelistComponent;
 
   editorState: 'editor'|'graph'|'split' = 'editor';
   theme: Theme;
@@ -47,6 +58,7 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
   unCollapsedSidebarWidth: number;
   currentNoteTitle: string;
   activeStatusUpdates: BackendStatusNotification[] = [];
+  currentSortDirection = SortDirection.MODIFIED_NEWEST_FIRST;
 
   constructor(
     private fireAuth: AngularFireAuth,
@@ -136,6 +148,11 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
   openGraphView() {
     this.editorState = 'graph';
     this.noteService.selectNote(null);
+  }
+
+  doSort(sortDirection: SortDirection) {
+    this.currentSortDirection = sortDirection;
+    this.filelist.setSortDirection(sortDirection);
   }
 
   dragEnd(unit, {sizes}) {
