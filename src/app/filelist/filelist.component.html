@@ -76,7 +76,7 @@
 </style>
 
 <div id="note-list-container">
-  <span *ngFor="let tagGroup of tagGroups">
+  <span *ngFor="let tagGroup of tagGroups; trackBy: trackByTagFn">
     <button class="tag-group-link"
             (click)="toggleTagGroup($event)"
             mat-button>
@@ -84,15 +84,14 @@
       {{ tagGroup.tag }}
     </button>
 
-    <ng-container *ngFor="let noteId of tagGroup.noteIds">
-      <button [class.mat-button-toggle-checked]="selectedNoteId===noteId"
-              class="note-link tag-group-note"
-              (click)="openNote(noteId)"
-              mat-button>
-        <span>{{ noteService.getNote(noteId).title }}</span>
-        <span class="unsaved-marker" *ngIf="unsavedNotes.has(noteId)">*</span>
-      </button>
-    </ng-container>
+    <button *ngFor="let noteId of tagGroup.noteIds; trackBy: trackByIdFn"
+            [class.mat-button-toggle-checked]="selectedNoteId===noteId"
+            class="note-link tag-group-note"
+            (click)="openNote(noteId)"
+            mat-button>
+      <span>{{ noteService.getNote(noteId).title }}</span>
+      <span class="unsaved-marker" *ngIf="unsavedNotes.has(noteId)">*</span>
+    </button>
   </span>
 
 <!--  <span *ngFor="let note of notes">-->

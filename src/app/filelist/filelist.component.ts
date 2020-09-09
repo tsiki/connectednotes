@@ -91,7 +91,7 @@ export class FilelistComponent implements OnInit {
     const allIdx = this.tagGroups.findIndex(tagGroup => tagGroup.tag === 'all');
     const allTagGroup = this.tagGroups.splice(allIdx, 1);
     const untaggedIdx = this.tagGroups.findIndex(tagGroup => tagGroup.tag === 'untagged');
-    const untaggedTagGroup = this.tagGroups.splice(untaggedIdx, 1);
+    const untaggedTagGroup = untaggedIdx >= 0 ? this.tagGroups.splice(untaggedIdx, 1) : [];
     this.tagGroups = [...allTagGroup, ...untaggedTagGroup, ...this.tagGroups];
   }
 
@@ -102,5 +102,13 @@ export class FilelistComponent implements OnInit {
   toggleTagGroup(e: Event) {
     const elem = e.currentTarget as HTMLElement;
     elem.parentElement.classList.toggle('expanded');
+  }
+
+  trackByTagFn(index: number, item: TagGroup) {
+    return item.tag;
+  }
+
+  trackByIdFn(index: number, item: NoteObject) {
+    return item.id;
   }
 }
