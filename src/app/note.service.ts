@@ -73,6 +73,7 @@ export class NoteService {
   }
 
   getNote(noteId: string) {
+    // console.log(this);
     return this.noteIdToNote.get(noteId);
   }
 

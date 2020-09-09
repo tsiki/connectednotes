@@ -157,10 +157,26 @@
             <button id="sort-button" mat-button matTooltip="sort notes" [matMenuTriggerFor]="sortMenu">
               <mat-icon>sort</mat-icon>
               <mat-menu #sortMenu="matMenu">
-                <button mat-menu-item (click)="doSort(0)">Modified (newest first)</button>
-                <button mat-menu-item (click)="doSort(1)">Modified (oldest first)</button>
-                <button mat-menu-item (click)="doSort(2)">Alphabetical</button>
-                <button mat-menu-item (click)="doSort(3)">Alphabetical (reversed)</button>
+                <button mat-menu-item
+                        [class.mat-menu-item-highlighted]="currentSortDirection===0"
+                        (click)="doSort(0)">
+                  Modified (newest first)
+                </button>
+                <button mat-menu-item
+                        [class.mat-menu-item-highlighted]="currentSortDirection===1"
+                        (click)="doSort(1)">
+                  Modified (oldest first)
+                </button>
+                <button mat-menu-item
+                        [class.mat-menu-item-highlighted]="currentSortDirection===2"
+                        (click)="doSort(2)">
+                  Alphabetical
+                </button>
+                <button mat-menu-item
+                        [class.mat-menu-item-highlighted]="currentSortDirection===3"
+                        (click)="doSort(3)">
+                  Alphabetical (reversed)
+                </button>
               </mat-menu>
             </button>
           </div>

@@ -16,9 +16,7 @@ import {SettingsService, Theme} from '../settings.service';
 import {NotificationService} from '../notification.service';
 import {MatSelect} from '@angular/material/select';
 import {FilelistComponent} from '../filelist/filelist.component';
-import {AbstractControl, FormControl, FormGroupDirective, NgForm, ValidatorFn} from "@angular/forms";
-import {ErrorStateMatcher} from "@angular/material/core";
-import {ValidateImmediatelyMatcher} from "../already-existing-note.directive";
+import {ValidateImmediatelyMatcher} from '../already-existing-note.directive';
 
 
 export enum SortDirection {
@@ -155,7 +153,6 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
 
   doSort(sortDirection: SortDirection) {
     this.currentSortDirection = sortDirection;
-    this.filelist.setSortDirection(sortDirection);
   }
 
   dragEnd(unit, {sizes}) {
