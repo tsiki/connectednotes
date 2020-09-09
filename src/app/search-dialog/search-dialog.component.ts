@@ -7,7 +7,7 @@ import {SettingsService, Theme} from '../settings.service';
 @Component({
   selector: 'app-search-dialog',
   template: `
-    <mat-form-field>
+    <mat-form-field id="search-input">
       <mat-label>File search</mat-label>
       <input autocomplete="off"
              matInput
@@ -22,13 +22,21 @@ import {SettingsService, Theme} from '../settings.service';
               [class.mat-button-toggle-checked]="idx==selectedListIndex"
               mat-button>
         <span *ngFor="let segment of result.segments"
-              [ngClass]="segment.highlighted ? 'highlighted' : ''">
-          {{segment.text}}
-        </span>
+              [ngClass]="segment.highlighted ? 'highlighted' : ''">{{segment.text}}</span>
       </button>
     </div>
   `,
   styles: [`
+    :host {
+      align-items: center;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    #search-input {
+      width: 200px;
+    }
+      
     .highlighted {
       background-color: var(--highlight-color);
     }
