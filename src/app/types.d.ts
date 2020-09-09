@@ -43,11 +43,13 @@ declare interface NoteAndLinks {
 }
 
 interface SearchResult {
-  segments: HighlightedSegment[];
+  titleSegments: FormattedSegment[];
+  contentSegments: FormattedSegment[][];
+  numContentMatches: number;
   noteId: string;
 }
 
-interface HighlightedSegment {
+interface FormattedSegment {
   text: string;
   highlighted: boolean;
 }

@@ -1,7 +1,7 @@
 import {Component, HostBinding, OnInit} from '@angular/core';
 import {MatDialogRef} from '@angular/material/dialog';
 import {NoteService} from '../note.service';
-import {HighlightedSegment, SearchResult} from '../types';
+import {FormattedSegment, SearchResult} from '../types';
 import {SettingsService, Theme} from '../settings.service';
 
 @Component({
@@ -13,17 +13,23 @@ import {SettingsService, Theme} from '../settings.service';
              matInput
              [(ngModel)]="noteTitle"
              (keyup.enter)="close()"
-             (keyup)="searchTermChanged($event)">
+             (keyup)="onKeyPress($event)">
     </mat-form-field>
     <div id="results-container">
-      <button *ngFor="let result of this.searchResults; let idx = index"
-              (click)="onButtonPressed(result.noteId)"
-              class="result-link"
-              [class.mat-button-toggle-checked]="idx==selectedListIndex"
-              mat-button>
-        <span *ngFor="let segment of result.segments"
-              [ngClass]="segment.highlighted ? 'highlighted' : ''">{{segment.text}}</span>
-      </button>
+      <div class="result"
+           *ngFor="let result of this.searchResults; let idx = index"
+           [class.focused-result]="idx==selectedListIndex">
+        <button (click)="onButtonPressed(result.noteId)"
+                class="result-link"
+                mat-button>
+          <span *ngFor="let segment of result.titleSegments"
+                [ngClass]="segment.highlighted ? 'title-highlighted' : ''">{{segment.text}}</span>
+        </button>
+        <div class="content" *ngFor="let sample of result.contentSegments">
+          <span *ngFor="let segment of sample"
+                [ngClass]="segment.highlighted ? 'content-highlighted' : ''">{{segment.text}}</span>
+        </div>
+      </div>
     </div>
   `,
   styles: [`
@@ -32,21 +38,44 @@ import {SettingsService, Theme} from '../settings.service';
       display: flex;
       flex-direction: column;
     }
-    
+
     #search-input {
       width: 200px;
     }
-      
-    .highlighted {
+
+    .title-highlighted {
       background-color: var(--highlight-color);
+    }
+
+    .content-highlighted {
+      background-color: var(--low-contrast-highlight-color);
     }
 
     .result-link {
       display: block;
+      font-size: 18px;
+      max-width: 100%;
+      text-overflow: ellipsis;
+      overflow: hidden;
     }
 
     #results-container {
       align-items: stretch;
+      display: flex;
+      flex-direction: column;
+      max-width: 100%;
+    }
+    
+    .focused-result {
+      background-color: var(--selected-note-color);
+    }
+    
+    .content {
+      color: var(--low-contrast-text-color);
+    }
+      
+    .result {
+      align-items: center;
       display: flex;
       flex-direction: column;
     }
@@ -59,7 +88,6 @@ export class SearchDialogComponent implements OnInit {
   selectedListIndex = 0;
 
   @HostBinding('class.dark-theme') darkThemeActive = false;
-
 
   constructor(
       public dialogRef: MatDialogRef<SearchDialogComponent>,
@@ -82,7 +110,7 @@ export class SearchDialogComponent implements OnInit {
     this.close();
   }
 
-  searchTermChanged(e) {
+  onKeyPress(e) {
     if (e.key === 'Enter') {
       const newNoteId = this.searchResults[this.selectedListIndex].noteId;
       this.noteService.selectNote(newNoteId);
@@ -101,24 +129,43 @@ export class SearchDialogComponent implements OnInit {
   public searchForNotesByTitle(searchTerm: string): SearchResult[] {
     const notes = this.noteService.notes.value;
 
-    // First try full match.
+    // First try full match in title.
     const matchingNotes = notes
       .filter(note => note.title.toLowerCase().includes(searchTerm.toLowerCase()))
-      .map(note => (
-        {
+      .map(note => {
+        const [numContentMatches, contentSegments] = this.getContentMatches(note.content, searchTerm);
+        return {
           noteId: note.id,
-          segments: this.splitToHighlightedParts(
+          titleSegments: this.splitToHighlightedParts(
               note.title,
-              this.getIndicesCoveredByWords(note.title.toLowerCase(), [searchTerm.toLowerCase()]))
-        })
-      );
+              this.getIndicesCoveredByWords(note.title.toLowerCase(), [searchTerm.toLowerCase()])),
+          contentSegments,
+          numContentMatches,
+        };
+      });
 
-    // If we don't have that many full matches then try splitting the search term and checking the coverage
+    // Then get full matches in content
+    const alreadyAdded = new Set(matchingNotes.map(n => n.noteId));
+    const contentMatches = notes
+        .filter(note => !alreadyAdded.has(note.id) && note.content.toLowerCase().includes(searchTerm.toLowerCase()))
+        .map(note => {
+          const [numContentMatches, contentSegments] = this.getContentMatches(note.content, searchTerm);
+          return {
+            noteId: note.id,
+            titleSegments: [{ text: note.title, highlighted: false }],
+            contentSegments,
+            numContentMatches,
+          };
+        });
+
+    matchingNotes.push(...contentMatches);
+
+    // If we don't have that many full matches then try splitting the search term and checking the coverage in titles
     if (matchingNotes.length < 5) {
       const splitTerms = searchTerm.toLowerCase().split(' ').filter(term => term.length > 0);
-      const alreadyAdded = new Set(matchingNotes.map(n => n.noteId));
+      const addedNotes = new Set(matchingNotes.map(n => n.noteId));
       const notesWithAtLeastOneTerm =
-          notes.filter(n => !alreadyAdded.has(n.id) && splitTerms.some(term => n.title.toLowerCase().includes(term)));
+          notes.filter(n => !addedNotes.has(n.id) && splitTerms.some(term => n.title.toLowerCase().includes(term)));
       const highlightedTitleIndices =
           notesWithAtLeastOneTerm.map(note => this.getIndicesCoveredByWords(note.title.toLowerCase(), splitTerms));
       const trueCounts = highlightedTitleIndices.map(indices => indices.reduce((prev, cur) => cur ? prev + 1 : prev, 0));
@@ -128,7 +175,9 @@ export class SearchDialogComponent implements OnInit {
         const {id, title} = notesWithAtLeastOneTerm[idx];
         const searchRes = {
           noteId: id,
-          segments: this.splitToHighlightedParts(title, highlightedTitleIndices[idx]),
+          titleSegments: this.splitToHighlightedParts(title, highlightedTitleIndices[idx]),
+          contentSegments: [],
+          numContentMatches: 0, // Any content matches have been handled above
         };
         matchingNotes.push(searchRes);
       }
@@ -136,9 +185,35 @@ export class SearchDialogComponent implements OnInit {
     return matchingNotes;
   }
 
+  private getContentMatches(content: string, searchTerm: string): [number, FormattedSegment[][]] {
+    const lcSearchTerm = searchTerm.toLowerCase();
+    const lcContent = content.toLowerCase();
+    let idx = lcContent.indexOf(lcSearchTerm);
+    const indices = [];
+    while (idx >= 0) {
+      indices.push(idx);
+      idx = lcContent.indexOf(lcSearchTerm, idx + 1);
+    }
+    // Take some 20 characters from before and after the occurrence
+    const samples: FormattedSegment[][] = [];
+    for (let i = 0; i < Math.min(/* max samples */ 1, indices.length); i++) {
+      const curIdx = indices[i];
+      const prefix = (curIdx - 20 > 0 ? '...' : '');
+      const suffix = (curIdx + searchTerm.length + 20 >= content.length ? '' : '...');
+      const startIdx = Math.max(0, curIdx - 20);
+      const endIdx = Math.min(content.length, curIdx + searchTerm.length + 20);
+      samples.push([
+        {text: prefix + content.slice(startIdx, curIdx), highlighted: false},
+        {text: content.slice(curIdx, curIdx + searchTerm.length), highlighted: true},
+        {text: content.slice(curIdx + searchTerm.length, endIdx) + suffix, highlighted: false},
+      ]);
+    }
+    return [indices.length, samples];
+  }
+
   // Split given string to highlighted parts which are defined by the given boolean array, where 'true' corresponds to highlighted char.
-  private splitToHighlightedParts(str: string, highlightedIndices: boolean[]): HighlightedSegment[] {
-    const ans: HighlightedSegment[] = [];
+  private splitToHighlightedParts(str: string, highlightedIndices: boolean[]): FormattedSegment[] {
+    const ans: FormattedSegment[] = [];
     let subseqStartInx = 0;
     for (let i = 1; i < highlightedIndices.length; i++) {
       if (highlightedIndices[i] !== highlightedIndices[i - 1]) {

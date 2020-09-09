@@ -5,9 +5,11 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 
 :root {
   --primary-text-color: #000;
+  --low-contrast-text-color: #4d4d4d;
   --primary-background-color: #fff;
   --low-contrast-background-color: #fafafa;
   --highlight-color: #ffed61;
+  --low-contrast-highlight-color: #ffffb3;
   --selected-note-color: rgb(224, 224, 224);
   --top-bar-height: 50px;
   --gutter-color: #e6e6e6;
@@ -15,9 +17,11 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 
 .dark-theme {
   --primary-text-color: #fff; /* too much constrast? */
+  --low-contrast-text-color: #bfbfbf;
   --primary-background-color: #2e2e2e;
   --low-contrast-background-color: #1c1c1c;
   --highlight-color: #bd9400;
+  --low-contrast-highlight-color: #666600;
   --selected-note-color: rgb(50, 50, 50);
   --gutter-color: #666666;
 }
