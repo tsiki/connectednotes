@@ -44,7 +44,7 @@ const LIGHT_THEME = 'default';
 export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   @ViewChild('codemirror') cm: ElementRef;
   @ViewChild('markdown') markdown: ElementRef;
-  @ViewChild('titleRenameInput') titleRenameInput: ElementRef;
+  @ViewChild('titleRenameInput', { read: ElementRef }) titleRenameInput: ElementRef;
   @Output() contentChange = new EventEmitter();
 
   noteTitle: string;
@@ -182,7 +182,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     // Set up notification of unsaved changes
     fromEvent(this.codemirror, 'changes')
         .pipe(debounceTime(100))
-        .subscribe(([cmReference, changes]) => {
+        .subscribe(([cm, changes]) => {
           const isInitialValueSet = changes[0].origin === 'setValue';
           if (!isInitialValueSet) {
             this.notifications.unsavedChanged(this.selectedNote.id);
@@ -261,6 +261,10 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
         this.notifications.noteSaved(noteId);
       }
     }
+    // If user adds and then deleted the addition, remove the 'unsaved' marker
+    if (this.selectedNote.content === valueToSave) {
+      this.notifications.noteSaved(noteId);
+    }
   }
 
   insertImageLinkToCursorPosition(imageUrl: string, imageName: string) {
@@ -336,6 +340,12 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
           null,
           {duration: 5000});
     }
+  }
+
+  revertChangesAndBlur() {
+    console.log(this.titleRenameInput);
+    this.titleRenameInput.nativeElement.value = this.selectedNote.title;
+    this.titleRenameInput.nativeElement.blur();
   }
 
   async deleteNote() {

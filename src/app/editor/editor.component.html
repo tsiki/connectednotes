@@ -69,6 +69,11 @@
     margin: -5px 0 0 10px;
   }
 
+  #title-container {
+    display: flex;
+    flex-grow: 1;
+  }
+
   .title-text {
     font-size: 24px;
     text-overflow: ellipsis;
@@ -77,17 +82,21 @@
 
 <div id="top-bar">
   <mat-form-field class="title" appearance="none">
-    <input class="title-text"
-           type="text"
-           matInput
-           appAlreadyExistingNote
-           [alreadyExistingTitle]="selectedNote?.title"
-           [errorStateMatcher]="matcher"
-           [(ngModel)]="noteTitle"
-           #titleRenameInput="ngModel"
-           autocomplete="off"
-           [value]="selectedNote?.title"
-           (keyup.enter)="executeRename($event.target.value)">
+    <div id="title-container">
+      <input class="title-text"
+             type="text"
+             matInput
+             appAlreadyExistingNote
+             [alreadyExistingTitle]="selectedNote?.title"
+             [errorStateMatcher]="matcher"
+             [(ngModel)]="noteTitle"
+             #titleRenameInput="ngModel"
+             autocomplete="off"
+             [value]="selectedNote?.title"
+             (keyup.enter)="executeRename($event.target.value)"
+             (keyup.escape)="revertChangesAndBlur()">
+<!--      <span>*</span>-->
+    </div>
     <mat-error *ngIf="titleRenameInput.errors?.forbiddenName">
       Note name must be unique
     </mat-error>

@@ -60,19 +60,6 @@
   .mat-button-toggle-checked {
     background-color: var(--selected-note-color);
   }
-
-  .mat-button-toggle-checked .unsaved-marker {
-    background-color: var(--selected-note-color);
-  }
-
-  .unsaved-marker {
-    background-color: var(--low-contrast-background-color);
-  }
-
-  .note-link:hover .unsaved-marker {
-    background-color: initial;
-  }
-
 </style>
 
 <div id="note-list-container">
@@ -93,15 +80,6 @@
       <span class="unsaved-marker" *ngIf="unsavedNotes.has(noteId)">*</span>
     </button>
   </span>
-
-<!--  <span *ngFor="let note of notes">-->
-<!--    <button [class.mat-button-toggle-checked]="selectedNoteId==note.id"-->
-<!--            class="note-link"-->
-<!--            (click)="openNote(note.id)"-->
-<!--            mat-button>-->
-<!--      <span>{{ note.title }}</span><span class="unsaved-marker" *ngIf="unsavedNotes.has(note.id)">*</span>-->
-<!--    </button>-->
-<!--  </span>-->
 </div>
 
 <!--<div id="context-menu" #contextMenu [ngStyle]="{ left: contextMenuX, top: contextMenuY, zIndex: 100 }" *ngIf="showContextMenu">-->

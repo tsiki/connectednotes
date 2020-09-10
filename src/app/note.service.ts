@@ -76,10 +76,6 @@ export class NoteService {
     return this.noteIdToNote.get(noteId);
   }
 
-  getNoteForTitle(title: string) {
-    return this.noteTitleToNote.get(title);
-  }
-
   getNoteForTitleCaseInsensitive(title: string) {
     return this.noteTitleToNoteCaseInsensitive.get(title.toLowerCase());
   }
@@ -133,7 +129,7 @@ export class NoteService {
   }
 
   async renameNote(noteId: string, newTitle: string): Promise<RenameResult> {
-    const noteToRename = this.notes.value.find(n => n.id === noteId);
+    const noteToRename = this.noteIdToNote.get(noteId);
     const prevTitle = noteToRename.title;
     const currentNotesAndLinks = this.getGraphRepresentation();
     await this.backend.renameFile(noteId, newTitle);
@@ -176,11 +172,11 @@ export class NoteService {
 
   async saveContent(noteId: string, content: string, notify = true) {
     // TODO: handle save failing
-    const noteExists = !!this.notes.value.find(n => n.id === noteId); // Might not exist if we just deleted it
+    const noteExists = this.noteIdToNote.has(noteId); // Might not exist if we just deleted it
     if (noteExists) {
       // Save the note locally before attempting to save it remotely. In case the remote save fails or takes a while
       // we don't want the user to see old content.
-      const note = this.notes.value.find(n => n.id === noteId);
+      const note = this.noteIdToNote.get(noteId);
       note.content = content;
       note.lastChangedEpochMillis = new Date().getTime();
       await this.backend.saveContent(noteId, content, notify);
