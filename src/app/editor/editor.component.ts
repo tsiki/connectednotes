@@ -396,7 +396,6 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   revertChangesAndBlur() {
-    console.log(this.titleRenameInput);
     this.titleRenameInput.nativeElement.value = this.selectedNote.title;
     this.titleRenameInput.nativeElement.blur();
   }
