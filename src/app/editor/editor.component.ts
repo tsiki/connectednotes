@@ -9,11 +9,12 @@ import {
   Output,
   ViewChild
 } from '@angular/core';
+import 'codemirror/addon/hint/show-hint';
+import 'codemirror/addon/search/searchcursor';
 import * as CodeMirror from 'codemirror';
 import {NoteService} from '../note.service';
 import {fromEvent} from 'rxjs';
 import {debounceTime} from 'rxjs/operators';
-import 'codemirror/addon/hint/show-hint';
 import {AttachedFile, NoteObject} from '../types';
 import {SettingsService, Theme} from '../settings.service';
 import {NotificationService} from '../notification.service';
@@ -59,6 +60,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   private allNoteTitles: string[];
   private allTags: string[];
   private mouseEventWithCtrlActive = false;
+  private inlinedImages: Map<string, CodeMirror.LineWidget> = new Map();
 
   private unloadListener = () => this.saveChanges();
 
@@ -97,6 +99,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
 
       if (this.noteService.attachmentMetadata.value) {
         this.attachedFiles = this.noteService.attachmentMetadata.value[this.selectedNote.id];
+        this.inlineImages();
       }
 
       this.codemirror.setValue(newSelectedNote.content);
@@ -107,6 +110,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     this.noteService.attachmentMetadata.subscribe(metadata => {
       if (this.selectedNote && metadata && metadata.hasOwnProperty(this.selectedNote.id)) {
         this.attachedFiles = metadata[this.selectedNote.id];
+        this.inlineImages();
       }
     });
 
@@ -115,6 +119,47 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     });
 
     window.addEventListener('beforeunload', this.unloadListener);
+  }
+
+  inlineImages() {
+    if (!this.attachedFiles) {
+      return;
+    }
+    const newLineNumsAndLinks: Set<string> = new Set();
+    // Get all images which should be inlined
+    for (const attachedFile of this.attachedFiles) {
+      if (attachedFile.mimeType.startsWith('image/')) {
+        const link = NoteService.fileIdToLink(attachedFile.fileId);
+        const cursor = this.codemirror.getSearchCursor(link);
+        while (cursor.findNext()) {
+          const line = cursor.to().line;
+          newLineNumsAndLinks.add(JSON.stringify([line, link]));
+        }
+      }
+    }
+
+    // Remove the images that have been removed or have moved lines
+    const existingLineNumAndLinks = Array.from(this.inlinedImages.keys());
+    for (const existing of existingLineNumAndLinks) {
+      if (!newLineNumsAndLinks.has(existing)) {
+        this.codemirror.removeLineWidget(this.inlinedImages.get(existing));
+        this.inlinedImages.delete(existing);
+      }
+    }
+
+    // Add added images
+    for (const newLineAndLink of newLineNumsAndLinks) {
+      const [line, link] = JSON.parse(newLineAndLink);
+      if (!this.inlinedImages.has(newLineAndLink)) {
+        const imgElem = document.createElement('img');
+        imgElem.src = link;
+        // If we don't refresh CM after loading it seems codemirror 'misplaces' lines and thinks there's text in empty
+        // areas and vice versa
+        imgElem.onload = () => this.codemirror.refresh();
+        const lineWidget = this.codemirror.addLineWidget(line, imgElem);
+        this.inlinedImages.set(newLineAndLink, lineWidget);
+      }
+    }
   }
 
   ngAfterViewInit(): void {
@@ -175,7 +220,12 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
 
     const theme = this.settingsService.themeSetting.value === Theme.DARK ? DARK_THEME : LIGHT_THEME;
     this.codemirror = CodeMirror.fromTextArea(this.cm.nativeElement,
-      {mode: 'markdown', lineWrapping: true, extraKeys: {'Shift-Space': 'autocomplete'}, theme});
+      {
+        mode: 'markdown',
+        lineWrapping: true,
+        extraKeys: {'Shift-Space': 'autocomplete'},
+        theme,
+      });
     // this.codemirror.setSize('400px', '1000px'); // keep this here for performance testing codemirror resizing
     this.codemirror.setSize('100%', '100%');
 
@@ -243,6 +293,9 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       }
       this.mouseEventWithCtrlActive = false;
     });
+
+    // Inline images
+    this.contentChange.pipe(debounceTime(100)).subscribe(e => this.inlineImages());
   }
 
   ngOnDestroy(): void {
