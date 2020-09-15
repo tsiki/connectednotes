@@ -102,6 +102,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
         this.inlineImages();
       }
 
+      this.clearInlineImages();
       this.codemirror.setValue(newSelectedNote.content);
       this.codemirror.focus();
       this.codemirror.setCursor(0, 0);
@@ -121,10 +122,20 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     window.addEventListener('beforeunload', this.unloadListener);
   }
 
-  inlineImages() {
+
+  private clearInlineImages() {
+    for (const widget of this.inlinedImages.values()) {
+      this.codemirror.removeLineWidget(widget);
+    }
+    this.inlinedImages.clear();
+  }
+
+  private inlineImages() {
+    console.log('ASDASD');
     if (!this.attachedFiles) {
       return;
     }
+    console.log('qwe');
     const newLineNumsAndLinks: Set<string> = new Set();
     // Get all images which should be inlined
     for (const attachedFile of this.attachedFiles) {
@@ -153,9 +164,11 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       if (!this.inlinedImages.has(newLineAndLink)) {
         const imgElem = document.createElement('img');
         imgElem.src = link;
+        imgElem.style.setProperty('max-width', '100%');
         // If we don't refresh CM after loading it seems codemirror 'misplaces' lines and thinks there's text in empty
         // areas and vice versa
         imgElem.onload = () => this.codemirror.refresh();
+        console.log('ADDING ONE');
         const lineWidget = this.codemirror.addLineWidget(line, imgElem);
         this.inlinedImages.set(newLineAndLink, lineWidget);
       }
