@@ -97,15 +97,15 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       }
       this.selectedNote = newSelectedNote;
 
-      if (this.noteService.attachmentMetadata.value) {
-        this.attachedFiles = this.noteService.attachmentMetadata.value[this.selectedNote.id];
-        this.inlineImages();
-      }
-
       this.clearInlineImages();
       this.codemirror.setValue(newSelectedNote.content);
       this.codemirror.focus();
       this.codemirror.setCursor(0, 0);
+
+      if (this.noteService.attachmentMetadata.value) {
+        this.attachedFiles = this.noteService.attachmentMetadata.value[this.selectedNote.id];
+        this.inlineImages(); // This must be done after setting content
+      }
     });
 
     this.noteService.attachmentMetadata.subscribe(metadata => {
@@ -131,11 +131,9 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   private inlineImages() {
-    console.log('ASDASD');
     if (!this.attachedFiles) {
       return;
     }
-    console.log('qwe');
     const newLineNumsAndLinks: Set<string> = new Set();
     // Get all images which should be inlined
     for (const attachedFile of this.attachedFiles) {
@@ -168,7 +166,6 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
         // If we don't refresh CM after loading it seems codemirror 'misplaces' lines and thinks there's text in empty
         // areas and vice versa
         imgElem.onload = () => this.codemirror.refresh();
-        console.log('ADDING ONE');
         const lineWidget = this.codemirror.addLineWidget(line, imgElem);
         this.inlinedImages.set(newLineAndLink, lineWidget);
       }
