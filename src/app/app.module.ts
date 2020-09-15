@@ -12,7 +12,6 @@ import { AppRoutingModule } from './app-routing.module';
 import {CreateNoteDialog, ZettelkastenComponent} from './zettelkasten/zettelkasten.component'; // Added here
 import { AngularFirestoreModule } from '@angular/fire/firestore';
 import { AngularFireAuthModule } from '@angular/fire/auth';
-import { IonicModule } from '@ionic/angular';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import {MatButtonModule} from '@angular/material/button';
 import {MatFormFieldModule} from '@angular/material/form-field';
@@ -69,7 +68,6 @@ import { AlreadyExistingNoteDirective } from './already-existing-note.directive'
         AngularFireAuthModule,
         FormsModule,
         HttpClientModule,
-        IonicModule.forRoot(),
         BrowserAnimationsModule,
         MatButtonModule,
         MatButtonToggleModule,

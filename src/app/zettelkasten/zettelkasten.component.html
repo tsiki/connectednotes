@@ -51,6 +51,8 @@
   }
 
   #graph-icon {
+    max-height: 100%;
+    max-width: 100%;
     padding: 1px 4px 5px 4px;
   }
 
@@ -192,7 +194,8 @@
           </div>
           <div id="left-end-button-container">
             <button (click)="logout()" mat-button matTooltip="logout">
-              <ion-icon id="logout-icon" name="log-out-outline"></ion-icon>
+              logout
+<!--              <ion-icon id="logout-icon" name="log-out-outline"></ion-icon>-->
             </button>
             <button (click)="openSettings()" mat-button matTooltip="settings">
               <mat-icon class="material-icons-outlined">settings</mat-icon>
