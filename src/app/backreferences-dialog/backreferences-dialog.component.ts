@@ -13,7 +13,11 @@ import {NoteService} from '../note.service';
             mat-button>
       {{ ref.title }}
     </button>`,
-  styles: [``]
+  styles: [`
+    .result-link {
+      display: block;
+    }
+  `]
 })
 export class BackreferencesDialogComponent {
 

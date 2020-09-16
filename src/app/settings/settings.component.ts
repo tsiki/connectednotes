@@ -1,7 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import {Component, OnDestroy, OnInit} from '@angular/core';
 import {MatDialogRef} from '@angular/material/dialog';
-import {NoteService} from '../note.service';
 import {SettingsService, Theme} from '../settings.service';
+import {BehaviorSubject, Subscription} from 'rxjs';
 
 @Component({
   selector: 'app-settings',
@@ -14,18 +14,33 @@ import {SettingsService, Theme} from '../settings.service';
       <mat-option value="DEVICE">Follow Device Settings</mat-option>
     </mat-select>
   </mat-form-field>
+  
+  <h3 id="ignored-tags-header">Ignored tags:</h3>
+  <mat-chip-list aria-label="Ignored tags">
+    <mat-chip *ngFor="let tag of ignoredTags | async">
+      {{ tag }}
+      <mat-icon class="delete-icon" (click)="removeIgnoredTag(tag)">delete_outline</mat-icon>
+    </mat-chip>
+  </mat-chip-list>
   `,
-  styles: []
+  styles: [`
+    .delete-icon {
+      cursor: pointer;
+    }
+  `]
 })
-export class SettingsComponent implements OnInit {
+export class SettingsComponent {
 
   selectedTheme: string;
+  ignoredTags: BehaviorSubject<string[]>;
 
   constructor(public dialogRef: MatDialogRef<SettingsComponent>, private readonly settingsService: SettingsService) { }
 
-  ngOnInit(): void {}
-
   changeTheme(e) {
     this.settingsService.setTheme(Theme[e.value]);
+  }
+
+  async removeIgnoredTag(tag: string) {
+    await this.settingsService.removeIgnoredTag(tag);
   }
 }

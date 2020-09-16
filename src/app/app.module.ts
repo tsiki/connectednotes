@@ -39,6 +39,7 @@ import { AttachmentsDialogComponent } from './attachments-dialog/attachments-dia
 import {MatSortModule} from '@angular/material/sort';
 import { BackreferencesDialogComponent } from './backreferences-dialog/backreferences-dialog.component';
 import { AlreadyExistingNoteDirective } from './already-existing-note.directive';
+import {MatChipsModule} from '@angular/material/chips';
 
 @NgModule({
   entryComponents: [CreateNoteDialog], // Not declared in template to must be here
@@ -87,6 +88,7 @@ import { AlreadyExistingNoteDirective } from './already-existing-note.directive'
         MatSelectModule,
         MatSortModule,
         ReactiveFormsModule,
+        MatChipsModule,
     ],
   providers: [],
   bootstrap: [AppComponent]

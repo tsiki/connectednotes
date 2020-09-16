@@ -83,7 +83,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.allNoteTitles = this.noteService?.notes.value?.map(n => n.title);
-    this.noteService.notesAndTagGroups.subscribe(val => this.allTags = val.tagGroups.map(t => t.tag));
+    this.noteService.notesAndTagGroups.subscribe(val => this.allTags = val?.tagGroups.map(t => t.tag));
 
     this.noteService.selectedNote.subscribe(newSelectedNote => {
       if (newSelectedNote === null) {

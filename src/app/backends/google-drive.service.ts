@@ -41,8 +41,7 @@ export class GoogleDriveService implements StorageBackend {
   initialize() {
     this.signInIfNotSignedIn().then(() => {
       this.requestRefreshAllNotes();
-      this.createFoldersAndFilesIfNotExist();
-      this.refreshAttachmentMetadata();
+      this.fetchOrCreateFoldersAndFiles();
     }).catch(async err => {
       this.notes.next(await this.cache.getAllNotesInCache());
     });
@@ -56,7 +55,7 @@ export class GoogleDriveService implements StorageBackend {
     gapi.auth2.getAuthInstance().signOut();
   }
 
-  private async createFoldersAndFilesIfNotExist() {
+  private async fetchOrCreateFoldersAndFiles() {
     const rootFolderId = await this.fetchOrCreateFolder(ROOT_FOLDER_NAME);
     this.rootFolderId.next(rootFolderId);
 
@@ -67,15 +66,18 @@ export class GoogleDriveService implements StorageBackend {
     this.settingAndMetadataFolderId.next(resp[0]);
     this.attachmentsFolderId.next(resp[1]);
 
-    // After folders, create files
+    // After folders, create or fetch files
 
-    const [settingsFileId, settings] =
-        await this.fetchOrCreateJsonFile(SETTINGS_FILE_NAME, this.settingAndMetadataFolderId.value);
+    const settingsPromise = this.fetchOrCreateJsonFile(SETTINGS_FILE_NAME, this.settingAndMetadataFolderId.value);
+    const attachmentPromise = this.fetchOrCreateJsonFile(ATTACHMENT_METADATA_FILE_NAME, this.settingAndMetadataFolderId.value);
+
+    const [settingsData, attachmentData] = await Promise.all([settingsPromise, attachmentPromise]);
+
+    const [settingsFileId, settings] = settingsData;
     this.storedSettings.next(settings);
     this.storedSettingsFileId = settingsFileId;
 
-    const [attachmentMetadataFileId, attachmentMetadata] =
-        await this.fetchOrCreateJsonFile(ATTACHMENT_METADATA_FILE_NAME, this.settingAndMetadataFolderId.value);
+    const [attachmentMetadataFileId, attachmentMetadata] = attachmentData;
     this.attachmentMetadata.next(attachmentMetadata);
     this.attachmentMetadataFileId = attachmentMetadataFileId;
   }
@@ -139,10 +141,10 @@ export class GoogleDriveService implements StorageBackend {
     }
   }
 
-  updateSettings(settingKey: string, settingValue: string) {
+  async updateSettings(settingKey: string, settingValue: string|string[]) {
     const current = this.storedSettings.getValue();
     current[settingKey] = settingValue;
-    this.saveContent(this.storedSettingsFileId, JSON.stringify(current), true, 'application/json');
+    await this.saveContent(this.storedSettingsFileId, JSON.stringify(current), true, 'application/json');
     this.storedSettings.next(current);
   }
 
@@ -237,16 +239,6 @@ export class GoogleDriveService implements StorageBackend {
       fields: 'id'
     });
     return [creationResp.result.id, {}];
-  }
-
-  async refreshAttachmentMetadata() {
-    this.settingAndMetadataFolderId.subscribe(async folderId => {
-      if (folderId) {
-        const [fileId, content] =
-            await this.fetchOrCreateJsonFile(ATTACHMENT_METADATA_FILE_NAME, this.settingAndMetadataFolderId.value);
-        this.attachmentMetadata.next(content);
-      }
-    });
   }
 
   private getToken() {

@@ -1,5 +1,5 @@
 import {Injectable, Injector} from '@angular/core';
-import {BehaviorSubject} from 'rxjs';
+import {BehaviorSubject, combineLatest} from 'rxjs';
 import {GoogleDriveService} from './backends/google-drive.service';
 import {
   AttachmentMetadata,
@@ -49,7 +49,9 @@ export class NoteService {
       this.backend.initialize();
     }
     this.backendType = backendType;
-    this.backend.storedSettings.subscribe(newSettings => this.storedSettings.next(newSettings));
+    this.backend.storedSettings.subscribe(newSettings => {
+      this.storedSettings.next(newSettings);
+    });
     this.backend.attachmentMetadata.subscribe(newVal => this.attachmentMetadata.next(newVal));
     this.backend.notes.subscribe(newNotes => {
       if (newNotes) {
@@ -65,9 +67,17 @@ export class NoteService {
         this.noteTitleToNote.set(note.title, note);
         this.noteTitleToNoteCaseInsensitive.set(note.title.toLowerCase(), note);
       }
-      const tagGroups = this.extractTagGroups(newNotes);
-      this.notesAndTagGroups.next({tagGroups, notes: newNotes});
     });
+
+    // Set up processing of tags when we have fetched ignored tags from settings and notes
+    combineLatest([this.notes, this.storedSettings]).subscribe(notesAndSettings => {
+      const [notes, settings] = notesAndSettings;
+      if (notes && settings) {
+        const tagGroups = this.extractTagGroups(notes);
+        this.notesAndTagGroups.next({tagGroups, notes});
+      }
+    });
+
     this.notes.next(this.backend.notes.value);
     this.backend.requestRefreshAllNotes();
   }
@@ -195,7 +205,7 @@ export class NoteService {
     return await this.backend.addAttachmentToNote(noteId, uploadedFileId, fileName, mimeType);
   }
 
-  async updateSettings(settingKey: string, settingValue: string) {
+  async updateSettings(settingKey: string, settingValue: string|string[]) {
     this.backend.updateSettings(settingKey, settingValue);
   }
 
@@ -222,13 +232,16 @@ export class NoteService {
     const tagToNewestTimestamp = new Map<string, number>();
     const tagToOldestTimestamp = new Map<string, number>();
     for (const note of notes) {
-      let tags = note.content.match(/(^|\W)(#((?![#])[\S])+)/ig) || [];
+      let tags = note.content.match(/(^|\W)(#((?![#])[\S])+)/ig);
       if (tags.length === 0) {
         tags = ['untagged'];
       }
       tags.push('all');
       for (const untrimmedTag of tags) {
         const tag = untrimmedTag.trim();
+        if (this.storedSettings.value?.ignoredTags?.includes(tag)) {
+          continue;
+        }
         if (!tagToNotes.has(tag)) {
           tagToNotes.set(tag, new Set<string>());
           tagToNewestTimestamp.set(tag, 0);

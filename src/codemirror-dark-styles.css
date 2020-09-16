@@ -9,7 +9,8 @@
     /* font-family: monospace; */
     font-family: Helvetica;
     font-size: 16px;
-    font-weight: 400;
+    font-weight: 300;
+    letter-spacing: 1px;
     height: 300px;
     direction: ltr;
 }

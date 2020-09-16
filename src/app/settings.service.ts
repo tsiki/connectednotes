@@ -14,6 +14,7 @@ export enum Theme {
 export class SettingsService {
 
   themeSetting = new BehaviorSubject<Theme>(Theme.DARK);
+  ignoredTags = new BehaviorSubject<string[]>(null);
 
   colorSchemeListener = e => this.themeSetting.next(e.matches ? Theme.DARK : Theme.LIGHT);
 
@@ -29,10 +30,24 @@ export class SettingsService {
           this.themeSetting.next(newSettings.theme);
         }
       }
+      if (newSettings?.ignoredTags) {
+        this.ignoredTags.next(newSettings?.ignoredTags);
+      }
     });
   }
 
-  setTheme(value: Theme) {
-    this.noteService.updateSettings('theme', value);
+  async setTheme(value: Theme) {
+    await this.noteService.updateSettings('theme', value);
+  }
+
+  async addIgnoredTag(tag: string) {
+    const cur = this.ignoredTags.value?.slice() || [];
+    cur.push(tag);
+    await this.noteService.updateSettings('ignoredTags', cur);
+  }
+
+  async removeIgnoredTag(tag: string) {
+    const newTags = this.ignoredTags.value?.slice().filter(existingTag => tag !== existingTag) || [];
+    await this.noteService.updateSettings('ignoredTags', newTags);
   }
 }

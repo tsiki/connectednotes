@@ -73,7 +73,7 @@ interface StorageBackend {
   signInIfNotSignedIn();
   isSignedIn(): Promise<boolean>;
   requestRefreshAllNotes();
-  updateSettings(settingKey: string, settingValue: string);
+  updateSettings(settingKey: string, settingValue: string|string[]);
   createNote(title: string): Promise<NoteObject>;
   renameFile(noteId: string, newTitle: string): Promise<void>;
   deleteFile(noteId: string);
@@ -86,6 +86,7 @@ interface StorageBackend {
 
 interface UserSettings {
   theme?: Theme;
+  ignoredTags?: string[];
 }
 
 interface AttachmentMetadata {

@@ -104,6 +104,10 @@ export class FilelistComponent implements OnInit {
     elem.parentElement.classList.toggle('expanded');
   }
 
+  ignoreTag(tag: string) {
+    this.settingsService.addIgnoredTag(tag);
+  }
+
   trackByTagFn(index: number, item: TagGroup) {
     return item.tag;
   }
