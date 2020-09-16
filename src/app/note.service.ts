@@ -109,7 +109,7 @@ export class NoteService {
       this.router.navigate(
           [],
           {
-            queryParams: { noteid: note.id },
+            queryParams: { noteid: note?.id },
           });
     }
     this.selectedNote.next(note);

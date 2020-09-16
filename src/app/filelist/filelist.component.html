@@ -29,6 +29,8 @@
 
   .tag-group-link {
     padding-left: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   .tag-group-link,
@@ -95,7 +97,7 @@
         <mat-icon>more_vert</mat-icon>
         <mat-menu #sortMenu="matMenu">
           <button mat-menu-item (click)="ignoreTag(tagGroup.tag)">
-            ignore tag {{ tagGroup.tag }}
+            Ignore tag {{ tagGroup.tag }}
           </button>
         </mat-menu>
       </span>
