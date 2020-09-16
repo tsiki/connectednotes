@@ -4,11 +4,6 @@ import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
 import { AppModule } from './app/app.module';
 import { environment } from './environments/environment';
 
-import 'codemirror/mode/javascript/javascript';
-import 'codemirror/mode/markdown/markdown';
-import * as CodeMirror from 'codemirror';
-
-
 if (environment.production) {
   enableProdMode();
 }

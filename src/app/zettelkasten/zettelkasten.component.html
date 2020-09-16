@@ -56,6 +56,10 @@
     padding: 1px 4px 5px 4px;
   }
 
+  #editor-container[hidden] {
+    display: none;
+  }
+
   #editor-container {
     display: block;
     height: 100%;
@@ -63,15 +67,6 @@
 
   #editor {
     height: 100%;
-  }
-
-  #markdown-renderer {
-    padding: 10px;
-  }
-
-  #logout-icon {
-    height: 24px;
-    width: 24px;
   }
 
   /* make the draggable divider a bit narrower */
@@ -206,6 +201,7 @@
 
     <as-split-area size="*">
       <div id="right-frame">
+        <!-- Should we just remove the editor with ngIf? -->
         <div id="editor-container" [hidden]="!['editor', 'split'].includes(editorState)">
           <app-editor
             id="editor"

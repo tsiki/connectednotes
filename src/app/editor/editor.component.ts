@@ -11,6 +11,9 @@ import {
 } from '@angular/core';
 import 'codemirror/addon/hint/show-hint';
 import 'codemirror/addon/search/searchcursor';
+import 'codemirror/addon/mode/overlay';
+import 'codemirror/mode/markdown/markdown';
+import 'codemirror/mode/javascript/javascript';
 import * as CodeMirror from 'codemirror';
 import {NoteService} from '../note.service';
 import {fromEvent} from 'rxjs';
@@ -122,54 +125,11 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     window.addEventListener('beforeunload', this.unloadListener);
   }
 
-
   private clearInlineImages() {
     for (const widget of this.inlinedImages.values()) {
       this.codemirror.removeLineWidget(widget);
     }
     this.inlinedImages.clear();
-  }
-
-  private inlineImages() {
-    if (!this.attachedFiles) {
-      return;
-    }
-    const newLineNumsAndLinks: Set<string> = new Set();
-    // Get all images which should be inlined
-    for (const attachedFile of this.attachedFiles) {
-      if (attachedFile.mimeType.startsWith('image/')) {
-        const link = NoteService.fileIdToLink(attachedFile.fileId);
-        const cursor = this.codemirror.getSearchCursor(link);
-        while (cursor.findNext()) {
-          const line = cursor.to().line;
-          newLineNumsAndLinks.add(JSON.stringify([line, link]));
-        }
-      }
-    }
-
-    // Remove the images that have been removed or have moved lines
-    const existingLineNumAndLinks = Array.from(this.inlinedImages.keys());
-    for (const existing of existingLineNumAndLinks) {
-      if (!newLineNumsAndLinks.has(existing)) {
-        this.codemirror.removeLineWidget(this.inlinedImages.get(existing));
-        this.inlinedImages.delete(existing);
-      }
-    }
-
-    // Add added images
-    for (const newLineAndLink of newLineNumsAndLinks) {
-      const [line, link] = JSON.parse(newLineAndLink);
-      if (!this.inlinedImages.has(newLineAndLink)) {
-        const imgElem = document.createElement('img');
-        imgElem.src = link;
-        imgElem.style.setProperty('max-width', '100%');
-        // If we don't refresh CM after loading it seems codemirror 'misplaces' lines and thinks there's text in empty
-        // areas and vice versa
-        imgElem.onload = () => this.codemirror.refresh();
-        const lineWidget = this.codemirror.addLineWidget(line, imgElem);
-        this.inlinedImages.set(newLineAndLink, lineWidget);
-      }
-    }
   }
 
   ngAfterViewInit(): void {
@@ -249,7 +209,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
           }
         });
 
-    // Autosave after some inacitivity
+    // Autosave after some inactivity
     fromEvent(this.codemirror, 'changes').pipe(debounceTime(3_000)).subscribe(() => this.saveChanges());
 
     // Enables keyboard navigation in autocomplete list
@@ -325,7 +285,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       }
     }
     // If user adds and then deleted the addition, remove the 'unsaved' marker
-    if (this.selectedNote.content === valueToSave) {
+    if (this.selectedNote?.content === valueToSave) {
       this.notifications.noteSaved(noteId);
     }
   }
@@ -415,6 +375,48 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     if (result) {
       await this.noteService.deleteNote(this.selectedNote.id);
       this.noteDeleted = true;
+    }
+  }
+
+  private inlineImages() {
+    if (!this.attachedFiles) {
+      return;
+    }
+    const newLineNumsAndLinks: Set<string> = new Set();
+    // Get all images which should be inlined
+    for (const attachedFile of this.attachedFiles) {
+      if (attachedFile.mimeType.startsWith('image/')) {
+        const link = NoteService.fileIdToLink(attachedFile.fileId);
+        const cursor = this.codemirror.getSearchCursor(link);
+        while (cursor.findNext()) {
+          const line = cursor.to().line;
+          newLineNumsAndLinks.add(JSON.stringify([line, link]));
+        }
+      }
+    }
+
+    // Remove the images that have been removed or have moved lines
+    const existingLineNumAndLinks = Array.from(this.inlinedImages.keys());
+    for (const existing of existingLineNumAndLinks) {
+      if (!newLineNumsAndLinks.has(existing)) {
+        this.codemirror.removeLineWidget(this.inlinedImages.get(existing));
+        this.inlinedImages.delete(existing);
+      }
+    }
+
+    // Add added images
+    for (const newLineAndLink of newLineNumsAndLinks) {
+      const [line, link] = JSON.parse(newLineAndLink);
+      if (!this.inlinedImages.has(newLineAndLink)) {
+        const imgElem = document.createElement('img');
+        imgElem.src = link;
+        imgElem.style.setProperty('max-width', '100%');
+        // If we don't refresh CM after loading it seems codemirror 'misplaces' lines and thinks there's text in empty
+        // areas and vice versa
+        imgElem.onload = () => this.codemirror.refresh();
+        const lineWidget = this.codemirror.addLineWidget(line, imgElem);
+        this.inlinedImages.set(newLineAndLink, lineWidget);
+      }
     }
   }
 }
