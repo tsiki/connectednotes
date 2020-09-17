@@ -233,7 +233,7 @@ export class NoteService {
     const tagToOldestTimestamp = new Map<string, number>();
     for (const note of notes) {
       let tags = note.content.match(/(^|\W)(#((?![#])[\S])+)/ig);
-      if (tags.length === 0) {
+      if (!tags || tags.length === 0) {
         tags = ['untagged'];
       }
       tags.push('all');
