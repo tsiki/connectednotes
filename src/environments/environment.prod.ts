@@ -8,8 +8,9 @@ export const environment = {
     projectId: 'zeka-cdbc1',
     storageBucket: 'zeka-cdbc1.appspot.com',
     messagingSenderId: '77203604551',
-  }
+  },
+  googleDrive: {
+    gdriveClientKey: '54017624858-kubnhm2m7p7oolitvucjavcfnkuvcnju.apps.googleusercontent.com',
+    gdriveApiKey: 'AIzaSyBb3UqJBV9uVmTpB7hbaEVmqZGeLzyV4NA',
+  },
 };
-
-export const GDRIVE_CLIENT_ID = '54017624858-kubnhm2m7p7oolitvucjavcfnkuvcnju.apps.googleusercontent.com';
-export const GDRIVE_API_KEY = 'AIzaSyBb3UqJBV9uVmTpB7hbaEVmqZGeLzyV4NA';

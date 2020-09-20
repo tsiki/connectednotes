@@ -12,11 +12,12 @@ export const environment = {
     projectId: 'zeka-cdbc1',
     storageBucket: 'zeka-cdbc1.appspot.com',
     messagingSenderId: '77203604551',
-  }
+  },
+  googleDrive: {
+    gdriveClientKey: '54017624858-ojio5b0juobrn7gnjgsi556cq8un7spm.apps.googleusercontent.com',
+    gdriveApiKey: 'AIzaSyATVo6Y6X8NOuPH6z1P5Daow2gFPgK25wI',
+  },
 };
-
-export const GDRIVE_CLIENT_ID = '54017624858-ojio5b0juobrn7gnjgsi556cq8un7spm.apps.googleusercontent.com';
-export const GDRIVE_API_KEY = 'AIzaSyATVo6Y6X8NOuPH6z1P5Daow2gFPgK25wI';
 
 /*
  * For easier debugging in development mode, you can import the following file

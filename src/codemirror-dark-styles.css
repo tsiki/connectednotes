@@ -3,14 +3,16 @@
     From IntelliJ IDEA by JetBrains
  */
 
+.cm-formatted-code {
+    font-family: monospace;
+}
 
 .CodeMirror.cm-s-darcula {
     /* Set height, width, borders, and global font properties here */
     /* font-family: monospace; */
     font-family: Helvetica;
     font-size: 16px;
-    font-weight: 300;
-    letter-spacing: 1px;
+    font-weight: 400;
     height: 300px;
     direction: ltr;
 }

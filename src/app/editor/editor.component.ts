@@ -12,8 +12,33 @@ import {
 import 'codemirror/addon/hint/show-hint';
 import 'codemirror/addon/search/searchcursor';
 import 'codemirror/addon/mode/overlay';
+import 'codemirror/addon/mode/simple';
+import 'codemirror/addon/mode/multiplex';
 import 'codemirror/mode/markdown/markdown';
 import 'codemirror/mode/javascript/javascript';
+import 'codemirror/mode/clike/clike';
+import 'codemirror/mode/clojure/clojure';
+import 'codemirror/mode/elm/elm';
+import 'codemirror/mode/haskell/haskell';
+import 'codemirror/mode/css/css';
+import 'codemirror/mode/xml/xml';
+import 'codemirror/mode/gfm/gfm';
+import 'codemirror/mode/php/php';
+import 'codemirror/mode/python/python';
+import 'codemirror/mode/r/r';
+import 'codemirror/mode/ruby/ruby';
+import 'codemirror/mode/sql/sql';
+import 'codemirror/mode/swift/swift';
+import 'codemirror/mode/vb/vb';
+import 'codemirror/mode/yaml/yaml';
+import 'codemirror/mode/go/go';
+import 'codemirror/mode/rust/rust';
+import 'codemirror/mode/julia/julia';
+import 'codemirror/mode/tcl/tcl';
+import 'codemirror/mode/scheme/scheme';
+import 'codemirror/mode/commonlisp/commonlisp';
+import 'codemirror/mode/powershell/powershell';
+import 'codemirror/mode/smalltalk/smalltalk';
 import * as CodeMirror from 'codemirror';
 import {NoteService} from '../note.service';
 import {fromEvent} from 'rxjs';
@@ -27,6 +52,7 @@ import {AttachmentsDialogComponent} from '../attachments-dialog/attachments-dial
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {BackreferencesDialogComponent} from '../backreferences-dialog/backreferences-dialog.component';
 import {ValidateImmediatelyMatcher} from '../already-existing-note.directive';
+import {PROGRAMMING_LANGUAGES} from './highlighted-programming-languages';
 
 declare interface CodeMirrorHelper {
   commands: {
@@ -148,7 +174,29 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     });
   }
 
+  initializeHighlightModes() {
+    CodeMirror.defineMode('multiplex',  (config) => {
+      const codeModes = PROGRAMMING_LANGUAGES.map(({mimeType, selectors}) => {
+        const escapedSelectors = selectors.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        return {
+          open: new RegExp('(?:```)\\s*(' + escapedSelectors.join('|') + ')\\b'),
+          close: /```/,
+          mode: CodeMirror.getMode(config, mimeType),
+          delimStyle: 'formatted-code-block',
+          innerStyle: 'formatted-code'
+        };
+      });
+
+      return (CodeMirror as any).multiplexingMode(
+          CodeMirror.getMode(config, 'markdown'), // Default mode
+          ...codeModes,
+      );
+    });
+  }
+
   initializeCodeMirror() {
+    this.initializeHighlightModes();
+
     CodeMirror.registerHelper('hint', 'notes', (mirror, options) => {
       const cur = mirror.getCursor();
       const lineSoFar = mirror.getRange({ch: 0, line: cur.line}, cur);
@@ -191,7 +239,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     const theme = this.settingsService.themeSetting.value === Theme.DARK ? DARK_THEME : LIGHT_THEME;
     this.codemirror = CodeMirror.fromTextArea(this.cm.nativeElement,
       {
-        mode: 'markdown',
+        mode: 'multiplex',
         lineWrapping: true,
         extraKeys: {'Shift-Space': 'autocomplete'},
         theme,

@@ -1,11 +1,15 @@
 /* BASICS */
 
+.cm-formatted-code {
+  font-family: monospace;
+}
+
 .CodeMirror {
   /* Set height, width, borders, and global font properties here */
   /* font-family: monospace; */
   font-family: Helvetica;
   font-size: 16px;
-  font-weight: 300;
+  font-weight: 400;
   color: #262626;
   height: 300px;
   direction: ltr;

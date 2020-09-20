@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import {BehaviorSubject, Subject, Subscription} from 'rxjs';
-import {GDRIVE_API_KEY, GDRIVE_CLIENT_ID} from '../../environments/environment';
+import {environment} from '../../environments/environment';
 import {HttpClient} from '@angular/common/http';
 import {
   AttachedFile,
@@ -86,8 +86,8 @@ export class GoogleDriveService implements StorageBackend {
     return new Promise((resolve, reject) => {
       gapi.load('client:auth2', async () => {
         await gapi.client.init({
-          apiKey: GDRIVE_API_KEY,
-          clientId: GDRIVE_CLIENT_ID,
+          apiKey: environment.googleDrive.gdriveApiKey,
+          clientId: environment.googleDrive.gdriveClientKey,
           discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
           scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.install'
         });
@@ -105,8 +105,8 @@ export class GoogleDriveService implements StorageBackend {
     return new Promise((resolve) => {
       gapi.load('client:auth2', async () => {
         await gapi.client.init({
-          apiKey: GDRIVE_API_KEY,
-          clientId: GDRIVE_CLIENT_ID,
+          apiKey: environment.googleDrive.gdriveApiKey,
+          clientId: environment.googleDrive.gdriveClientKey,
           discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
           scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.install'
         });
