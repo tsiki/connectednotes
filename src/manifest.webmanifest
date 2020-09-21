@@ -1,6 +1,6 @@
 {
-  "name": "zk",
-  "short_name": "zk",
+  "name": "Connected Notes",
+  "short_name": "cn",
   "theme_color": "#1976d2",
   "background_color": "#fafafa",
   "display": "standalone",

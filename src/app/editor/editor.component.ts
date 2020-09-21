@@ -63,6 +63,8 @@ declare interface CodeMirrorHelper {
   };
 }
 
+declare const ResizeObserver;
+
 const DARK_THEME = 'darcula';
 const LIGHT_THEME = 'default';
 
@@ -73,6 +75,7 @@ const LIGHT_THEME = 'default';
 })
 export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   @ViewChild('codemirror') cm: ElementRef;
+  @ViewChild('cmContainer') cmContainer: ElementRef;
   @ViewChild('markdown') markdown: ElementRef;
   @ViewChild('titleRenameInput', { read: ElementRef }) titleRenameInput: ElementRef;
   @Output() contentChange = new EventEmitter();
@@ -90,6 +93,11 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   private allTags: string[];
   private mouseEventWithCtrlActive = false;
   private inlinedImages: Map<string, CodeMirror.LineWidget> = new Map();
+
+  private cmResizeObserver = new ResizeObserver(unused => {
+    const {width, height} = this.cmContainer.nativeElement.getBoundingClientRect();
+    this.codemirror.setSize(width + 'px', height + 'px');
+  });
 
   private unloadListener = () => this.saveChanges();
 
@@ -196,6 +204,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
 
   initializeCodeMirror() {
     this.initializeHighlightModes();
+    this.cmResizeObserver.observe(this.cmContainer.nativeElement);
 
     CodeMirror.registerHelper('hint', 'notes', (mirror, options) => {
       const cur = mirror.getCursor();
@@ -244,8 +253,6 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
         extraKeys: {'Shift-Space': 'autocomplete'},
         theme,
       });
-    // this.codemirror.setSize('400px', '1000px'); // keep this here for performance testing codemirror resizing
-    this.codemirror.setSize('100%', '100%');
 
     // Set up notification of unsaved changes
     fromEvent(this.codemirror, 'changes')
@@ -317,6 +324,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.cmResizeObserver.unobserve(this.cmContainer.nativeElement);
     this.saveChanges();
     window.removeEventListener('beforeunload', this.unloadListener);
   }

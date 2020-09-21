@@ -151,7 +151,11 @@
               </mat-icon>
             </button>
 
-            <button id="sort-button" mat-button matTooltip="sort notes" [matMenuTriggerFor]="sortMenu">
+            <button id="sort-button"
+                    mat-button
+                    matTooltip="sort notes"
+                    [matMenuTriggerFor]="sortMenu"
+                    *ngIf="!sidebarCollapsed">
               <mat-icon>sort</mat-icon>
               <mat-menu #sortMenu="matMenu">
                 <button mat-menu-item
