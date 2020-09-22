@@ -8,7 +8,7 @@ import {SettingsService, Theme} from '../settings.service';
   selector: 'app-search-dialog',
   template: `
     <mat-form-field id="search-input">
-      <mat-label>File search</mat-label>
+      <mat-label>Note search</mat-label>
       <input autocomplete="off"
              matInput
              [(ngModel)]="noteTitle"

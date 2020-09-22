@@ -108,7 +108,7 @@
     </button>
 
     <button *ngFor="let noteId of tagGroup.noteIds; trackBy: trackByIdFn"
-            [class.mat-button-toggle-checked]="selectedNoteId===noteId"
+            [class.mat-button-toggle-checked]="selectedNoteIds.has(noteId)"
             class="note-link tag-group-note"
             (click)="openNote(noteId)"
             mat-button>

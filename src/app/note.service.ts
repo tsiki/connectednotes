@@ -24,7 +24,7 @@ export class NoteService {
 
   notes: BehaviorSubject<NoteObject[]> = new BehaviorSubject(null);
   notesAndTagGroups: BehaviorSubject<NotesAndTagGroups> = new BehaviorSubject(null);
-  selectedNote: BehaviorSubject<NoteObject> = new BehaviorSubject(null);
+  selectedNotes: BehaviorSubject<NoteObject[]> = new BehaviorSubject([]);
   storedSettings = new BehaviorSubject<UserSettings>(null);
   attachmentMetadata = new BehaviorSubject<AttachmentMetadata>(null);
 
@@ -112,7 +112,7 @@ export class NoteService {
             queryParams: { noteid: note?.id },
           });
     }
-    this.selectedNote.next(note);
+    this.selectedNotes.next(note === null ? [] : [note]);
   }
 
   getBackreferences(noteId: string) {
@@ -168,11 +168,10 @@ export class NoteService {
 
   async deleteNote(noteId: string) {
     await this.backend.deleteFile(noteId);
-    if (this.selectedNote.value.id === noteId) {
-      this.selectedNote.next(null);
-    }
+    const newSelectedNotes = this.selectedNotes.value.filter(n => n.id !== noteId);
     const allNotes = this.notes.value.filter(n => n.id !== noteId);
     this.notes.next(allNotes);
+    this.selectedNotes.next(newSelectedNotes);
   }
 
   async deleteAttachment(noteId: string, fileId: string) {

@@ -9,6 +9,14 @@ import {
   Output,
   ViewChild
 } from '@angular/core';
+import 'codemirror/addon/fold/foldgutter';
+import 'codemirror/addon/fold/brace-fold';
+import 'codemirror/addon/fold/comment-fold';
+import 'codemirror/addon/fold/foldcode';
+import 'codemirror/addon/fold/indent-fold';
+import 'codemirror/addon/fold/markdown-fold';
+import 'codemirror/addon/fold/xml-fold';
+
 import 'codemirror/addon/hint/show-hint';
 import 'codemirror/addon/search/searchcursor';
 import 'codemirror/addon/mode/overlay';
@@ -122,8 +130,8 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     this.allNoteTitles = this.noteService?.notes.value?.map(n => n.title);
     this.noteService.notesAndTagGroups.subscribe(val => this.allTags = val?.tagGroups.map(t => t.tag));
 
-    this.noteService.selectedNote.subscribe(newSelectedNote => {
-      if (newSelectedNote === null) {
+    this.noteService.selectedNotes.subscribe(newSelectedNotes => {
+      if (newSelectedNotes.length === 0) {
         this.selectedNote = null;
         this.codemirror?.setValue('');
         return;
@@ -132,10 +140,10 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       if (this.selectedNote !== null) {
         this.saveChanges();
       }
-      this.selectedNote = newSelectedNote;
+      this.selectedNote = newSelectedNotes[0];
 
       this.clearInlineImages();
-      this.codemirror.setValue(newSelectedNote.content);
+      this.codemirror.setValue(newSelectedNotes[0].content);
       this.codemirror.focus();
       this.codemirror.setCursor(0, 0);
 
@@ -194,7 +202,6 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
           innerStyle: 'formatted-code'
         };
       });
-
       return (CodeMirror as any).multiplexingMode(
           CodeMirror.getMode(config, 'markdown'), // Default mode
           ...codeModes,
@@ -252,6 +259,8 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
         lineWrapping: true,
         extraKeys: {'Shift-Space': 'autocomplete'},
         theme,
+        foldGutter: true,
+        gutters: ['CodeMirror-foldgutter'],
       });
 
     // Set up notification of unsaved changes
@@ -400,8 +409,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     const notificationId = new Date().getTime().toString();
     this.notifications.toSidebar(notificationId, 'Uploading file');
     const fileId = await this.noteService.uploadFile(file, file.type, file.name);
-    await this.noteService.attachUploadedFileToNote(
-        this.noteService?.selectedNote.value.id, fileId, file.name, file.type);
+    await this.noteService.attachUploadedFileToNote(this.selectedNote.id, fileId, file.name, file.type);
     this.notifications.toSidebar(notificationId, 'File uploaded', 3000);
     if (file.type.startsWith('image/')) {
       this.insertImageLinkToCursorPosition(NoteService.fileIdToLink(fileId), name);

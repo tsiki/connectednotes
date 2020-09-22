@@ -9,7 +9,7 @@
     height: calc(100% - var(--top-bar-height));
     max-width: 700px;
     width: 100%;
-    padding: 10px;
+    margin: 10px 10px 10px 4px;
   }
 
   #codemirror {
@@ -28,6 +28,7 @@
 
   #container {
     display: flex;
+    height: calc(100% - var(--top-bar-height));
   }
 
   .space-evenly {
@@ -117,7 +118,6 @@
 <div id="container">
   <div id="codemirror-container"
        #cmContainer
-       class="dark-theme"
        [class.split-state]="editorState === 'split'">
     <textarea #codemirror id="codemirror"></textarea>
   </div>

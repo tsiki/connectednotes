@@ -20,7 +20,7 @@ export class FilelistComponent implements OnInit {
     this.setSortDirection(direction);
   }
 
-  selectedNoteId: string;
+  selectedNoteIds: Set<string> = new Set();
   notes: NoteObject[];
   tagGroups: TagGroup[];
   unsavedNotes = new Set<string>();
@@ -38,7 +38,7 @@ export class FilelistComponent implements OnInit {
 
   ngOnInit(): void {
     this.notes = this.noteService.notes.value;
-    this.noteService.selectedNote.subscribe(newSelectedNote => this.selectedNoteId = newSelectedNote?.id);
+    this.noteService.selectedNotes.subscribe(newSelectedNotes => this.selectedNoteIds = new Set(newSelectedNotes?.map(n => n.id)));
     this.noteService.notesAndTagGroups.asObservable().subscribe(notesAndTagGroups => {
       this.notes = notesAndTagGroups?.notes.slice();
       this.tagGroups = notesAndTagGroups?.tagGroups.slice();

@@ -15,6 +15,27 @@
   direction: ltr;
 }
 
+.CodeMirror-foldmarker {
+  color: blue;
+  font-family: arial;
+  line-height: .3;
+  cursor: pointer;
+}
+.CodeMirror-foldgutter {
+  background-color: var(--primary-background-color);
+  width: .7em;
+}
+.CodeMirror-foldgutter-open,
+.CodeMirror-foldgutter-folded {
+  cursor: pointer;
+}
+.CodeMirror-foldgutter-open:after {
+  content: "\25BE";
+}
+.CodeMirror-foldgutter-folded:after {
+  content: "\25B8";
+}
+
 /* PADDING */
 
 .CodeMirror-lines {
@@ -32,7 +53,7 @@
 /* GUTTER */
 
 .CodeMirror-gutters {
-  border-right: 1px solid #ddd;
+  /*border-right: 1px solid #ddd;*/
   background-color: #f7f7f7;
   white-space: nowrap;
 }
@@ -46,7 +67,7 @@
 }
 
 .CodeMirror-guttermarker { color: black; }
-.CodeMirror-guttermarker-subtle { color: #999; }
+.CodeMirror-guttermarker-subtle { color: #ccc; }
 
 /* CURSOR */
 

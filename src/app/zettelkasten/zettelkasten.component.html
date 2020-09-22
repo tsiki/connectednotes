@@ -136,7 +136,7 @@
             <button (click)="toggleSidebar()" mat-button matTooltip="toggle note list">
               <mat-icon>list</mat-icon>
             </button>
-            <button (click)="openNewNoteDialog()" mat-button matTooltip="new note (ctrl + k)">
+            <button (click)="openNewNoteDialog()" mat-button matTooltip="new note (ctrl + n)">
               <mat-icon>add</mat-icon>
             </button>
             <button (click)="openSearchDialog()" mat-button matTooltip="search notes (ctrl + shift + f)">
@@ -205,8 +205,7 @@
 
     <as-split-area size="*">
       <div id="right-frame">
-        <!-- Should we just remove the editor with ngIf? -->
-        <div id="editor-container" [hidden]="!['editor', 'split'].includes(editorState)">
+        <div id="editor-container" *ngIf="['editor', 'split'].includes(editorState)">
           <app-editor
             id="editor"
             class="space-evenly"

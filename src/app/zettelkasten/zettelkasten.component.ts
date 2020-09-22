@@ -57,7 +57,6 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
   theme: Theme;
   sidebarCollapsed: boolean;
   unCollapsedSidebarWidth: number;
-  currentNoteTitle: string;
   activeStatusUpdates: BackendStatusNotification[] = [];
   currentSortDirection = SortDirection.MODIFIED_NEWEST_FIRST;
 
@@ -83,14 +82,13 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
     this.setUpStorageBackendStatusUpdates();
 
     // Set up change in selected note
-    this.noteService.selectedNote.subscribe(selected => {
-      if (selected === null) {
+    this.noteService.selectedNotes.subscribe(selected => {
+      if (selected.length === 0) {
         return;
       }
       if (this.editorState === 'graph') {
         this.editorState = 'editor';
       }
-      this.currentNoteTitle = selected.title;
     });
 
     this.route.queryParams.subscribe(params => {
@@ -164,7 +162,7 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
     const ctrlPressed = e.ctrlKey || e.metaKey;
     if (e.key === 'f' && ctrlPressed && e.shiftKey) {
       this.openSearchDialog();
-    } else if (e.key === 'k' && ctrlPressed) {
+    } else if (e.key === 'n' && ctrlPressed) {
       this.openNewNoteDialog();
     }
   }

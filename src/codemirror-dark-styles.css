@@ -11,10 +11,31 @@
     /* Set height, width, borders, and global font properties here */
     /* font-family: monospace; */
     font-family: Helvetica;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 400;
     height: 300px;
     direction: ltr;
+}
+
+.CodeMirror-foldmarker {
+    color: blue;
+    font-family: arial;
+    line-height: .3;
+    cursor: pointer;
+}
+.CodeMirror-foldgutter {
+    background-color: var(--primary-background-color);
+    width: .7em;
+}
+.CodeMirror-foldgutter-open,
+.CodeMirror-foldgutter-folded {
+    cursor: pointer;
+}
+.CodeMirror-foldgutter-open:after {
+    content: "\25BE";
+}
+.CodeMirror-foldgutter-folded:after {
+    content: "\25B8";
 }
 
 .cm-s-darcula  { font-family: Consolas, Menlo, Monaco, 'Lucida Console', 'Liberation Mono', 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Courier New', monospace, serif;}
@@ -47,7 +68,10 @@
 
 .cm-s-darcula .CodeMirror-cursor { border-left: 1px solid #A9B7C6; }
 .cm-s-darcula .CodeMirror-activeline-background { background: #323232; }
-.cm-s-darcula .CodeMirror-gutters { background: #313335; border-right: 1px solid #313335; }
+.cm-s-darcula .CodeMirror-gutters {
+    background: #313335;
+    /*border-right: 1px solid #313335;*/
+}
 .cm-s-darcula .CodeMirror-guttermarker { color: #FFEE80; }
 .cm-s-darcula .CodeMirror-guttermarker-subtle { color: #D0D0D0; }
 .cm-s-darcula .CodeMirrir-linenumber { color: #606366; }
