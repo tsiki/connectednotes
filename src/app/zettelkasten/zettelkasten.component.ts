@@ -1,6 +1,5 @@
 import {ChangeDetectorRef, Component, ElementRef, HostListener, OnInit, ViewChild} from '@angular/core';
 import {ActivatedRoute, Router} from '@angular/router';
-import {AngularFireAuth} from '@angular/fire/auth';
 import {Backend, NoteService} from '../note.service';
 import {MatDialog, MatDialogRef} from '@angular/material/dialog';
 import { SplitAreaDirective } from 'angular-split';
@@ -56,7 +55,6 @@ export class ZettelkastenComponent implements OnInit {
   currentSortDirection = SortDirection.MODIFIED_NEWEST_FIRST;
 
   constructor(
-    private fireAuth: AngularFireAuth,
     private readonly route: ActivatedRoute,
     private router: Router,
     private readonly noteService: NoteService,

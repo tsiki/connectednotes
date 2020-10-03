@@ -44,6 +44,7 @@ import { StudyComponent } from './study/study.component';
 import { ExploreAndStudyComponent } from './explore-and-study/explore-and-study.component';
 import {MatTabsModule} from '@angular/material/tabs';
 import { FlashcardDialogComponent } from './create-flashcard-dialog/flashcard-dialog.component';
+import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
 
 @NgModule({
   entryComponents: [CreateNoteDialog], // Not declared in template to must be here
@@ -97,6 +98,7 @@ import { FlashcardDialogComponent } from './create-flashcard-dialog/flashcard-di
         ReactiveFormsModule,
         MatChipsModule,
         MatTabsModule,
+        MatProgressSpinnerModule,
     ],
   providers: [],
   bootstrap: [AppComponent]

@@ -107,7 +107,7 @@
 </style>
 
 <div id="container">
-  <as-split unit="pixel" direction="horizontal" (dragEnd)="dragEnd('percent', $event)" #split="asSplit">
+  <as-split unit="pixel" direction="horizontal" #split="asSplit">
     <as-split-area [size]="300"
                    #sidebar
                    #sidebarArea="asSplitArea"
@@ -124,15 +124,6 @@
             <button (click)="openSearchDialog()" mat-button matTooltip="search notes (ctrl + shift + f)">
               <mat-icon>search</mat-icon>
             </button>
-<!--            <button (click)="openGraphView($event)" mat-button matTooltip="view notes as a graph">-->
-<!--              <mat-icon>-->
-<!--                <img alt="graph"-->
-<!--                     id="graph-icon"-->
-<!--                     [class.dark-theme]="theme === 'dark'"-->
-<!--                     src="./assets/img/graph-icon.png">-->
-<!--              </mat-icon>-->
-<!--            </button>-->
-
             <button (click)="openExploreAndLearnView($event)" mat-button matTooltip="explore and study">
               <mat-icon class="material-icons-outlined">school</mat-icon>
             </button>

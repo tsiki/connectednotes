@@ -7,32 +7,41 @@ import {INITIAL_FLASHCARD_LEARNING_DATA} from '../study/study.component';
 @Component({
   selector: 'app-flashcard-dialog',
   template: `
-    <h1>Create a flashcard</h1>
-    <div>
-      The final card will consist of the visible side and hidden side. To hide a word from the visible side click on the
-      word. The flashcard will be associated with the given tags. To remove a tag, click on it.
-    </div>
-    <h3>Visible side:</h3>
-    <ng-container *ngFor="let word of visibleSentence; let i = index">
-      <button class="word" mat-button (click)="toggleWordHiding(i)">{{word}}</button>
-      <span>&nbsp;</span>
-    </ng-container>
-    <h3>Hidden side:</h3>
-    <span *ngFor="let word of originalSentence">{{word}} </span>
-    <h3>Tags:</h3>
-    <div id="tags">
-      <mat-chip-list>
-        <mat-chip *ngFor="let tag of tags" (click)="toggleIgnoredTag(tag)">
-          <span [class.greyed-out]="ignoredTags.has(tag)">{{ tag }}</span>
-        </mat-chip>
-      </mat-chip-list>
-    </div>
-    <div>
-      <button mat-button (click)="saveAndClose()">save</button>
-      <button mat-button (click)="dialogRef.close()">cancel</button>
+    <div id="wrapper">
+      <div id="loading-spinner" *ngIf="submitting">
+        <mat-spinner></mat-spinner>
+      </div>
+      <h1>Create a flashcard</h1>
+      <div>
+        The final card will consist of the visible side and hidden side. To hide a word from the visible side click on the
+        word. The flashcard will be associated with the given tags. To remove a tag, click on it.
+      </div>
+      <h3>Visible side:</h3>
+      <ng-container *ngFor="let word of visibleSentence; let i = index">
+        <button class="word" mat-button (click)="toggleWordHiding(i)">{{word}}</button>
+        <span>&nbsp;</span>
+      </ng-container>
+      <h3>Hidden side:</h3>
+      <span *ngFor="let word of originalSentence">{{word}} </span>
+      <h3>Tags:</h3>
+      <div id="tags">
+        <mat-chip-list>
+          <mat-chip *ngFor="let tag of tags" (click)="toggleIgnoredTag(tag)">
+            <span [class.greyed-out]="ignoredTags.has(tag)">{{ tag }}</span>
+          </mat-chip>
+        </mat-chip-list>
+      </div>
+      <div>
+        <button mat-button (click)="saveAndClose()">save</button>
+        <button mat-button (click)="dialogRef.close()">cancel</button>
+      </div>
     </div>
   `,
   styles: [`
+    #wrapper {
+      position: relative;
+    }
+
     .word {
       font-weight: 400;
       min-width: initial;
@@ -48,17 +57,20 @@ import {INITIAL_FLASHCARD_LEARNING_DATA} from '../study/study.component';
       cursor: pointer;
     }
 
-    .removed-overlay {
-      align-items: center;
-      display: flex;
-      justify-content: space-around;
-      position: absolute;
-      height: 100%;
-      width: 100%;
-    }
-
     .greyed-out {
       opacity: 0.3;
+    }
+
+    #loading-spinner {
+      position: absolute;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      width: 100%;
+      height: 100%;
+      background-color: var(--primary-background-color);
+      opacity: 0.5;
+      z-index: 10;
     }
   `]
 })
@@ -72,6 +84,7 @@ export class FlashcardDialogComponent implements OnInit {
   suggestions: FlashcardSuggestion[];
   selectedSuggestionIndex: number;
   ignoredTags: Set<string> = new Set();
+  submitting = false;
 
   @HostListener('window:keydown', ['$event'])
   shortcutHandler(e) {
@@ -134,7 +147,8 @@ export class FlashcardDialogComponent implements OnInit {
       isTwoWay: false, // TODO: let user select
       learningData: INITIAL_FLASHCARD_LEARNING_DATA,
     };
-    await this.noteService.createFlashcard(fc); // TODO: show spinner and possible error msg while saving
+    this.submitting = true;
+    await this.noteService.createFlashcard(fc);
     this.dialogRef.close();
   }
 }
