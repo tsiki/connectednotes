@@ -1,15 +1,11 @@
-import {AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, OnInit, ViewChild} from '@angular/core';
+import {ChangeDetectorRef, Component, ElementRef, HostListener, OnInit, ViewChild} from '@angular/core';
 import {ActivatedRoute, Router} from '@angular/router';
 import {AngularFireAuth} from '@angular/fire/auth';
 import {Backend, NoteService} from '../note.service';
 import {MatDialog, MatDialogRef} from '@angular/material/dialog';
-import * as marked from 'marked';
-import {EditorComponent} from '../editor/editor.component';
-import {debounceTime} from 'rxjs/operators';
 import { SplitAreaDirective } from 'angular-split';
 import {SearchDialogComponent} from '../search-dialog/search-dialog.component';
 import {animate, state, style, transition, trigger} from '@angular/animations';
-import {GoogleDriveService} from '../backends/google-drive.service';
 import {SettingsComponent} from '../settings/settings.component';
 import {BackendStatusNotification} from '../types';
 import {SettingsService, Theme} from '../settings.service';
@@ -17,6 +13,7 @@ import {NotificationService} from '../notification.service';
 import {MatSelect} from '@angular/material/select';
 import {FilelistComponent} from '../filelist/filelist.component';
 import {ValidateImmediatelyMatcher} from '../already-existing-note.directive';
+import {Subview, SubviewManagerService} from '../subview-manager.service';
 
 
 export enum SortDirection {
@@ -33,7 +30,7 @@ export enum SortDirection {
     trigger('openClose', [
       state('open', style({
         flex: '0 0 {{curWidth}}px',
-      }), {params: {curWidth: 250}}),
+      }), {params: {curWidth: 300}}),
       state('closed', style({
         flex: '0 0 50px',
       })),
@@ -46,14 +43,12 @@ export enum SortDirection {
     ]),
   ],
 })
-export class ZettelkastenComponent implements OnInit, AfterViewInit {
-  @ViewChild('editor') editor: EditorComponent;
+export class ZettelkastenComponent implements OnInit {
   @ViewChild('sidebarArea') sidebarArea: SplitAreaDirective;
   @ViewChild('sidebar') sidebar: ElementRef;
   @ViewChild('sortOptions') sortOptions: MatSelect;
   @ViewChild('filelist') filelist: FilelistComponent;
 
-  editorState: 'editor'|'graph'|'split' = 'editor';
   theme: Theme;
   sidebarCollapsed: boolean;
   unCollapsedSidebarWidth: number;
@@ -65,6 +60,7 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
     private readonly route: ActivatedRoute,
     private router: Router,
     private readonly noteService: NoteService,
+    readonly subviewManager: SubviewManagerService,
     readonly settingsService: SettingsService,
     public dialog: MatDialog,
     private cdr: ChangeDetectorRef,
@@ -81,23 +77,19 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
 
     this.setUpStorageBackendStatusUpdates();
 
-    // Set up change in selected note
-    this.noteService.selectedNotes.subscribe(selected => {
-      if (selected.length === 0) {
-        return;
-      }
-      if (this.editorState === 'graph') {
-        this.editorState = 'editor';
-      }
-    });
+    // this.route.queryParams.subscribe(params => {
+    //   // TODO: if we change the noteid in the url and change it back to the old, it might trigger this and overwrite
+    //   //  the new version of the note with the old.
+    //
+    //   // TODO: we need to handle multiple views here!!
+    //   if (params.noteid) {
+    //     this.subviewManager.openNoteInNewWindow(params.noteId, false);
+    //   }
+    // });
+  }
 
-    this.route.queryParams.subscribe(params => {
-      // TODO: if we change the noteid in the url and change it back to the old, it might trigger this and overwrite
-      //  the new version of the note with the old.
-      if (params.noteid) {
-        this.noteService.selectNote(params.noteid, false);
-      }
-    });
+  onWindowFocus(subview: Subview) {
+    this.subviewManager.setActiveSubview(subview);
   }
 
   private setUpStorageBackendStatusUpdates() {
@@ -105,9 +97,6 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
       this.activeStatusUpdates = newNotifications;
       this.cdr.detectChanges();
     });
-  }
-
-  ngAfterViewInit() {
   }
 
   logout() {
@@ -128,33 +117,29 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
     dialogRef.afterClosed().subscribe(async result => {
       if (result) { // result is undefined if user didn't create note
         const newNoteId = await this.noteService.createNote(result);
-        this.noteService.selectNote(newNoteId);
+        this.subviewManager.openNoteInNewWindow(newNoteId);
       }
     });
   }
 
   openSearchDialog() {
-    const dialogRef = this.dialog.open(SearchDialogComponent, {position: {top: '10px'}});
+    this.dialog.open(SearchDialogComponent, {position: {top: '10px'}});
   }
 
   openSettings() {
-    const dialogRef = this.dialog.open(SettingsComponent, {position: {top: '10px'}});
-    dialogRef.afterClosed().subscribe(async result => {
-      // TODO: this
-    });
+    this.dialog.open(SettingsComponent, {position: {top: '10px'}});
   }
 
-  openGraphView() {
-    this.editorState = 'graph';
-    this.noteService.selectNote(null);
+  openExploreAndLearnView(e) {
+    if (e.metaKey || e.ctrlKey) {
+      this.subviewManager.openExploreAndLearnInNewWindow();
+    } else {
+      this.subviewManager.openExploreAndLearnInActiveWindow();
+    }
   }
 
   doSort(sortDirection: SortDirection) {
     this.currentSortDirection = sortDirection;
-  }
-
-  dragEnd(unit, {sizes}) {
-    // nothing here i guess?
   }
 
   @HostListener('window:keydown', ['$event'])
@@ -162,9 +147,13 @@ export class ZettelkastenComponent implements OnInit, AfterViewInit {
     const ctrlPressed = e.ctrlKey || e.metaKey;
     if (e.key === 'f' && ctrlPressed && e.shiftKey) {
       this.openSearchDialog();
-    } else if (e.key === 'n' && ctrlPressed) {
+    } else if (e.key === 'k' && ctrlPressed) {
       this.openNewNoteDialog();
     }
+  }
+
+  trackByFn(idx: number, subview: Subview) {
+    return subview.type === 'note' ? subview.noteId : subview.type;
   }
 }
 

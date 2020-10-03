@@ -3,6 +3,7 @@ import {MatDialogRef} from '@angular/material/dialog';
 import {NoteService} from '../note.service';
 import {FormattedSegment, SearchResult} from '../types';
 import {SettingsService, Theme} from '../settings.service';
+import {SubviewManagerService} from '../subview-manager.service';
 
 @Component({
   selector: 'app-search-dialog',
@@ -19,7 +20,7 @@ import {SettingsService, Theme} from '../settings.service';
       <div class="result"
            *ngFor="let result of this.searchResults; let idx = index"
            [class.focused-result]="idx==selectedListIndex">
-        <button (click)="onButtonPressed(result.noteId)"
+        <button (click)="onButtonPressed($event, result.noteId)"
                 class="result-link"
                 mat-button>
           <span *ngFor="let segment of result.titleSegments"
@@ -66,15 +67,15 @@ import {SettingsService, Theme} from '../settings.service';
       flex-direction: column;
       max-width: 100%;
     }
-    
+
     .focused-result {
       background-color: var(--selected-note-color);
     }
-    
+
     .content {
       color: var(--low-contrast-text-color);
     }
-      
+
     .result {
       align-items: center;
       display: flex;
@@ -93,6 +94,7 @@ export class SearchDialogComponent implements OnInit {
   constructor(
       public dialogRef: MatDialogRef<SearchDialogComponent>,
       private readonly noteService: NoteService,
+      private readonly subviewManager: SubviewManagerService,
       private readonly settingsService: SettingsService) {
     this.settingsService.themeSetting.subscribe(theme => {
       this.darkThemeActive = theme === Theme.DARK;
@@ -106,15 +108,23 @@ export class SearchDialogComponent implements OnInit {
   ngOnInit(): void {
   }
 
-  onButtonPressed(noteId: string) {
-    this.noteService.selectNote(noteId);
+  onButtonPressed(e: MouseEvent, noteId: string) {
+    if (e.metaKey || e.ctrlKey) {
+      this.subviewManager.openNoteInNewWindow(noteId);
+    } else {
+      this.subviewManager.openNoteInActiveWindow(noteId);
+    }
     this.close();
   }
 
   onKeyPress(e) {
     if (e.key === 'Enter') {
-      const newNoteId = this.searchResults[this.selectedListIndex].noteId;
-      this.noteService.selectNote(newNoteId);
+      const noteId = this.searchResults[this.selectedListIndex].noteId;
+      if (e.metaKey || e.ctrlKey) {
+        this.subviewManager.openNoteInNewWindow(noteId);
+      } else {
+        this.subviewManager.openNoteInActiveWindow(noteId);
+      }
       this.close();
     } else if (e.key === 'ArrowDown') {
       this.selectedListIndex = (this.selectedListIndex + 1) % this.searchResults.length;

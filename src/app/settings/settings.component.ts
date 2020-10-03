@@ -1,7 +1,7 @@
-import {Component, OnDestroy, OnInit} from '@angular/core';
+import {Component} from '@angular/core';
 import {MatDialogRef} from '@angular/material/dialog';
 import {SettingsService, Theme} from '../settings.service';
-import {BehaviorSubject, Subscription} from 'rxjs';
+import {BehaviorSubject} from 'rxjs';
 
 @Component({
   selector: 'app-settings',
@@ -14,7 +14,7 @@ import {BehaviorSubject, Subscription} from 'rxjs';
       <mat-option value="DEVICE">Follow Device Settings</mat-option>
     </mat-select>
   </mat-form-field>
-  
+
   <h3 id="ignored-tags-header">Ignored tags:</h3>
   <mat-chip-list aria-label="Ignored tags">
     <mat-chip *ngFor="let tag of ignoredTags | async">
@@ -34,7 +34,10 @@ export class SettingsComponent {
   selectedTheme: string;
   ignoredTags: BehaviorSubject<string[]>;
 
-  constructor(public dialogRef: MatDialogRef<SettingsComponent>, private readonly settingsService: SettingsService) { }
+  constructor(public dialogRef: MatDialogRef<SettingsComponent>,
+              private readonly settingsService: SettingsService) {
+    this.ignoredTags = settingsService.ignoredTags;
+  }
 
   changeTheme(e) {
     this.settingsService.setTheme(Theme[e.value]);

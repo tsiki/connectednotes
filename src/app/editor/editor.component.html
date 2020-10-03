@@ -5,9 +5,8 @@
   }
 
   #codemirror-container {
-    display: flex;
     height: calc(100% - var(--top-bar-height));
-    max-width: 700px;
+    /*max-width: 700px;*/
     width: 100%;
     margin: 10px 10px 10px 4px;
   }
@@ -17,6 +16,7 @@
   }
 
   #markdown-renderer {
+    overflow: auto;
     padding: 10px;
   }
 
@@ -55,17 +55,12 @@
     flex-grow: 0;
   }
 
-  #attachment-count {
-    bottom: 0;
-    right: 10px;
-    position: absolute;
-  }
-
   .title {
     background-color: inherit;
     border: 0;
     flex-grow: 1;
     margin: -5px 0 0 10px;
+    min-width: 0;
   }
 
   #title-container {
@@ -86,6 +81,7 @@
              type="text"
              matInput
              appAlreadyExistingNote
+             [matTooltip]="selectedNote?.title"
              [alreadyExistingTitle]="selectedNote?.title"
              [errorStateMatcher]="matcher"
              [(ngModel)]="noteTitle"
@@ -101,18 +97,29 @@
     </mat-error>
   </mat-form-field>
 
-  <button (click)="toggleSplitView()" mat-button matTooltip="show/hide rendered note">
+  <button mat-button (click)="toggleSplitView()" matTooltip="show/hide rendered note">
     <mat-icon>border_vertical</mat-icon>
   </button>
-  <button (click)="openAttachmentsDialog()" mat-button matTooltip="attachments for this note">
-    <mat-icon>attachment</mat-icon>
-    <span id="attachment-count">{{this.attachedFiles?.length || ''}}</span>
+  <button mat-button (click)="closeNote()" matTooltip="close note">
+    <mat-icon>close</mat-icon>
   </button>
-  <button (click)="openBackreferencesDialog()" mat-button matTooltip="backreferences">
-    <mat-icon>wifi_protected_setup</mat-icon>
-  </button>
-  <button (click)="deleteNote()" mat-button matTooltip="delete note">
-    <mat-icon>delete_outline</mat-icon>
+  <button mat-button matTooltip="show/hide rendered note" [matMenuTriggerFor]="optionsMenu">
+    <mat-icon>more_vert</mat-icon>
+    <mat-menu #optionsMenu="matMenu">
+      <button mat-menu-item (click)="openAttachmentsDialog()" matTooltip="attachments for this note">
+        <mat-icon>attachment</mat-icon>
+        attachments
+        <span *ngIf="this.attachedFiles?.length">({{this.attachedFiles?.length || ''}})</span>
+      </button>
+      <button mat-menu-item (click)="openBackreferencesDialog()" matTooltip="backreferences">
+        <mat-icon>wifi_protected_setup</mat-icon>
+        backreferences
+      </button>
+      <button mat-menu-item (click)="deleteNote()" matTooltip="delete note">
+        <mat-icon>delete_outline</mat-icon>
+        delete
+      </button>
+    </mat-menu>
   </button>
 </div>
 <div id="container">

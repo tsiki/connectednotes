@@ -110,7 +110,7 @@
     <button *ngFor="let noteId of tagGroup.noteIds; trackBy: trackByIdFn"
             [class.mat-button-toggle-checked]="selectedNoteIds.has(noteId)"
             class="note-link tag-group-note"
-            (click)="openNote(noteId)"
+            (click)="openNote($event, noteId)"
             mat-button>
       <span>{{ noteService.getNote(noteId).title }}<!--
       --><span class="unsaved-marker" *ngIf="unsavedNotes.has(noteId)">*</span></span>

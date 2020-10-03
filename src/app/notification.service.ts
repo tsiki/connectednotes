@@ -9,13 +9,16 @@ export class NotificationService {
 
   private unsavedNotes = new BehaviorSubject<string[]>([]);
   private sidebarNotifications = new BehaviorSubject<BackendStatusNotification[]>([]);
-
   unsaved = this.unsavedNotes.asObservable();
   sidebar = this.sidebarNotifications.asObservable();
 
   private clearStatusUpdateFns = new Map<string, number>();
 
   constructor() {}
+
+  createId() {
+    return new Date().getTime().toString() + Math.random().toString();
+  }
 
   // Create notification to sidebar
   toSidebar(notificationId: string, message: string, removeAfterMillis?: number) {

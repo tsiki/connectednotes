@@ -4,9 +4,11 @@ import {
   ElementRef,
   EventEmitter,
   HostListener,
+  Input,
   OnDestroy,
   OnInit,
   Output,
+  SecurityContext,
   ViewChild
 } from '@angular/core';
 import 'codemirror/addon/fold/foldgutter';
@@ -51,16 +53,19 @@ import * as CodeMirror from 'codemirror';
 import {NoteService} from '../note.service';
 import {fromEvent} from 'rxjs';
 import {debounceTime} from 'rxjs/operators';
-import {AttachedFile, NoteObject} from '../types';
+import {AttachedFile, FlashcardSuggestion, FlashcardSuggestionExtractionRule, NoteObject} from '../types';
 import {SettingsService, Theme} from '../settings.service';
 import {NotificationService} from '../notification.service';
 import * as marked from 'marked';
-import {MatDialog} from '@angular/material/dialog';
+import {MatDialog, MatDialogRef} from '@angular/material/dialog';
 import {AttachmentsDialogComponent} from '../attachments-dialog/attachments-dialog.component';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {BackreferencesDialogComponent} from '../backreferences-dialog/backreferences-dialog.component';
 import {ValidateImmediatelyMatcher} from '../already-existing-note.directive';
 import {PROGRAMMING_LANGUAGES} from './highlighted-programming-languages';
+import {SubviewManagerService} from '../subview-manager.service';
+import {DomSanitizer} from '@angular/platform-browser';
+import {FlashcardDialogComponent} from '../create-flashcard-dialog/flashcard-dialog.component';
 
 declare interface CodeMirrorHelper {
   commands: {
@@ -76,23 +81,36 @@ declare const ResizeObserver;
 const DARK_THEME = 'darcula';
 const LIGHT_THEME = 'default';
 
+const FC_SUGGESTION_EXTRACTION_RULES: FlashcardSuggestionExtractionRule[] = [
+  {
+    start: /[.?!]\s|^- |\d\. |[\r\n]|^/,
+    end: /[.?!]\s|[\r\n]|$/,
+    description: 'Match sentence',
+  },
+  {
+    start: /[\r\n]|^/,
+    end: /[\r\n]|$/,
+    description: 'Match paragraph',
+  }
+];
+
 @Component({
   selector: 'app-editor',
   templateUrl: './editor.component.html',
   styles: [],
 })
-export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
+export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterViewInit {
   @ViewChild('codemirror') cm: ElementRef;
   @ViewChild('cmContainer') cmContainer: ElementRef;
   @ViewChild('markdown') markdown: ElementRef;
   @ViewChild('titleRenameInput', { read: ElementRef }) titleRenameInput: ElementRef;
   @Output() contentChange = new EventEmitter();
+  @Input() noteId;
 
   noteTitle: string;
   editorState: 'editor'|'split' = 'editor';
   attachedFiles: AttachedFile[]|null = null;
   selectedNote: NoteObject|null = null;
-  noteDeleted = false;
   matcher = new ValidateImmediatelyMatcher();
 
   private codemirror: CodeMirror.EditorFromTextArea;
@@ -100,7 +118,9 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   private allNoteTitles: string[];
   private allTags: string[];
   private mouseEventWithCtrlActive = false;
+  private mouseEventWithCtrlAndShiftActive = false;
   private inlinedImages: Map<string, CodeMirror.LineWidget> = new Map();
+  private fcDialogRef: MatDialogRef<FlashcardDialogComponent>;
 
   private cmResizeObserver = new ResizeObserver(unused => {
     const {width, height} = this.cmContainer.nativeElement.getBoundingClientRect();
@@ -112,9 +132,11 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   constructor(
       public dialog: MatDialog,
       private readonly noteService: NoteService,
+      private readonly subviewManager: SubviewManagerService,
       private readonly settingsService: SettingsService,
       private readonly notifications: NotificationService,
-      private snackBar: MatSnackBar) {
+      private snackBar: MatSnackBar,
+      private sanitizer: DomSanitizer) {
     this.settingsService.themeSetting.subscribe(theme => {
       switch (theme) {
         case Theme.DARK:
@@ -127,70 +149,52 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.allNoteTitles = this.noteService?.notes.value?.map(n => n.title);
-    this.noteService.notesAndTagGroups.subscribe(val => this.allTags = val?.tagGroups.map(t => t.tag));
+    this.noteService.tagGroups.subscribe(val => this.allTags = val.map(t => t.tag));
 
-    this.noteService.selectedNotes.subscribe(newSelectedNotes => {
-      if (newSelectedNotes.length === 0) {
-        this.selectedNote = null;
-        this.codemirror?.setValue('');
-        return;
-      }
-      // Save changes for previous
-      if (this.selectedNote !== null) {
-        this.saveChanges();
-      }
-      this.selectedNote = newSelectedNotes[0];
+    // TODO: show spinner if we're still loading the contents of the note and DONT SAVE THE NOTE!!!!!!!!!!!!!!!!!!!
+    // DO NOT PUSH TO PROD UNTIL ABOVE IS RESOLVED!!!!!!
 
-      this.clearInlineImages();
-      this.codemirror.setValue(newSelectedNotes[0].content);
-      this.codemirror.focus();
-      this.codemirror.setCursor(0, 0);
-
-      if (this.noteService.attachmentMetadata.value) {
-        this.attachedFiles = this.noteService.attachmentMetadata.value[this.selectedNote.id];
-        this.inlineImages(); // This must be done after setting content
-      }
-    });
-
-    this.noteService.attachmentMetadata.subscribe(metadata => {
-      if (this.selectedNote && metadata && metadata.hasOwnProperty(this.selectedNote.id)) {
-        this.attachedFiles = metadata[this.selectedNote.id];
-        this.inlineImages();
-      }
-    });
+    this.selectedNote = this.noteService.getNote(this.noteId);
+    this.noteTitle = this.selectedNote.title;
+    this.attachedFiles = this.noteService.attachmentMetadata.value[this.selectedNote.id];
 
     this.noteService.notes.subscribe(newNotes => {
-      this.allNoteTitles = newNotes.map(note => note.title);
+      this.allNoteTitles = newNotes.map(n => n.title);
     });
 
     window.addEventListener('beforeunload', this.unloadListener);
   }
 
-  private clearInlineImages() {
-    for (const widget of this.inlinedImages.values()) {
-      this.codemirror.removeLineWidget(widget);
-    }
-    this.inlinedImages.clear();
-  }
-
   ngAfterViewInit(): void {
     this.initializeCodeMirror();
-    if (this.selectedNote) { // Might not be initialized at first
+    this.codemirror.setValue(this.selectedNote.content);
+    this.codemirror.focus();
+    this.codemirror.setCursor(0, 0);
+
+    this.noteService.attachmentMetadata.subscribe(metadata => {
+      if (this.selectedNote && metadata && metadata.hasOwnProperty(this.selectedNote.id)) {
+        this.attachedFiles = metadata[this.selectedNote.id];
+      }
+    });
+
+    if (this.selectedNote) {
       // TODO: we need to show something like 'no notes selected/created' or something
       this.codemirror.setValue(this.selectedNote.content);
     }
 
     this.contentChange.pipe(debounceTime(100)).subscribe(newContent => {
       if (this.editorState === 'split') {
-        // Currently not sanitizing html since you need to be logged into see anything and nothing's shareable
-        // Maybe one day when we enable shared notes this needs to be fixed
-        this.markdown.nativeElement.innerHTML = (marked as any)(newContent);
+        this.setRenderedMarkdown(newContent);
       }
     });
   }
 
-  initializeHighlightModes() {
+  private setRenderedMarkdown(content: string) {
+    const unsafeContent = (marked as any)(content);
+    this.markdown.nativeElement.innerHTML = this.sanitizer.sanitize(SecurityContext.HTML, unsafeContent);
+  }
+
+  private initializeHighlightModes() {
     CodeMirror.defineMode('multiplex',  (config) => {
       const codeModes = PROGRAMMING_LANGUAGES.map(({mimeType, selectors}) => {
         const escapedSelectors = selectors.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
@@ -293,8 +297,9 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     });
 
     // Enable ctrl/cmd + click to jump to a note or create new one
-    this.codemirror.on('mousedown', (cm, event) => {
-      this.mouseEventWithCtrlActive = event.metaKey || event.ctrlKey;
+    this.codemirror.on('mousedown', (cm, e) => {
+      this.mouseEventWithCtrlActive = e.metaKey || e.ctrlKey;
+      this.mouseEventWithCtrlAndShiftActive = this.mouseEventWithCtrlActive && e.shiftKey;
     });
     this.codemirror.on('cursorActivity', async (cm, event) => {
       if (this.mouseEventWithCtrlActive) {
@@ -317,11 +322,16 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
         if (startIdx !== 0 && endIdx !== end.length) {
           const noteTitle = start.substr(startIdx) + end.substr(0, endIdx);
           const note = this.noteService.notes.value.find(n => n.title === noteTitle);
+          let noteId;
           if (note) {
-            this.noteService.selectNote(note.id);
+            noteId = note.id;
           } else {
-            const noteId = await this.noteService.createNote(noteTitle);
-            this.noteService.selectNote(noteId);
+            noteId = await this.noteService.createNote(noteTitle);
+          }
+          if (this.mouseEventWithCtrlAndShiftActive) {
+            this.subviewManager.openNoteInNewWindow(noteId);
+          } else {
+            this.subviewManager.openNoteInActiveWindow(noteId);
           }
         }
       }
@@ -333,7 +343,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.cmResizeObserver.unobserve(this.cmContainer.nativeElement);
+    this.cmResizeObserver.disconnect();
     this.saveChanges();
     window.removeEventListener('beforeunload', this.unloadListener);
   }
@@ -374,6 +384,33 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     });
   }
 
+  private openNewFlashcardDialog() {
+    if (this.fcDialogRef) {
+      return;
+    }
+    const cursor = this.codemirror.getCursor();
+    const flashcardSuggestions = this.getFlashcardSuggestion(cursor);
+    const userSelection = this.codemirror.getSelection();
+    if (userSelection) {
+      const manualSuggestion = {
+        text: userSelection,
+        start: this.codemirror.getCursor('from'),
+        end: this.codemirror.getCursor('to'),
+      };
+      flashcardSuggestions.unshift(manualSuggestion);
+    }
+    this.fcDialogRef = this.dialog.open(FlashcardDialogComponent, {
+      position: { top: '10px' },
+      data: {
+        flashcardSuggestions,
+        tags: NoteService.getTagsForNoteContent(this.codemirror.getValue()),
+      },
+    });
+    this.fcDialogRef.componentInstance.selectNextSuggestion.subscribe(
+        (e) => this.codemirror.setSelection(e.start, e.end));
+    this.fcDialogRef.afterClosed().subscribe(() => this.fcDialogRef = null);
+  }
+
   openBackreferencesDialog() {
     this.dialog.open(BackreferencesDialogComponent, {
       position: { top: '10px' },
@@ -386,16 +423,11 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       this.editorState = 'split';
       // Needs to be async since markdown isn't inserted into the dom at this point yet
       setTimeout(() => {
-        const content = this.getContent();
-        this.markdown.nativeElement.innerHTML = (marked as any)(content);
+        this.setRenderedMarkdown(this.codemirror.getValue());
       });
     } else {
       this.editorState = 'editor';
     }
-  }
-
-  getContent() {
-    return this.codemirror.getValue();
   }
 
   @HostListener('drop', ['$event'])
@@ -406,7 +438,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     }
     const file = files[0];
     const name = file.name;
-    const notificationId = new Date().getTime().toString();
+    const notificationId = this.notifications.createId();
     this.notifications.toSidebar(notificationId, 'Uploading file');
     const fileId = await this.noteService.uploadFile(file, file.type, file.name);
     await this.noteService.attachUploadedFileToNote(this.selectedNote.id, fileId, file.name, file.type);
@@ -438,10 +470,14 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     const result = window.confirm(`Delete ${this.selectedNote.title}?`);
     if (result) {
       await this.noteService.deleteNote(this.selectedNote.id);
-      this.noteDeleted = true;
     }
   }
 
+  async closeNote() {
+    this.subviewManager.closeNote(this.selectedNote.id);
+  }
+
+  // TODO: for some reason (codemirror bug probably?) iamges won't show up intially
   private inlineImages() {
     if (!this.attachedFiles) {
       return;
@@ -473,7 +509,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       const [line, link] = JSON.parse(newLineAndLink);
       if (!this.inlinedImages.has(newLineAndLink)) {
         const imgElem = document.createElement('img');
-        imgElem.src = link;
+        imgElem.src = this.sanitizer.sanitize(SecurityContext.URL, link);
         imgElem.style.setProperty('max-width', '100%');
         // If we don't refresh CM after loading it seems codemirror 'misplaces' lines and thinks there's text in empty
         // areas and vice versa
@@ -482,5 +518,42 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
         this.inlinedImages.set(newLineAndLink, lineWidget);
       }
     }
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  shortcutHandler(e) {
+    const ctrlPressed = e.ctrlKey || e.metaKey;
+    if (e.key === 'j' && ctrlPressed) {
+      this.openNewFlashcardDialog();
+      e.stopPropagation();
+    }
+  }
+
+  private getFlashcardSuggestion(cursor: CodeMirror.Position): FlashcardSuggestion[] {
+    const line = this.codemirror.getLine(cursor.line);
+    const lineStart = line.slice(0, cursor.ch);
+    const lineEnd = line.slice(cursor.ch);
+    const suggestions: FlashcardSuggestion[] = [];
+    for (const extRule of FC_SUGGESTION_EXTRACTION_RULES) {
+      // Make start regex global since we want to get the last match
+      const startRegex = new RegExp(extRule.start, extRule.start.flags + 'g');
+      const allMatches = Array.from(lineStart.matchAll(startRegex));
+      const startMatch = allMatches[allMatches.length - 1];
+      let startIdx = startMatch.index;
+      if (!extRule.isStartInclusive) {
+        startIdx += startMatch[0].length;
+      }
+      const endMatch = lineEnd.match(extRule.end);
+      let endIdx = endMatch.index;
+      if (extRule.isEndInclusive) {
+        endIdx += endMatch[0].length;
+      }
+      suggestions.push({
+        text: lineStart.slice(startIdx) + lineEnd.slice(0, endIdx),
+        start: {ch: startIdx, line: cursor.line},
+        end: {ch: lineStart.length + endIdx, line: cursor.line},
+      });
+    }
+    return suggestions;
   }
 }

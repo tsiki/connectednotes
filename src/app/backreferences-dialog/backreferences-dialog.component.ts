@@ -1,9 +1,8 @@
-import {Component, Inject, OnDestroy, OnInit} from '@angular/core';
-import {AttachedFile, NoteObject} from '../types';
-import {Sort} from '@angular/material/sort';
-import {Subscription} from 'rxjs';
+import {Component, Inject} from '@angular/core';
+import {NoteObject} from '../types';
 import {MAT_DIALOG_DATA, MatDialogRef} from '@angular/material/dialog';
 import {NoteService} from '../note.service';
+import {SubviewManagerService} from '../subview-manager.service';
 
 @Component({
   selector: 'app-backreferences-dialog',
@@ -11,7 +10,7 @@ import {NoteService} from '../note.service';
     <button *ngFor="let ref of backrefs"
             class="result-link"
             mat-button
-            (click)="selectNote(ref.id)">
+            (click)="selectNote($event, ref.id)">
       {{ ref.title }}
     </button>`,
   styles: [`
@@ -28,13 +27,18 @@ export class BackreferencesDialogComponent {
   constructor(
       @Inject(MAT_DIALOG_DATA) public data: any,
       public dialogRef: MatDialogRef<BackreferencesDialogComponent>,
-      private readonly noteService: NoteService) {
+      private readonly noteService: NoteService,
+      private readonly subviewManager: SubviewManagerService) {
     this.noteId = data.noteId;
     this.backrefs = this.noteService.getBackreferences(this.noteId);
   }
 
-  selectNote(noteId: string) {
-    this.noteService.selectNote(noteId);
+  selectNote(e: MouseEvent, noteId: string) {
+    if (e.metaKey || e.ctrlKey) {
+      this.subviewManager.openNoteInNewWindow(noteId);
+    } else {
+      this.subviewManager.openNoteInActiveWindow(noteId);
+    }
     this.dialogRef.close();
   }
 }

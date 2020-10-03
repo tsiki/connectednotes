@@ -2,15 +2,15 @@ import {Injectable, Injector} from '@angular/core';
 import {BehaviorSubject, combineLatest} from 'rxjs';
 import {GoogleDriveService} from './backends/google-drive.service';
 import {
-  AttachmentMetadata,
+  AttachmentMetadata, Flashcard,
   NoteAndLinks,
   NoteObject,
-  NotesAndTagGroups,
   RenameResult,
   StorageBackend,
   TagGroup, UserSettings
 } from './types';
 import {Router} from '@angular/router';
+import {JSON_MIMETYPE, TEXT_MIMETYPE} from './constants';
 
 export enum Backend {
   FIREBASE,
@@ -23,7 +23,8 @@ export enum Backend {
 export class NoteService {
 
   notes: BehaviorSubject<NoteObject[]> = new BehaviorSubject(null);
-  notesAndTagGroups: BehaviorSubject<NotesAndTagGroups> = new BehaviorSubject(null);
+  tagGroups: BehaviorSubject<TagGroup[]> = new BehaviorSubject(null);
+  flashcards: BehaviorSubject<Flashcard[]> = new BehaviorSubject(null);
   selectedNotes: BehaviorSubject<NoteObject[]> = new BehaviorSubject([]);
   storedSettings = new BehaviorSubject<UserSettings>(null);
   attachmentMetadata = new BehaviorSubject<AttachmentMetadata>(null);
@@ -35,6 +36,10 @@ export class NoteService {
   private noteTitleToNoteCaseInsensitive?: Map<string, NoteObject>;
 
   constructor(private injector: Injector, private router: Router) {}
+
+  static getTagsForNoteContent(noteContent: string): string[] {
+    return noteContent.match(/(^|\W)(#((?![#])[\S])+)/ig);
+  }
 
   static fileIdToLink(fileId: string) {
     return `https://drive.google.com/uc?id=${fileId}`;
@@ -49,13 +54,16 @@ export class NoteService {
       this.backend.initialize();
     }
     this.backendType = backendType;
-    this.backend.storedSettings.subscribe(newSettings => {
-      this.storedSettings.next(newSettings);
-    });
+    this.backend.storedSettings.subscribe(newSettings => this.storedSettings.next(newSettings));
     this.backend.attachmentMetadata.subscribe(newVal => this.attachmentMetadata.next(newVal));
     this.backend.notes.subscribe(newNotes => {
       if (newNotes) {
         this.notes.next(newNotes);
+      }
+    });
+    this.backend.flashcards.subscribe(fcs => {
+      if (fcs) {
+        this.flashcards.next(fcs);
       }
     });
     this.notes.subscribe(newNotes => {
@@ -73,13 +81,11 @@ export class NoteService {
     combineLatest([this.notes, this.storedSettings]).subscribe(notesAndSettings => {
       const [notes, settings] = notesAndSettings;
       if (notes && settings) {
-        const tagGroups = this.extractTagGroups(notes);
-        this.notesAndTagGroups.next({tagGroups, notes});
+        this.tagGroups.next(NoteService.extractTagGroups(notes, settings.ignoredTags || []));
       }
     });
 
     this.notes.next(this.backend.notes.value);
-    this.backend.requestRefreshAllNotes();
   }
 
   getNote(noteId: string) {
@@ -95,24 +101,26 @@ export class NoteService {
   }
 
   async createNote(title: string): Promise<string> {
-    const newNote = await this.backend.createNote(title);
+    const newNoteFile = await this.backend.createNote(title);
+    const newNote = Object.assign({content: ''}, newNoteFile);
+    console.log(newNote);
+    this.noteIdToNote.set(newNoteFile.id, newNote);
     const allNotes = this.notes.value;
     allNotes.push(newNote);
     this.notes.next(allNotes);
-    return newNote.id;
+    return newNoteFile.id;
   }
 
-  selectNote(noteId: string|null, updateUrl = true) {
-    // TODO: if notes aren't loaded yet we might not be able to load anything (eg. if noteid is defined in query param)
-    const note = this.notes.value.find(no => no.id === noteId) || null;
-    if (updateUrl) {
-      this.router.navigate(
-          [],
-          {
-            queryParams: { noteid: note?.id },
-          });
-    }
-    this.selectedNotes.next(note === null ? [] : [note]);
+  async createFlashcard(fc: Flashcard): Promise<Flashcard> {
+    const fileMetadata = await this.backend.createFlashcard(fc);
+    return Object.assign({
+      id: fileMetadata.id,
+      lastChangedEpochMillis: fileMetadata.lastChangedEpochMillis,
+    }, fc);
+  }
+
+  async saveFlashcard(fc: Flashcard) {
+    await this.backend.saveContent(fc.id, JSON.stringify(fc), false, JSON_MIMETYPE);
   }
 
   getBackreferences(noteId: string) {
@@ -188,7 +196,7 @@ export class NoteService {
       const note = this.noteIdToNote.get(noteId);
       note.content = content;
       note.lastChangedEpochMillis = new Date().getTime();
-      await this.backend.saveContent(noteId, content, notify);
+      await this.backend.saveContent(noteId, content, notify, TEXT_MIMETYPE);
       if (notify) {
         this.notes.next(this.notes.value);
       }
@@ -226,19 +234,19 @@ export class NoteService {
     return ans;
   }
 
-  private extractTagGroups(notes: NoteObject[]): TagGroup[] {
+  private static extractTagGroups(notes: NoteObject[], ignoredTags: string[]): TagGroup[] {
     const tagToNotes = new Map<string, Set<string>>();
     const tagToNewestTimestamp = new Map<string, number>();
     const tagToOldestTimestamp = new Map<string, number>();
     for (const note of notes) {
-      let tags = note.content.match(/(^|\W)(#((?![#])[\S])+)/ig);
+      let tags = this.getTagsForNoteContent(note.content);
       if (!tags || tags.length === 0) {
         tags = ['untagged'];
       }
       tags.push('all');
       for (const untrimmedTag of tags) {
         const tag = untrimmedTag.trim();
-        if (this.storedSettings.value?.ignoredTags?.includes(tag)) {
+        if (ignoredTags.includes(tag)) {
           continue;
         }
         if (!tagToNotes.has(tag)) {

@@ -40,6 +40,10 @@ import {MatSortModule} from '@angular/material/sort';
 import { BackreferencesDialogComponent } from './backreferences-dialog/backreferences-dialog.component';
 import { AlreadyExistingNoteDirective } from './already-existing-note.directive';
 import {MatChipsModule} from '@angular/material/chips';
+import { StudyComponent } from './study/study.component';
+import { ExploreAndStudyComponent } from './explore-and-study/explore-and-study.component';
+import {MatTabsModule} from '@angular/material/tabs';
+import { FlashcardDialogComponent } from './create-flashcard-dialog/flashcard-dialog.component';
 
 @NgModule({
   entryComponents: [CreateNoteDialog], // Not declared in template to must be here
@@ -56,6 +60,9 @@ import {MatChipsModule} from '@angular/material/chips';
     AttachmentsDialogComponent,
     BackreferencesDialogComponent,
     AlreadyExistingNoteDirective,
+    StudyComponent,
+    ExploreAndStudyComponent,
+    FlashcardDialogComponent,
   ],
     imports: [
         BrowserModule,
@@ -89,6 +96,7 @@ import {MatChipsModule} from '@angular/material/chips';
         MatSortModule,
         ReactiveFormsModule,
         MatChipsModule,
+        MatTabsModule,
     ],
   providers: [],
   bootstrap: [AppComponent]

@@ -1,5 +1,6 @@
-import {BehaviorSubject, Subject} from 'rxjs';
+import {BehaviorSubject} from 'rxjs';
 import {Theme} from './settings.service';
+import CodeMirror from 'codemirror';
 
 declare interface NoteFile {
   title: string; // Maps to file name when exported
@@ -19,13 +20,7 @@ declare interface TagGroup {
   newestTimestamp: number;
 }
 
-interface NotesAndTagGroups {
-  tagGroups: TagGroup[];
-  notes: NoteObject[];
-}
-
-
-declare interface NoteMetadata {
+declare interface FileMetadata {
   id: string;
   title: string;
   lastChangedEpochMillis: number;
@@ -65,25 +60,6 @@ interface BackendStatusNotification {
   message: string; // Actual message to be displayed to the user
 }
 
-interface StorageBackend {
-  notes: BehaviorSubject<NoteObject[]>;
-  storedSettings: BehaviorSubject<UserSettings>;
-  attachmentMetadata: BehaviorSubject<AttachmentMetadata>;
-  initialize();
-  signInIfNotSignedIn();
-  isSignedIn(): Promise<boolean>;
-  requestRefreshAllNotes();
-  updateSettings(settingKey: string, settingValue: string|string[]);
-  createNote(title: string): Promise<NoteObject>;
-  renameFile(noteId: string, newTitle: string): Promise<void>;
-  deleteFile(noteId: string);
-  saveContent(noteId: string, content: string, notify: boolean);
-  uploadFile(content: any, fileType: string, fileName: string): Promise<string>;
-  addAttachmentToNote(noteId: string, fileId: string, fileName: string, mimeType: string);
-  removeAttachmentFromNote(noteId: string, fileId: string);
-  logout();
-}
-
 interface UserSettings {
   theme?: Theme;
   ignoredTags?: string[];
@@ -97,4 +73,68 @@ interface AttachedFile {
   name: string;
   fileId: string;
   mimeType: string;
+}
+
+interface FlashcardLearningData {
+  easinessFactor: number;
+  numRepetitions: number;
+  prevRepetitionIntervalMillis: number;
+  prevRepetitionEpochMillis: number;
+}
+
+interface Flashcard {
+  id?: string; // Not set if unsaved
+  createdEpochMillis?: number; // Not set if unsaved
+  lastChangedEpochMillis?: number; // Not set if unsaved
+  tags: string[];
+  side1: string;
+  side2: string;
+  isTwoWay: boolean;
+  learningData: FlashcardLearningData;
+}
+
+// Rule for extracting a flashcard suggestion from text
+interface FlashcardSuggestionExtractionRule {
+  start: RegExp;
+  isStartInclusive?: boolean; // Defaults to false
+  end: RegExp;
+  isEndInclusive?: boolean; // Defaults to false
+  description?: string;
+}
+
+interface FlashcardSuggestion {
+  text: string;
+  start: CodeMirror.Position;
+  end: CodeMirror.Position;
+}
+
+export enum TextHidingLogic {
+  HIDE_EVERYTHING_TO_RIGHT,
+  HIDE_EVERYTHING_TO_LEFT,
+  HIDE_MATCHING_ONLY,
+}
+
+interface FlashcardTextHidingRule {
+  matcher: RegExp;
+  hidingLogic: TextHidingLogic[];
+}
+
+interface StorageBackend {
+  notes: BehaviorSubject<NoteObject[]>;
+  flashcards: BehaviorSubject<Flashcard[]>;
+  storedSettings: BehaviorSubject<UserSettings>;
+  attachmentMetadata: BehaviorSubject<AttachmentMetadata>;
+  initialize();
+  signInIfNotSignedIn();
+  isSignedIn(): Promise<boolean>;
+  updateSettings(settingKey: string, settingValue: string|string[]);
+  createNote(title: string): Promise<FileMetadata>;
+  createFlashcard(fc: Flashcard): Promise<FileMetadata>;
+  renameFile(fileId: string, newTitle: string): Promise<void>;
+  deleteFile(fileId: string);
+  saveContent(fileId: string, content: string, notify: boolean, mimeType: string);
+  uploadFile(content: any, fileType: string, fileName: string): Promise<string>;
+  addAttachmentToNote(noteId: string, fileId: string, fileName: string, mimeType: string);
+  removeAttachmentFromNote(noteId: string, fileId: string);
+  logout();
 }

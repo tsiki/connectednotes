@@ -46,27 +46,9 @@
   }
 
   #right-frame {
+    display: flex;
     height: 100%;
     width: 100%;
-  }
-
-  #graph-icon {
-    max-height: 100%;
-    max-width: 100%;
-    padding: 1px 4px 5px 4px;
-  }
-
-  #editor-container[hidden] {
-    display: none;
-  }
-
-  #editor-container {
-    display: block;
-    height: 100%;
-  }
-
-  #editor {
-    height: 100%;
   }
 
   /* make the draggable divider a bit narrower */
@@ -115,18 +97,18 @@
     flex-grow: 1;
   }
 
-  #sort-button {
-    /*position: relative;*/
-  }
-
-  #sort-options {
-    position: absolute;
+  .window-container {
+    flex-grow: 1;
+    min-height: 0;
+    min-width: 0;
+    height: 100%;
+    width: 100%;
   }
 </style>
 
 <div id="container">
   <as-split unit="pixel" direction="horizontal" (dragEnd)="dragEnd('percent', $event)" #split="asSplit">
-    <as-split-area [size]="250"
+    <as-split-area [size]="300"
                    #sidebar
                    #sidebarArea="asSplitArea"
                    [@openClose]="{value: sidebarCollapsed ? 'closed' : 'open', params: {curWidth: unCollapsedSidebarWidth}}">
@@ -136,21 +118,24 @@
             <button (click)="toggleSidebar()" mat-button matTooltip="toggle note list">
               <mat-icon>list</mat-icon>
             </button>
-            <button (click)="openNewNoteDialog()" mat-button matTooltip="new note (ctrl + n)">
+            <button (click)="openNewNoteDialog()" mat-button matTooltip="new note (ctrl + k)">
               <mat-icon>add</mat-icon>
             </button>
             <button (click)="openSearchDialog()" mat-button matTooltip="search notes (ctrl + shift + f)">
               <mat-icon>search</mat-icon>
             </button>
-            <button (click)="openGraphView()" mat-button matTooltip="view notes as a graph">
-              <mat-icon>
-                <img alt="graph"
-                     id="graph-icon"
-                     [class.dark-theme]="theme === 'dark'"
-                     src="./assets/img/graph-icon.png">
-              </mat-icon>
-            </button>
+<!--            <button (click)="openGraphView($event)" mat-button matTooltip="view notes as a graph">-->
+<!--              <mat-icon>-->
+<!--                <img alt="graph"-->
+<!--                     id="graph-icon"-->
+<!--                     [class.dark-theme]="theme === 'dark'"-->
+<!--                     src="./assets/img/graph-icon.png">-->
+<!--              </mat-icon>-->
+<!--            </button>-->
 
+            <button (click)="openExploreAndLearnView($event)" mat-button matTooltip="explore and study">
+              <mat-icon class="material-icons-outlined">school</mat-icon>
+            </button>
             <button id="sort-button"
                     mat-button
                     matTooltip="sort notes"
@@ -205,14 +190,12 @@
 
     <as-split-area size="*">
       <div id="right-frame">
-        <div id="editor-container" *ngIf="['editor', 'split'].includes(editorState)">
-          <app-editor
-            id="editor"
-            class="space-evenly"
-            #editor>
-          </app-editor>
+        <div class="window-container"
+             (focusin)="onWindowFocus(subview)"
+             *ngFor="let subview of subviewManager.subviews | async; trackBy: trackByFn">
+          <app-editor *ngIf="subview.type === 'note'" noteId="{{subview.noteId}}"></app-editor>
+          <app-explore-and-study *ngIf="subview.type === 'explore-and-study'"></app-explore-and-study>
         </div>
-        <app-graph *ngIf="editorState === 'graph'"></app-graph>
       </div>
     </as-split-area>
   </as-split>

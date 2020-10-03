@@ -1,24 +1,31 @@
 import { Injectable } from '@angular/core';
-import {BehaviorSubject, Subject, Subscription} from 'rxjs';
+import {BehaviorSubject} from 'rxjs';
 import {environment} from '../../environments/environment';
 import {HttpClient} from '@angular/common/http';
 import {
   AttachedFile,
   AttachmentMetadata,
-  BackendStatusNotification,
-  NoteMetadata,
+  FileMetadata, Flashcard,
   NoteObject,
   StorageBackend,
   UserSettings
 } from '../types';
 import {LocalCacheService} from './local-cache.service';
 import {NotificationService} from '../notification.service';
+import {JSON_MIMETYPE, TEXT_MIMETYPE} from '../constants';
 
 const ROOT_FOLDER_NAME = 'Connected Notes';
+const NOTES_FOLDER_NAME = 'Notes';
 const SETTINGS_AND_METADATA_FOLDER_NAME = 'Settings and Metadata';
 const ATTACHMENTS_FOLDER_NAME = 'Attachments';
+const FLASHCARDS_FOLDER_NAME = 'Flashcards';
 const SETTINGS_FILE_NAME = 'settings.json';
 const ATTACHMENT_METADATA_FILE_NAME = 'attachment_metadata.json';
+
+enum ItemType {
+  NOTE,
+  FLASHCARD,
+}
 
 @Injectable({
   providedIn: 'root'
@@ -26,24 +33,38 @@ const ATTACHMENT_METADATA_FILE_NAME = 'attachment_metadata.json';
 export class GoogleDriveService implements StorageBackend {
 
   notes = new BehaviorSubject<NoteObject[]>([]);
+  flashcards = new BehaviorSubject<Flashcard[]>([]);
   storedSettings = new BehaviorSubject<UserSettings>(null);
   attachmentMetadata = new BehaviorSubject<AttachmentMetadata>(null);
 
   private rootFolderId = new BehaviorSubject<string>(null);
+  private notesFolderId = new BehaviorSubject<string>(null);
   private settingAndMetadataFolderId = new BehaviorSubject<string>(null);
   private attachmentsFolderId = new BehaviorSubject<string>(null);
-  private storedSettingsFileId: string; // Not observable since we assume any settings update is done with delay
+  private flashcardsFolderId = new BehaviorSubject<string>(null);
+  // Not observable since we assume any settings update is done with delay
+  private storedSettingsFileId: string;
   private attachmentMetadataFileId: string;
-  private refreshSubscription: Subscription;
 
   constructor(private http: HttpClient, private cache: LocalCacheService, private notifications: NotificationService) {}
 
+  // Fetch/create all folders, notes and flashcards
   initialize() {
     this.signInIfNotSignedIn().then(() => {
-      this.requestRefreshAllNotes();
       this.fetchOrCreateFoldersAndFiles();
+      this.notesFolderId.subscribe(folderId => {
+        if (folderId) {
+          this.refreshAllNotes();
+        }
+      });
+      this.flashcardsFolderId.subscribe(folderId => {
+        if (folderId) {
+          this.refreshAllFlashcards();
+        }
+      });
     }).catch(async err => {
       this.notes.next(await this.cache.getAllNotesInCache());
+      this.flashcards.next(await this.cache.getAllFlashcardsInCache());
     });
   }
 
@@ -59,12 +80,16 @@ export class GoogleDriveService implements StorageBackend {
     const rootFolderId = await this.fetchOrCreateFolder(ROOT_FOLDER_NAME);
     this.rootFolderId.next(rootFolderId);
 
+    const notes = this.fetchOrCreateFolder(NOTES_FOLDER_NAME, this.rootFolderId.value);
     const settingsAndMetadata = this.fetchOrCreateFolder(SETTINGS_AND_METADATA_FOLDER_NAME, this.rootFolderId.value);
     const attachments = this.fetchOrCreateFolder(ATTACHMENTS_FOLDER_NAME, this.rootFolderId.value);
-    const resp = await Promise.all([settingsAndMetadata, attachments]);
+    const flashcards = this.fetchOrCreateFolder(FLASHCARDS_FOLDER_NAME, this.rootFolderId.value);
+    const folders = await Promise.all([notes, settingsAndMetadata, attachments, flashcards]);
 
-    this.settingAndMetadataFolderId.next(resp[0]);
-    this.attachmentsFolderId.next(resp[1]);
+    this.notesFolderId.next(folders[0]);
+    this.settingAndMetadataFolderId.next(folders[1]);
+    this.attachmentsFolderId.next(folders[2]);
+    this.flashcardsFolderId.next(folders[3]);
 
     // After folders, create or fetch files
 
@@ -128,65 +153,53 @@ export class GoogleDriveService implements StorageBackend {
     });
   }
 
-  requestRefreshAllNotes() {
-    if (!this.rootFolderId.value) {
-      if (!this.refreshSubscription) {
-        this.refreshSubscription = this.rootFolderId.subscribe(() => {
-          this.refreshAllNotes();
-          this.refreshSubscription = null;
-        });
-      }
-    } else {
-      this.refreshAllNotes();
-    }
-  }
-
   async updateSettings(settingKey: string, settingValue: string|string[]) {
     const current = this.storedSettings.getValue();
     current[settingKey] = settingValue;
-    await this.saveContent(this.storedSettingsFileId, JSON.stringify(current), true, 'application/json');
+    await this.saveContent(this.storedSettingsFileId, JSON.stringify(current), true, JSON_MIMETYPE);
     this.storedSettings.next(current);
   }
 
-  createNote(filename: string): Promise<NoteObject> {
-    return this.createFile(filename);
-  }
-
-  renameFile(noteId: string, newTitle: string) {
-    const req = gapi.client.drive.files.update({fileId: noteId, name: newTitle});
+  renameFile(fileId: string, newTitle: string) {
+    const req = gapi.client.drive.files.update({fileId, name: newTitle});
     return new Promise<void>((resolve, reject) => {
       req.execute(() => resolve());
     });
   }
 
-  deleteFile(noteId: string) {
-    const req = gapi.client.drive.files.delete({fileId: noteId});
+  deleteFile(fileId: string) {
+    const req = gapi.client.drive.files.delete({fileId});
     return new Promise<void>((resolve, reject) => {
       req.execute(() => resolve());
     });
   }
 
-  private async fetchNoteMetadata(): Promise<NoteMetadata[]> {
-    const noteMetadata: NoteMetadata[] = [];
+  // TODO NEXT: fetch all flashcards and basically handle them like we handle notes
+  private async fetchFileMetadata(mimeType: string, parentFolderId: string): Promise<FileMetadata[]> {
+    const fileMetadata: FileMetadata[] = [];
     let pageToken = null;
     do {
+      let query = `trashed = false and mimeType='${mimeType}'`;
+      if (parentFolderId) {
+        query += ` and '${parentFolderId}' in parents`;
+      }
       const generateListReqFn = () => gapi.client.drive.files.list({
-        q: "trashed = false and mimeType='text/plain'",
+        q: query,
         pageToken,
         // fields: `*` can be used for debugging, returns all fields
         fields: `nextPageToken, files(id, name, parents, modifiedTime)`,
         pageSize: 1000 // 1000 is the max value
       });
       const resp = await this.awaitPromiseWithRetry(generateListReqFn);
-      const notes = resp.result.files.map(note => ({
-        id: note.id,
-        title: note.name,
-        lastChangedEpochMillis: new Date(note.modifiedTime).getTime(),
+      const files = resp.result.files.map(f => ({
+        id: f.id,
+        title: f.name,
+        lastChangedEpochMillis: new Date(f.modifiedTime).getTime(),
       }));
       pageToken = (resp as any).nextPageToken;
-      noteMetadata.push(...notes);
+      fileMetadata.push(...files);
     } while (pageToken);
-    return noteMetadata;
+    return fileMetadata;
   }
 
   private async fetchOrCreateFolder(folderName: string, parentFolder?: string) {
@@ -217,7 +230,7 @@ export class GoogleDriveService implements StorageBackend {
   private async fetchOrCreateJsonFile(fileName: string, parentFolder: string): Promise<[string, {}]> {
     const metadataReq = await gapi.client.drive.files.list({
       q: `trashed = false and
-          mimeType='application/json' and
+          mimeType='${JSON_MIMETYPE}' and
           '${parentFolder}' in parents and
           name='${fileName}'`,
       fields: `nextPageToken, files(id, name, parents, modifiedTime)`,
@@ -226,14 +239,14 @@ export class GoogleDriveService implements StorageBackend {
 
     if (metadataReq.result.files.length > 0) {
       const fileId = metadataReq.result.files[0].id;
-      const promise = this.fetchContents([fileId]).next().value;
+      const promise = this.fetchContents([fileId])[0];
       // If the file is new it doesn't contain any settings, and isn't JSON parseable -> use empty object as placeholder
       return [fileId, JSON.parse(await promise || '{}')];
     }
     const creationResp = await gapi.client.drive.files.create({
       resource: {
         name: fileName,
-        mimeType: 'application/json',
+        mimeType: JSON_MIMETYPE,
         parents: [parentFolder],
       },
       fields: 'id'
@@ -251,60 +264,133 @@ export class GoogleDriveService implements StorageBackend {
         .access_token;
   }
 
+  // Delete files from cache if they're not in 'allIds' but are in 'cachedIds'.
+  private async removeDeletedIdsFromCache(itemType: ItemType, allIds: string[], cachedIds: IterableIterator<string>) {
+    const allIdsSet = new Set(allIds);
+    for (const cachedId of cachedIds) {
+      if (!allIdsSet.has(cachedId)) {
+        if (itemType === ItemType.NOTE) {
+          this.cache.deleteNoteFromCache(cachedId);
+        } else if (itemType === ItemType.FLASHCARD) {
+          this.cache.deleteFlashcardFromCache(cachedId);
+        }
+      }
+    }
+  }
+
+  // TODO: is there seriously no way to merge this and refreshAllNotes???
+  private async refreshAllFlashcards() {
+    const notificationId = this.notifications.createId();
+    this.notifications.toSidebar(notificationId.toString(), 'Syncing flashcards...');
+
+    let flashcardMetadata: FileMetadata[];
+    try {
+      flashcardMetadata = await this.fetchFileMetadata(JSON_MIMETYPE, this.flashcardsFolderId.value);
+    } catch (e) {
+      this.notifications.toSidebar(
+          notificationId,
+          'Fetching metadata for flashcards failed. Displaying only cached flashcards.',
+          10_000);
+      flashcardMetadata = null;
+    }
+    console.log(flashcardMetadata);
+
+    const cachedIdToLastChanged = await this.cache.getAllFlashcardIdToLastChangedTimestamp();
+    this.removeDeletedIdsFromCache(
+        ItemType.FLASHCARD,
+        flashcardMetadata?.map(n => n.id),
+        cachedIdToLastChanged.keys());
+
+    // Then, only consider the flashcards which have newer version on drive
+    const flashcardsWithNewerVersion = flashcardMetadata
+            ?.filter(n => n.lastChangedEpochMillis > (cachedIdToLastChanged.get(n.id) || 0))
+        || [];
+
+    // Get up-to-date cached flashcards
+    const cachedFlashcards = await this.cache.getAllFlashcardsInCache();
+    const newerFlashcardIds = new Set(flashcardsWithNewerVersion.map(n => n.id));
+    const upToDateCachedFlashcards = cachedFlashcards.filter(fc => !newerFlashcardIds.has(fc.id));
+    this.flashcards.next(upToDateCachedFlashcards);
+    if (flashcardsWithNewerVersion.length === 0) {
+      this.notifications.toSidebar(notificationId, 'Syncing flashcards... done', 3000);
+    }
+
+    let doneCount = 0;
+    let failCount = 0;
+    const failNotificationId = this.notifications.createId();
+
+    // Now fetch the content of the flashcards for which we don't have the newest version for.
+    const flashcardContentFetchPromises = this.fetchContents(flashcardsWithNewerVersion.map(n => n.id));
+    for (let i = 0; i < flashcardsWithNewerVersion.length; i++) {
+      const promise = flashcardContentFetchPromises[i];
+      const metadata = flashcardsWithNewerVersion[i];
+      promise.then(flashcardTxtJson => {
+        const updatedFlashcard: Flashcard = JSON.parse(flashcardTxtJson);
+        updatedFlashcard.id = metadata.id;
+        this.cache.addOrUpdateFlashcardInCache(metadata.id, updatedFlashcard);
+        this.flashcards.value.push(updatedFlashcard);
+        this.flashcards.next(this.flashcards.value);
+        doneCount++;
+        this.notifications.toSidebar(
+            notificationId.toString(),
+            `Syncing flashcards (${doneCount}/${flashcardsWithNewerVersion.length})`,
+            5000);
+      }).catch(err => {
+        failCount++;
+        this.notifications.toSidebar(failNotificationId.toString(),
+            `Failed to sync (${failCount}} flashcards - refresh might help?`,
+            10_000);
+      });
+    }
+  }
+
   /**
-   * Get all files. TODO: long function is loooong
+   * Get all files. TODO: long function is long
    */
   private async refreshAllNotes() {
-    const notificationId = new Date().getTime();
+    const notificationId = this.notifications.createId();
     this.notifications.toSidebar(notificationId.toString(), 'Syncing notes...');
 
     let noteMetadata;
     try {
-      noteMetadata = await this.fetchNoteMetadata();
+      noteMetadata = await this.fetchFileMetadata(TEXT_MIMETYPE, this.notesFolderId.value);
     } catch (e) {
       this.notifications.toSidebar(
-          notificationId.toString(),
+          notificationId,
           'Fetching metadata for notes failed. Displaying only cached notes.',
           10_000);
       noteMetadata = null;
     }
 
     const noteIdToLastChanged = await this.cache.getAllNoteIdToLastChangedTimestamp();
-    // Delete notes from cache that aren't there anymore
-    if (noteMetadata !== null) {
-      const existingNoteIds = new Set(noteMetadata?.map(n => n.id)); // inserting null creates empty set
-      for (const noteIdInCache of noteIdToLastChanged.keys()) {
-        if (!existingNoteIds.has(noteIdInCache)) {
-          this.cache.deleteFromCache(noteIdInCache);
-        }
-      }
-    }
+    this.removeDeletedIdsFromCache(
+        ItemType.NOTE,
+        noteMetadata?.map(n => n.id),
+        noteIdToLastChanged.keys());
 
     // Then, only consider the notes which have newer version on drive
     const notesWithNewerVersion = noteMetadata
         ?.filter(n => n.lastChangedEpochMillis > (noteIdToLastChanged.get(n.id) || 0))
         || [];
 
-    // Now fetch the content of the notes for which we don't have the newest version for.
-    // TODO don't wait for all notes to be loaded
-    const noteContentGenerator = this.fetchContents(notesWithNewerVersion.map(n => n.id));
-
     const cachedNotes = await this.cache.getAllNotesInCache();
     const newerNoteIds = new Set(notesWithNewerVersion.map(n => n.id));
     const upToDateCachedNotes = cachedNotes.filter(note => !newerNoteIds.has(note.id));
     this.notes.next(upToDateCachedNotes);
     if (notesWithNewerVersion.length === 0) {
-      this.notifications.toSidebar(notificationId.toString(), 'Syncing notes... done', 3000);
+      this.notifications.toSidebar(notificationId, 'Syncing notes... done', 3000);
     }
 
-    let idx = 0;
     let doneCount = 0;
     let failCount = 0;
-    const failNotificationId = new Date().getTime() + 1e9;
-    let it = noteContentGenerator.next();
-    while (!it.done) {
-      const promise = it.value;
-      const metadata = notesWithNewerVersion[idx];
+    const failNotificationId = this.notifications.createId();
+
+    // Now fetch the content of the notes for which we don't have the newest version for.
+    // TODO don't wait for all notes to be loaded
+    const noteContentFetchPromises = this.fetchContents(notesWithNewerVersion.map(n => n.id));
+    for (let i = 0; i < notesWithNewerVersion.length; i++) {
+      const promise = noteContentFetchPromises[i];
+      const metadata = notesWithNewerVersion[i];
       promise.then(noteContent => {
         const updatedNote: NoteObject = {
           id: metadata.id,
@@ -326,22 +412,21 @@ export class GoogleDriveService implements StorageBackend {
             `Failed to sync (${failCount}} notes - refresh might help?`,
             10_000);
       });
-      idx++;
-      it = noteContentGenerator.next();
     }
   }
 
-  private *fetchContents(fileIds: string[]): IterableIterator<Promise<string>> {
+  private fetchContents(fileIds: string[]): Promise<string>[] {
     const requestIntervalMillis = 200;
+    const promises = [];
     for (let i = 0; i < fileIds.length; i++) {
       const promise = this.fetchSingleFileContents(fileIds[i], this.getToken(), i * requestIntervalMillis);
-      yield promise;
+      promises.push(promise);
     }
+    return promises;
   }
 
   private async fetchSingleFileContents(fileId: string, token: string, startDelayMillis: number = 0) {
     await new Promise(resolve => setTimeout(resolve, startDelayMillis));
-
     const requestGeneratorFn = () =>
         this.http.get(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
           headers: {
@@ -357,8 +442,8 @@ export class GoogleDriveService implements StorageBackend {
 
   // Exponential backoff with randomization
   private async awaitPromiseWithRetry<T>(requestGeneratorFn: () => Promise<T>): Promise<T> {
-    let backoffMillis = 100 + Math.random() * 200;
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    let backoffMillis = 200 + Math.random() * 400;
+    for (let attempt = 1; attempt <= 4; attempt++) {
       try {
         return await requestGeneratorFn();
       } catch (e) {
@@ -371,7 +456,7 @@ export class GoogleDriveService implements StorageBackend {
     }
   }
 
-  async saveContent(fileId: string, content: string, notify: boolean, mimeType = 'text/plain') {
+  async saveContent(fileId: string, content: string, notify: boolean, mimeType = TEXT_MIMETYPE) {
     if (!content) {
       return; // Don't save empty content, just in case there's some bug which overwrites the notes
     }
@@ -383,32 +468,40 @@ export class GoogleDriveService implements StorageBackend {
       },
       body: content});
 
-    // TODO: cache this - we need the last changed timestamp from the server
+    // TODO: cache this
     await req;
   }
 
-  createFile(filename: string): Promise<NoteObject> {
-    // TODO: check that the boundary isn't in the stringified version of contentJson
-    const boundary = '-------314159265358979323846';
+  async createNote(noteTitle: string): Promise<FileMetadata> {
+    return await this.createFile(noteTitle, this.notesFolderId.value);
+  }
+
+  async createFlashcard(fc: Flashcard): Promise<FileMetadata> {
+    return await this.createFile('fc', this.flashcardsFolderId.value, JSON.stringify(fc), JSON_MIMETYPE);
+  }
+
+  private async createFile(
+      filename: string,
+      parentFolder: string,
+      content = '',
+      mimeType = TEXT_MIMETYPE): Promise<FileMetadata> {
+    const boundary = '-------52891988385335693762';
     const delimiter = '\r\n--' + boundary + '\r\n';
     const closeDelim = '\r\n--' + boundary + '--';
 
-    const contentType = 'text/plain';
-
     const metadata = {
       name: filename,
-      mimeType: contentType,
-      parents: [this.rootFolderId.value],
+      mimeType,
+      parents: [parentFolder],
     };
 
     const multipartRequestBody =
       delimiter +
-      'Content-Type: application/json\r\n\r\n' +
+      `Content-Type: ${JSON_MIMETYPE}\r\n\r\n` +
       JSON.stringify(metadata) +
       delimiter +
-      'Content-Type: ' + contentType + '\r\n\r\n' +
-      // here we could attach content like so:
-      // 'lalalalalalalalalalalala' +
+      'Content-Type: ' + mimeType + '\r\n\r\n' +
+      content +
       closeDelim;
 
     const req = gapi.client.request({
@@ -420,16 +513,14 @@ export class GoogleDriveService implements StorageBackend {
       },
       body: multipartRequestBody});
 
-    return new Promise((resolve, reject) => {
-      req.execute(createdFileMetadata => {
-        resolve( {
-          id: (createdFileMetadata as any).id,
-          title: filename,
-          content: '',
-          lastChangedEpochMillis: new Date().getTime() // TODO: get the timestamp from server
-        });
-      });
-    });
+    const resp = await req;
+    // lastChanged is accurate down to second, not millis, but it's good enough
+    const lastChanged = new Date((resp.headers as any).date).getTime();
+    return {
+      id: (resp as any).result.id,
+      title: filename,
+      lastChangedEpochMillis: lastChanged,
+    };
   }
 
   /**
@@ -481,13 +572,13 @@ export class GoogleDriveService implements StorageBackend {
     };
     val[noteId].push(attachedFile);
     this.attachmentMetadata.next(val);
-    await this.saveContent(this.attachmentMetadataFileId, JSON.stringify(val), false, 'application/json');
+    await this.saveContent(this.attachmentMetadataFileId, JSON.stringify(val), false, JSON_MIMETYPE);
   }
 
   async removeAttachmentFromNote(noteId: string, fileId: string) {
     const val = this.attachmentMetadata.value;
     val[noteId] = val[noteId].filter(attachment => attachment.fileId !== fileId);
     this.attachmentMetadata.next(val);
-    await this.saveContent(this.attachmentMetadataFileId, JSON.stringify(val), false, 'application/json');
+    await this.saveContent(this.attachmentMetadataFileId, JSON.stringify(val), false, JSON_MIMETYPE);
   }
 }
