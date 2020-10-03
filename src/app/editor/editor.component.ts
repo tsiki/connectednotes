@@ -150,10 +150,6 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
 
   ngOnInit(): void {
     this.noteService.tagGroups.subscribe(val => this.allTags = val.map(t => t.tag));
-
-    // TODO: show spinner if we're still loading the contents of the note and DONT SAVE THE NOTE!!!!!!!!!!!!!!!!!!!
-    // DO NOT PUSH TO PROD UNTIL ABOVE IS RESOLVED!!!!!!
-
     this.selectedNote = this.noteService.getNote(this.noteId);
     this.noteTitle = this.selectedNote.title;
     this.attachedFiles = this.noteService.attachmentMetadata.value[this.selectedNote.id];

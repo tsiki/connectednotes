@@ -293,7 +293,6 @@ export class GoogleDriveService implements StorageBackend {
           10_000);
       flashcardMetadata = null;
     }
-    console.log(flashcardMetadata);
 
     const cachedIdToLastChanged = await this.cache.getAllFlashcardIdToLastChangedTimestamp();
     this.removeDeletedIdsFromCache(
