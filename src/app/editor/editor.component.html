@@ -109,7 +109,7 @@
       <button mat-menu-item (click)="openAttachmentsDialog()" matTooltip="attachments for this note">
         <mat-icon>attachment</mat-icon>
         attachments
-        <span *ngIf="this.attachedFiles?.length">({{this.attachedFiles?.length || ''}})</span>
+        <span *ngIf="this.attachedFiles?.length">({{this.attachedFiles?.length || '0'}})</span>
       </button>
       <button mat-menu-item (click)="openBackreferencesDialog()" matTooltip="backreferences">
         <mat-icon>wifi_protected_setup</mat-icon>
