@@ -115,7 +115,7 @@ export class ZettelkastenComponent implements OnInit {
     dialogRef.afterClosed().subscribe(async result => {
       if (result) { // result is undefined if user didn't create note
         const newNoteId = await this.noteService.createNote(result);
-        this.subviewManager.openNoteInNewWindow(newNoteId);
+        this.subviewManager.openNoteInActiveWindow(newNoteId);
       }
     });
   }

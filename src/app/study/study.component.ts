@@ -113,8 +113,6 @@ export class StudyComponent implements OnInit, OnDestroy {
     }
     this.noteService.saveFlashcard(fc);
     this.dueFcs = this.dueFcs.slice(1);
-    console.log('asd');
-    console.log(this.dueFcs);
     if (this.dueFcs.length > 0) {
       this.displayedFc = this.dueFcs[0];
     }

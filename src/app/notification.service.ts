@@ -37,7 +37,7 @@ export class NotificationService {
     }
 
     if (removeAfterMillis) {
-      const timeoutFnId = setTimeout(() => {
+      const timeoutFnId = window.setTimeout(() => {
         const newValue = this.sidebarNotifications.value.filter(s => s.id !== notificationId);
         this.sidebarNotifications.next(newValue);
         this.clearStatusUpdateFns.delete(notificationId);
