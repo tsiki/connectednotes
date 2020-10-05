@@ -187,7 +187,7 @@ export class GoogleDriveService implements StorageBackend {
         q: query,
         pageToken,
         // fields: `*` can be used for debugging, returns all fields
-        fields: `nextPageToken, files(id, name, parents, modifiedTime)`,
+        fields: `nextPageToken, files(id, name, parents, modifiedTime, createdTime)`,
         pageSize: 1000 // 1000 is the max value
       });
       const resp = await this.awaitPromiseWithRetry(generateListReqFn);
@@ -195,6 +195,7 @@ export class GoogleDriveService implements StorageBackend {
         id: f.id,
         title: f.name,
         lastChangedEpochMillis: new Date(f.modifiedTime).getTime(),
+        createdEpochMillis: new Date(f.createdTime).getTime(),
       }));
       pageToken = (resp as any).nextPageToken;
       fileMetadata.push(...files);
@@ -324,8 +325,12 @@ export class GoogleDriveService implements StorageBackend {
       const promise = flashcardContentFetchPromises[i];
       const metadata = flashcardsWithNewerVersion[i];
       promise.then(flashcardTxtJson => {
-        const updatedFlashcard: Flashcard = JSON.parse(flashcardTxtJson);
-        updatedFlashcard.id = metadata.id;
+        const updatedFlashcard: Flashcard = Object.assign({
+          id: metadata.id,
+          lastChangedEpochMillis: metadata.lastChangedEpochMillis,
+          createdEpochMillis: metadata.createdEpochMillis,
+        }, JSON.parse(flashcardTxtJson));
+
         this.cache.addOrUpdateFlashcardInCache(metadata.id, updatedFlashcard);
         this.flashcards.value.push(updatedFlashcard);
         this.flashcards.next(this.flashcards.value);
@@ -519,6 +524,7 @@ export class GoogleDriveService implements StorageBackend {
       id: (resp as any).result.id,
       title: filename,
       lastChangedEpochMillis: lastChanged,
+      createdEpochMillis: lastChanged, // I guess there's no better way?
     };
   }
 

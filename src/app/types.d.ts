@@ -24,6 +24,7 @@ declare interface FileMetadata {
   id: string;
   title: string;
   lastChangedEpochMillis: number;
+  createdEpochMillis: number;
 }
 
 declare interface FirebaseTimestamp {

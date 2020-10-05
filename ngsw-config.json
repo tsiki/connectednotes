@@ -11,7 +11,8 @@
           "/index.html",
           "/manifest.webmanifest",
           "/*.css",
-          "/*.js"
+          "/*.js",
+          "https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined"
         ]
       }
     }, {
