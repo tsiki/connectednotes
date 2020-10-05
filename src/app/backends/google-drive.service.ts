@@ -535,33 +535,35 @@ export class GoogleDriveService implements StorageBackend {
    * contents of the image. This is because I couldn't find a nice way to upload
    * everything in a single request.
    */
-  uploadFile(content: any, fileType: string, fileName: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const fileMetadata = {
-        name: fileName,
-        mimeType: fileType,
-        parents: [this.attachmentsFolderId.value],
+  async uploadFile(content: any, fileType: string, fileName: string): Promise<string> {
+    const fileMetadata = {
+      name: fileName,
+      mimeType: fileType,
+      parents: [this.attachmentsFolderId.value],
+    };
+    const newFileCreationReq = gapi.client.drive.files.create({
+      resource: fileMetadata,
+      fields: 'id'
+    });
+
+    const newFile = await newFileCreationReq;
+
+    const newFileId = newFile.result.id;
+    const reader = new FileReader();
+    return new Promise(resolve => {
+      reader.onload = async (e2) => {
+        const token = this.getToken();
+        const asBlob = new Blob([e2.target.result], {type: fileType});
+        const resp = await this.http.patch(`https://www.googleapis.com/upload/drive/v3/files/${newFileId}?uploadType=media`, asBlob, {
+          headers: {
+            'Content-Type': fileType,
+            Authorization: 'Bearer ' + token
+          },
+          withCredentials: true
+        }).toPromise();
+        resolve((resp as any).id);
       };
-      const newFileCreationReq = gapi.client.drive.files.create({
-        resource: fileMetadata,
-        fields: 'id'
-      });
-      newFileCreationReq.execute(newFile => {
-        const newFileId = newFile.result.id;
-        const reader = new FileReader();
-        reader.onload = (e2) => {
-          const token = this.getToken();
-          const asBlob = new Blob([e2.target.result], {type: fileType});
-          this.http.patch(`https://www.googleapis.com/upload/drive/v3/files/${newFileId}?uploadType=media`, asBlob, {
-            headers: {
-              'Content-Type': fileType,
-              Authorization: 'Bearer ' + token
-            },
-            withCredentials: true
-          }).subscribe(resp => resolve((resp as any).id));
-        };
-        reader.readAsArrayBuffer(content);
-      });
+      reader.readAsArrayBuffer(content);
     });
   }
 
