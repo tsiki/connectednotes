@@ -54,11 +54,24 @@
     font-weight: 500;
     margin-top: 20px;
   }
+
+  #loading-spinner {
+    align-items: center;
+    background-color: var(--primary-background-color);
+    display: flex;
+    justify-content: space-around;
+    position: absolute;
+    height: 100%;
+    width: 100%;
+  }
 </style>
 
 <div id="container">
 
 <!--  <canvas id="canvas" #canvas width="1000"></canvas>-->
+  <div id="loading-spinner" *ngIf="showSpinner">
+    <mat-spinner></mat-spinner>
+  </div>
 
   <h1 id="title">CONNECTED NOTES</h1>
 

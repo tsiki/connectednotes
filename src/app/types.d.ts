@@ -126,6 +126,8 @@ interface StorageBackend {
   storedSettings: BehaviorSubject<UserSettings>;
   attachmentMetadata: BehaviorSubject<AttachmentMetadata>;
   initialize();
+  // Loads any javascript needed for the backend to operate (should maybe be combined with 'initialize'?)
+  loadScript();
   signInIfNotSignedIn();
   isSignedIn(): Promise<boolean>;
   updateSettings(settingKey: string, settingValue: string|string[]);

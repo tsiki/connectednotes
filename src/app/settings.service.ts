@@ -13,7 +13,7 @@ export enum Theme {
 })
 export class SettingsService {
 
-  themeSetting = new BehaviorSubject<Theme>(Theme.DARK);
+  themeSetting = new BehaviorSubject<Theme>(Theme.DEVICE);
   ignoredTags = new BehaviorSubject<string[]>(null);
 
   colorSchemeListener = e => this.themeSetting.next(e.matches ? Theme.DARK : Theme.LIGHT);

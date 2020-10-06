@@ -49,7 +49,9 @@ export class GoogleDriveService implements StorageBackend {
   constructor(private http: HttpClient, private cache: LocalCacheService, private notifications: NotificationService) {}
 
   // Fetch/create all folders, notes and flashcards
-  initialize() {
+  async initialize() {
+    await this.loadScript();
+
     this.signInIfNotSignedIn().then(() => {
       this.fetchOrCreateFoldersAndFiles();
       this.notesFolderId.subscribe(folderId => {
@@ -65,6 +67,20 @@ export class GoogleDriveService implements StorageBackend {
     }).catch(async err => {
       this.notes.next(await this.cache.getAllNotesInCache());
       this.flashcards.next(await this.cache.getAllFlashcardsInCache());
+    });
+  }
+
+  loadScript() {
+    return new Promise((resolve, reject) => {
+      if (window.gapi) {
+        resolve();
+      }
+      const scriptElem = document.createElement('script');
+      scriptElem.src = 'https://apis.google.com/js/api.js';
+      scriptElem.type = 'text/javascript';
+      scriptElem.onload = () => resolve();
+      scriptElem.onerror = () => reject();
+      document.querySelector('head').appendChild(scriptElem);
     });
   }
 

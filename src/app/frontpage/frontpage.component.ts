@@ -11,23 +11,32 @@ const LINE_WIDTH = 15;
   selector: 'app-frontpage',
   templateUrl: './frontpage.component.html',
 })
-export class FrontpageComponent implements AfterViewInit {
+export class FrontpageComponent implements OnInit, AfterViewInit {
+  showSpinner = false;
+
   @ViewChild('canvas') canvas: ElementRef<HTMLCanvasElement>;
 
   private googleDriveBackend: StorageBackend;
 
   constructor(private router: Router, private injector: Injector) {
     this.googleDriveBackend = this.injector.get(GoogleDriveService);
-    this.checkIfSignedInAndMaybeRedirect();
+
   }
 
   async checkIfSignedInAndMaybeRedirect() {
     const signedIn = await this.googleDriveBackend.isSignedIn();
     if (signedIn) {
-      this.googleDriveBackend.signInIfNotSignedIn().then(() =>
+      await this.googleDriveBackend.signInIfNotSignedIn().then(() =>
           this.router.navigate(['gd'])
       );
     }
+  }
+
+  async ngOnInit() {
+    this.showSpinner = true;
+    await this.googleDriveBackend.loadScript();
+    await this.checkIfSignedInAndMaybeRedirect();
+    this.showSpinner = false;
   }
 
   ngAfterViewInit(): void {
