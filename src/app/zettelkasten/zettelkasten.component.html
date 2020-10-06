@@ -157,7 +157,7 @@
               </mat-menu>
             </button>
           </div>
-          <app-filelist #filelist id="note-list" *ngIf="!sidebarCollapsed" [sortDirection]="currentSortDirection">
+          <app-filelist #filelist id="note-list" [hidden]="sidebarCollapsed" [sortDirection]="currentSortDirection">
           </app-filelist>
         </div>
 

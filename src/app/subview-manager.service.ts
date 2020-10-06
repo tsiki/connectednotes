@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import {EventEmitter, Injectable} from '@angular/core';
 import {NoteService} from './note.service';
 import {BehaviorSubject} from 'rxjs';
 import {Router} from '@angular/router';
@@ -16,6 +16,7 @@ export class SubviewManagerService {
 
   subviews = new BehaviorSubject<Subview[]>([]);
   activeSubviewIdx: number|null = null;
+  somethingOpened = new EventEmitter();
 
   constructor(private readonly noteService: NoteService, private router: Router) {}
 
@@ -34,6 +35,7 @@ export class SubviewManagerService {
     const newSubviews = this.subviews.value.slice();
     newSubviews.push({type: 'note', noteId});
     this.subviews.next(newSubviews);
+    this.somethingOpened.emit();
   }
 
   openNoteInActiveWindow(noteId: string) {
@@ -44,12 +46,14 @@ export class SubviewManagerService {
     }
     newSubviews[this.activeSubviewIdx] = {type: 'note', noteId};
     this.subviews.next(newSubviews);
+    this.somethingOpened.emit();
   }
 
   openExploreAndLearnInNewWindow() {
     const newSubviews = this.subviews.value.slice();
     newSubviews.push({type: 'explore-and-study'});
     this.subviews.next(newSubviews);
+    this.somethingOpened.emit();
   }
 
   openExploreAndLearnInActiveWindow() {
@@ -60,6 +64,7 @@ export class SubviewManagerService {
     }
     newSubviews[this.activeSubviewIdx] = {type: 'explore-and-study'};
     this.subviews.next(newSubviews);
+    this.somethingOpened.emit();
   }
 
   closeNote(noteId: string) {

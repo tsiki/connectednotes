@@ -62,9 +62,15 @@ export class ZettelkastenComponent implements OnInit {
     readonly settingsService: SettingsService,
     public dialog: MatDialog,
     private cdr: ChangeDetectorRef,
-    private notifications: NotificationService) { }
+    private notifications: NotificationService,
+    private readonly elRef: ElementRef) { }
 
   ngOnInit(): void {
+    this.subviewManager.somethingOpened.subscribe(() => {
+      if (this.elRef.nativeElement.getBoundingClientRect().width < 600 && !this.sidebarCollapsed) {
+        this.toggleSidebar();
+      }
+    });
     this.settingsService.themeSetting.subscribe(newTheme => this.theme = newTheme);
 
     if (this.router.url.split('?')[0] === '/gd') {
@@ -103,7 +109,7 @@ export class ZettelkastenComponent implements OnInit {
   }
 
   toggleSidebar() {
-    // Keep track of sidebars size so we can also restore it to its former width
+    // Keep track of sidebars width so we can also restore it to its former glory
     if (!this.sidebarCollapsed) {
       this.unCollapsedSidebarWidth = this.sidebar.nativeElement.getBoundingClientRect().width;
     }
