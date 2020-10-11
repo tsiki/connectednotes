@@ -8,6 +8,8 @@ export enum Theme {
   DEVICE = 'device',
 }
 
+const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
+
 @Injectable({
   providedIn: 'root'
 })
@@ -15,6 +17,7 @@ export class SettingsService {
 
   themeSetting = new BehaviorSubject<Theme>(Theme.DEVICE);
   ignoredTags = new BehaviorSubject<string[]>(null);
+  flashcardInitialDelayPeriod = new BehaviorSubject<number[]>([MILLIS_PER_DAY, 6 * MILLIS_PER_DAY]);
 
   colorSchemeListener = e => this.themeSetting.next(e.matches ? Theme.DARK : Theme.LIGHT);
 

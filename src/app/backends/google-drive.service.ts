@@ -27,6 +27,14 @@ enum ItemType {
   FLASHCARD,
 }
 
+interface WindowWithGapi extends Window {
+  gapi: object;
+}
+
+declare var window: WindowWithGapi;
+declare var gapi: any;
+
+
 @Injectable({
   providedIn: 'root'
 })
@@ -206,7 +214,7 @@ export class GoogleDriveService implements StorageBackend {
         fields: `nextPageToken, files(id, name, parents, modifiedTime, createdTime)`,
         pageSize: 1000 // 1000 is the max value
       });
-      const resp = await this.awaitPromiseWithRetry(generateListReqFn);
+      const resp = await this.awaitPromiseWithRetry(generateListReqFn) as any;
       const files = resp.result.files.map(f => ({
         id: f.id,
         title: f.name,

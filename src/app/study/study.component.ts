@@ -3,6 +3,7 @@ import {NoteService} from '../note.service';
 import {Flashcard, FlashcardLearningData} from '../types';
 import {sortAscByNumeric, sortDescByNumeric} from '../utils';
 import {Subscription} from 'rxjs';
+import {SettingsService} from '../settings.service';
 
 const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -69,11 +70,13 @@ export class StudyComponent implements OnInit, OnDestroy {
 
   private sub: Subscription;
 
-  constructor(readonly noteService: NoteService) {
+  constructor(readonly noteService: NoteService, private readonly settings: SettingsService) {
     this.sub = this.noteService.flashcards.subscribe(fcs => {
-      console.log(fcs);
+      if (!fcs) {
+        return;
+      }
       this.allFcs = fcs;
-      this.dueFcs = StudyComponent.getDueFlashcards(fcs);
+      this.dueFcs = this.getDueFlashcards(fcs);
       const tagsToFlashcards = new Map<string, Flashcard[]>();
       for (const fc of fcs) {
         for (const tag of fc.tags) {
@@ -88,7 +91,7 @@ export class StudyComponent implements OnInit, OnDestroy {
       this.tagsAndFcs = tagsAndFcs;
       this.tagsToFcs = tagsToFlashcards;
 
-      this.dueFcs = StudyComponent.getDueFlashcards(fcs);
+      this.dueFcs = this.getDueFlashcards(fcs);
       // Present first note automatically
       this.displayedFc = this.dueFcs[0];
     });
@@ -119,9 +122,9 @@ export class StudyComponent implements OnInit, OnDestroy {
   }
 
   // Return flashcards that should be repeated, oldest one first.
-  private static getDueFlashcards(fcs: Flashcard[]) {
+  private getDueFlashcards(fcs: Flashcard[]) {
     const curTime = new Date().getTime();
-    const activeFcs = fcs.filter(fc => StudyComponent.getNextRepetitionTimeEpochMillis(fc) > curTime);
+    const activeFcs = fcs.filter(fc => this.getNextRepetitionTimeEpochMillis(fc) < curTime);
     sortAscByNumeric(activeFcs, fc => fc.learningData.prevRepetitionEpochMillis);
     return activeFcs;
   }
@@ -132,17 +135,15 @@ export class StudyComponent implements OnInit, OnDestroy {
     return Math.max(1.3, newEasiness);
   }
 
-  private static getNextRepetitionTimeEpochMillis(fc: Flashcard): number {
-    const curTime = new Date().getTime();
-    const prevRepetitionIntervalMillis = fc.learningData.prevRepetitionEpochMillis || fc.createdEpochMillis;
+  private getNextRepetitionTimeEpochMillis(fc: Flashcard): number {
+    const prevRepetitionIntervalMillis = fc.learningData.prevRepetitionIntervalMillis || fc.createdEpochMillis;
+    const prevRepetitionEpochMillis = fc.learningData.prevRepetitionEpochMillis || fc.createdEpochMillis;
     const {numRepetitions, easinessFactor} = fc.learningData;
-    if (numRepetitions === 0) {
-      return curTime + MILLIS_PER_DAY;
+    if (numRepetitions < this.settings.flashcardInitialDelayPeriod.value.length) {
+      return prevRepetitionEpochMillis + this.settings.flashcardInitialDelayPeriod.value[numRepetitions];
     }
-    if (numRepetitions === 1) {
-      return curTime + 6 * MILLIS_PER_DAY;
-    }
+
     const nextInterval = prevRepetitionIntervalMillis * easinessFactor;
-    return fc.learningData.prevRepetitionEpochMillis + nextInterval;
+    return prevRepetitionEpochMillis + nextInterval;
   }
 }
