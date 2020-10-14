@@ -486,6 +486,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
     for (const textMarker of this.hashtagTextMarkers) {
       textMarker.clear();
     }
+    this.hashtagTextMarkers.clear();
     const cursor = this.codemirror.getSearchCursor(/#[^\s#]+\s/);
     while (cursor.findNext()) {
       const txt = this.codemirror.getRange(cursor.from(), cursor.to()).trimEnd();
@@ -500,6 +501,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
     for (const textMarker of this.noteLinkTextMarkers) {
       textMarker.clear();
     }
+    this.noteLinkTextMarkers.clear();
     const cursor = this.codemirror.getSearchCursor(/\[\[.*?]]/);
     while (cursor.findNext()) {
       const from = { line: cursor.from().line, ch: cursor.from().ch + 2 };
