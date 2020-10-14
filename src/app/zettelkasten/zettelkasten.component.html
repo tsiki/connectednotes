@@ -7,7 +7,7 @@
     min-height: var(--top-bar-height);
   }
 
-  #left-end-button-container > button,
+  #left-end-button-container > *,
   #icon-menu > button {
     flex-grow: 1;
     min-width: 0;
@@ -31,7 +31,7 @@
     height: 100%;
   }
 
-  .vertical #left-end-button-container > button,
+  .vertical #left-end-button-container > *,
   .vertical #icon-menu > button {
     padding: 10px 0;
   }
@@ -104,6 +104,25 @@
     height: 100%;
     width: 100%;
   }
+
+  #save-status-indicator {
+    align-items: center;
+    display: flex;
+    justify-content: space-around;
+    transition: color 0.5s ease;
+  }
+
+  #save-status-indicator.unsaved {
+    color: var(--save-status-indicator-unsaved-changes-color);
+  }
+
+  #save-status-indicator.saving {
+    color: var(--save-status-indicator-saving-color);
+  }
+
+  #save-status-indicator.saved {
+    color: var(--save-status-indicator-everything-saved-color);
+  }
 </style>
 
 <div id="container">
@@ -171,6 +190,13 @@
             <button (click)="logout()" mat-button matTooltip="logout">
               <mat-icon>logout</mat-icon>
             </button>
+            <span id="save-status-indicator"
+                  [class.unsaved]="icon === 'unsaved'"
+                  [class.saving]="icon === 'saving'"
+                  [class.saved]="icon === 'saved'">
+              <mat-icon *ngIf="icon == 'saved'" matTooltip="all changed are saved">check</mat-icon>
+              <mat-icon *ngIf="icon == 'unsaved'" matTooltip="unsaved changes">clear</mat-icon>
+            </span>
             <button (click)="openSettings()" mat-button matTooltip="settings">
               <mat-icon class="material-icons-outlined">settings</mat-icon>
             </button>

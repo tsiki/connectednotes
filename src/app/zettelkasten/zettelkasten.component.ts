@@ -53,6 +53,7 @@ export class ZettelkastenComponent implements OnInit {
   unCollapsedSidebarWidth: number;
   activeStatusUpdates: BackendStatusNotification[] = [];
   currentSortDirection = SortDirection.MODIFIED_NEWEST_FIRST;
+  icon: string;
 
   constructor(
     private readonly route: ActivatedRoute,
@@ -101,6 +102,7 @@ export class ZettelkastenComponent implements OnInit {
       this.activeStatusUpdates = newNotifications;
       this.cdr.detectChanges();
     });
+    this.notifications.saveIcon.subscribe(newIcon => this.icon = newIcon);
   }
 
   logout() {

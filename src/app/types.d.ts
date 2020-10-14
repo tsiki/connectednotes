@@ -56,6 +56,11 @@ interface RenameResult {
   status: Promise<any>;
 }
 
+interface MessageStatusNotification {
+  id: string; // A notification can be overwritten by sending another notification with the same ID
+  message: string; // Actual message to be displayed to the user
+}
+
 interface BackendStatusNotification {
   id: string; // A notification can be overwritten by sending another notification with the same ID
   message: string; // Actual message to be displayed to the user

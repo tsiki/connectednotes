@@ -89,6 +89,7 @@
              autocomplete="off"
              [value]="selectedNote?.title"
              (keyup.enter)="executeRename($event.target.value)"
+             (blur)="executeRename($event.target.value)"
              (keyup.escape)="revertChangesAndBlur()">
 <!--      <span>*</span>-->
     </div>

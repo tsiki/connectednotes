@@ -66,6 +66,7 @@ import {PROGRAMMING_LANGUAGES} from './highlighted-programming-languages';
 import {SubviewManagerService} from '../subview-manager.service';
 import {DomSanitizer} from '@angular/platform-browser';
 import {FlashcardDialogComponent} from '../create-flashcard-dialog/flashcard-dialog.component';
+import {TextMarker} from 'codemirror';
 
 declare interface CodeMirrorHelper {
   commands: {
@@ -121,6 +122,8 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
   private mouseEventWithCtrlAndShiftActive = false;
   private inlinedImages: Map<string, CodeMirror.LineWidget> = new Map();
   private fcDialogRef: MatDialogRef<FlashcardDialogComponent>;
+  private hashtagTextMarkers = new Set<TextMarker>();
+  private noteLinkTextMarkers = new Set<TextMarker>();
 
   private cmResizeObserver = new ResizeObserver(unused => {
     const {width, height} = this.cmContainer.nativeElement.getBoundingClientRect();
@@ -336,6 +339,12 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
 
     // Inline images
     this.contentChange.pipe(debounceTime(100)).subscribe(e => this.inlineImages());
+
+    // Style hashtags
+    this.contentChange.pipe(debounceTime(100)).subscribe(e => this.styleHashtags());
+
+    // Style note links
+    this.contentChange.pipe(debounceTime(100)).subscribe(e => this.styleNoteLinks());
   }
 
   ngOnDestroy(): void {
@@ -350,8 +359,8 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
     if (noteId && this.selectedNote.content !== valueToSave) {
       await this.noteService.saveContent(this.selectedNote.id, valueToSave);
       const userSwitchedToOtherNote = noteId !== this.selectedNote?.id;
-      const noteChangedWhileSaving = valueToSave === this.codemirror.getValue();
-      if (noteChangedWhileSaving || userSwitchedToOtherNote) {
+      const noteUnchangedWhileSaving = valueToSave === this.codemirror.getValue();
+      if (noteUnchangedWhileSaving || userSwitchedToOtherNote) {
         this.notifications.noteSaved(noteId);
       }
     }
@@ -473,7 +482,37 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
     this.subviewManager.closeNote(this.selectedNote.id);
   }
 
-  // TODO: for some reason (codemirror bug probably?) iamges won't show up intially
+  private styleHashtags() {
+    for (const textMarker of this.hashtagTextMarkers) {
+      textMarker.clear();
+    }
+    const cursor = this.codemirror.getSearchCursor(/#[^\s#]+\s/);
+    while (cursor.findNext()) {
+      const txt = this.codemirror.getRange(cursor.from(), cursor.to()).trimEnd();
+      if (this.noteService.tagExists(txt)) {
+        const textMarker = this.codemirror.markText(cursor.from(), cursor.to(), {className: 'existing-tag'});
+        this.hashtagTextMarkers.add(textMarker);
+      }
+    }
+  }
+
+  private styleNoteLinks() {
+    for (const textMarker of this.noteLinkTextMarkers) {
+      textMarker.clear();
+    }
+    const cursor = this.codemirror.getSearchCursor(/\[\[.*?]]/);
+    while (cursor.findNext()) {
+      const from = { line: cursor.from().line, ch: cursor.from().ch + 2 };
+      const to = { line: cursor.to().line, ch: cursor.to().ch - 2 };
+      const txt = this.codemirror.getRange(from, to);
+      const note = this.noteService.getNoteForTitleCaseInsensitive(txt);
+      if (!note) {
+        const textMarker = this.codemirror.markText(from, to, {className: 'not-existing-note-link'});
+        this.noteLinkTextMarkers.add(textMarker);
+      }
+    }
+  }
+
   private inlineImages() {
     if (!this.attachedFiles) {
       return;

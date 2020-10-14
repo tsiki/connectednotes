@@ -34,6 +34,7 @@ export class NoteService {
   private noteIdToNote?: Map<string, NoteObject>;
   private noteTitleToNote?: Map<string, NoteObject>;
   private noteTitleToNoteCaseInsensitive?: Map<string, NoteObject>;
+  private tags = new Set<string>();
 
   constructor(private injector: Injector, private router: Router) {}
 
@@ -82,6 +83,7 @@ export class NoteService {
       const [notes, settings] = notesAndSettings;
       if (notes && settings) {
         this.tagGroups.next(NoteService.extractTagGroups(notes, settings.ignoredTags || []));
+        this.tags = new Set(this.tagGroups.value.map(t => t.tag));
       }
     });
 
@@ -94,6 +96,10 @@ export class NoteService {
 
   getNoteForTitleCaseInsensitive(title: string) {
     return this.noteTitleToNoteCaseInsensitive.get(title.toLowerCase());
+  }
+
+  tagExists(tag: string) {
+    return this.tags?.has(tag);
   }
 
   logout() {
@@ -201,7 +207,6 @@ export class NoteService {
         this.notes.next(this.notes.value);
       }
     }
-    return null;
   }
 
   async uploadFile(content: any, fileType: string, fileName: string): Promise<string> {

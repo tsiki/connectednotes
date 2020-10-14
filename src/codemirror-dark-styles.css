@@ -3,6 +3,14 @@
     From IntelliJ IDEA by JetBrains
  */
 
+.CodeMirror .existing-tag {
+    font-weight: 600;
+}
+
+.CodeMirror .not-existing-note-link {
+    color: #780000 !important;
+}
+
 .cm-formatted-code {
     font-family: monospace;
 }

@@ -9,7 +9,9 @@ export class NotificationService {
 
   private unsavedNotes = new BehaviorSubject<string[]>([]);
   private sidebarNotifications = new BehaviorSubject<BackendStatusNotification[]>([]);
+  private saveIconNotifications = new BehaviorSubject<string>(null);
   unsaved = this.unsavedNotes.asObservable();
+  saveIcon = this.saveIconNotifications.asObservable();
   sidebar = this.sidebarNotifications.asObservable();
 
   private clearStatusUpdateFns = new Map<string, number>();
@@ -49,12 +51,16 @@ export class NotificationService {
   noteSaved(fileId: string) {
     const curValues = this.unsavedNotes.value;
     const newValues = curValues.filter(noteId => noteId !== fileId);
+    if (newValues.length === 0) {
+      this.saveIconNotifications.next('saved');
+    }
     this.unsavedNotes.next(newValues);
   }
 
   unsavedChanged(fileId: string) {
     const newValues = this.unsavedNotes.value;
     newValues.push(fileId);
+    this.saveIconNotifications.next('unsaved');
     this.unsavedNotes.next(newValues);
   }
 }
