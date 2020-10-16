@@ -73,4 +73,11 @@ export class SubviewManagerService {
     subviews.splice(idx, 1);
     this.subviews.next(subviews);
   }
+
+  closeExploreAndStudy() {
+    const idx = this.subviews.value.findIndex(n => n.type === 'explore-and-study');
+    const subviews = this.subviews.value.slice();
+    subviews.splice(idx, 1);
+    this.subviews.next(subviews);
+  }
 }
