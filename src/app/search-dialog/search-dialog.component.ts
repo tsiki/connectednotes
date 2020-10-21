@@ -14,7 +14,7 @@ import {SubviewManagerService} from '../subview-manager.service';
              matInput
              [(ngModel)]="noteTitle"
              (keyup.enter)="close()"
-             (keyup)="onKeyPress($event)">
+             (keyup)="onKeyUp($event)">
     </mat-form-field>
     <div id="results-container">
       <div class="result"
@@ -117,10 +117,12 @@ export class SearchDialogComponent implements OnInit {
     this.close();
   }
 
-  onKeyPress(e) {
+  onKeyUp(e) {
     if (e.key === 'Enter') {
       const noteId = this.searchResults[this.selectedListIndex].noteId;
-      if (e.metaKey || e.ctrlKey) {
+      // Checking for e.metaKey doesn't work here because keyup doesn't trigger when metakey is pressed, see
+      // https://stackoverflow.com/questions/27380018/when-cmd-key-is-kept-pressed-keyup-is-not-triggered-for-any-other-key
+      if (e.ctrlKey) {
         this.subviewManager.openNoteInNewWindow(noteId);
       } else {
         this.subviewManager.openNoteInActiveWindow(noteId);

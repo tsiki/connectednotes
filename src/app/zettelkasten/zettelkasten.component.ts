@@ -29,7 +29,7 @@ export enum SortDirection {
     trigger('openClose', [
       state('open', style({
         flex: '0 0 {{curWidth}}px',
-      }), {params: {curWidth: 300}}),
+      }), {params: {curWidth: 250}}),
       state('closed', style({
         flex: '0 0 50px',
       })),
