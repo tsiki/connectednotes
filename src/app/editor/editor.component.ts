@@ -475,10 +475,11 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
     const result = window.confirm(`Delete ${this.selectedNote.title}?`);
     if (result) {
       await this.noteService.deleteNote(this.selectedNote.id);
+      this.closeNote();
     }
   }
 
-  async closeNote() {
+  closeNote() {
     this.subviewManager.closeView(this.selectedNote.id);
   }
 
