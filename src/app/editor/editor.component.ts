@@ -330,7 +330,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
           if (this.mouseEventWithCtrlAndShiftActive) {
             this.subviewManager.openNoteInNewWindow(noteId);
           } else {
-            this.subviewManager.openNoteInActiveWindow(noteId);
+            this.subviewManager.openViewInActiveWindow(noteId);
           }
         }
       }
@@ -479,7 +479,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
   }
 
   async closeNote() {
-    this.subviewManager.closeNote(this.selectedNote.id);
+    this.subviewManager.closeView(this.selectedNote.id);
   }
 
   private styleHashtags() {

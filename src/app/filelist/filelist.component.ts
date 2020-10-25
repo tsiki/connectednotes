@@ -38,8 +38,7 @@ export class FilelistComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.subviewManager.subviews.subscribe(subviews =>
-        this.selectedNoteIds = new Set(subviews.filter(s => s.type === 'note').map(s => s.noteId)));
+    this.subviewManager.activeNotes.subscribe(activeNotes => this.selectedNoteIds = new Set(activeNotes));
     this.noteService.tagGroups.asObservable().subscribe(tagGroups => {
       if (tagGroups) {
         this.tagGroups = tagGroups.slice();
@@ -97,7 +96,7 @@ export class FilelistComponent implements OnInit {
     if (e.metaKey || e.ctrlKey) {
       this.subviewManager.openNoteInNewWindow(noteId);
     } else {
-      this.subviewManager.openNoteInActiveWindow(noteId);
+      this.subviewManager.openViewInActiveWindow(noteId);
     }
   }
 

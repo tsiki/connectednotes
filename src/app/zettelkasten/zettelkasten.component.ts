@@ -12,7 +12,7 @@ import {NotificationService} from '../notification.service';
 import {MatSelect} from '@angular/material/select';
 import {FilelistComponent} from '../filelist/filelist.component';
 import {ValidateImmediatelyMatcher} from '../already-existing-note.directive';
-import {Subview, SubviewManagerService} from '../subview-manager.service';
+import {SubviewManagerService, ViewType} from '../subview-manager.service';
 
 
 export enum SortDirection {
@@ -54,6 +54,7 @@ export class ZettelkastenComponent implements OnInit {
   activeStatusUpdates: BackendStatusNotification[] = [];
   currentSortDirection = SortDirection.MODIFIED_NEWEST_FIRST;
   icon: string;
+  viewType = ViewType;
 
   constructor(
     private readonly route: ActivatedRoute,
@@ -93,7 +94,7 @@ export class ZettelkastenComponent implements OnInit {
     // });
   }
 
-  onWindowFocus(subview: Subview) {
+  onWindowFocus(subview: string) {
     this.subviewManager.setActiveSubview(subview);
   }
 
@@ -136,13 +137,38 @@ export class ZettelkastenComponent implements OnInit {
     this.dialog.open(SettingsComponent, {position: {top: '10px'}});
   }
 
-  openExploreAndLearnView(e) {
+  openLearnView(e) {
     if (e.metaKey || e.ctrlKey) {
-      this.subviewManager.openExploreAndLearnInNewWindow();
+      this.subviewManager.openFlashcardsInNewWindow();
     } else {
-      this.subviewManager.openExploreAndLearnInActiveWindow();
+      this.subviewManager.openFlashcardsInActiveWindow();
     }
   }
+
+  openGraphView(e) {
+    if (e.metaKey || e.ctrlKey) {
+      this.subviewManager.openGraphInNewWindow();
+    } else {
+      this.subviewManager.openGraphInActiveWindow();
+    }
+  }
+
+  // openExploreAndLearnView(e) {
+  //   if (e.metaKey || e.ctrlKey) {
+  //     this.subviewManager.openExploreAndLearnInNewWindow();
+  //   } else {
+  //     this.subviewManager.openExploreAndLearnInActiveWindow();
+  //   }
+  // }
+  //
+  //
+  // openExploreAndLearnView(e) {
+  //   if (e.metaKey || e.ctrlKey) {
+  //     this.subviewManager.openExploreAndLearnInNewWindow();
+  //   } else {
+  //     this.subviewManager.openExploreAndLearnInActiveWindow();
+  //   }
+  // }
 
   doSort(sortDirection: SortDirection) {
     this.currentSortDirection = sortDirection;
@@ -158,8 +184,12 @@ export class ZettelkastenComponent implements OnInit {
     }
   }
 
-  trackByFn(idx: number, subview: Subview) {
-    return subview.type === 'note' ? subview.noteId : subview.type;
+  trackByFn(idx: number, subview: string) {
+    return subview;
+  }
+
+  getViewType(subview: string): ViewType {
+    return SubviewManagerService.getViewType(subview);
   }
 }
 

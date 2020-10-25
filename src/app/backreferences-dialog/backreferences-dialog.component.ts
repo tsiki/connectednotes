@@ -37,7 +37,7 @@ export class BackreferencesDialogComponent {
     if (e.metaKey || e.ctrlKey) {
       this.subviewManager.openNoteInNewWindow(noteId);
     } else {
-      this.subviewManager.openNoteInActiveWindow(noteId);
+      this.subviewManager.openViewInActiveWindow(noteId);
     }
     this.dialogRef.close();
   }

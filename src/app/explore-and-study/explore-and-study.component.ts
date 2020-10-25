@@ -41,6 +41,6 @@ export class ExploreAndStudyComponent implements OnInit {
   }
 
   async closeView() {
-    this.subviewManager.closeExploreAndStudy();
+    // this.subviewManager.closeExploreAndStudy();
   }
 }

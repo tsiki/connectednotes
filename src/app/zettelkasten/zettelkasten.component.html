@@ -80,6 +80,11 @@
     justify-content: space-around;
   }
 
+  #graph-icon {
+    height: 100%;
+    padding: 1px 4px 5px 4px;
+  }
+
   #graph-icon.dark-theme {
     filter: invert(1);
   }
@@ -143,8 +148,16 @@
             <button (click)="openSearchDialog()" mat-button matTooltip="search notes (ctrl + shift + f)">
               <mat-icon>search</mat-icon>
             </button>
-            <button (click)="openExploreAndLearnView($event)" mat-button matTooltip="explore and study">
+            <button (click)="openLearnView($event)" mat-button matTooltip="study">
               <mat-icon class="material-icons-outlined">school</mat-icon>
+            </button>
+            <button (click)="openGraphView($event)" mat-button matTooltip="graph">
+              <mat-icon>
+                <img [class.dark-theme]="theme === 'dark'"
+                     alt="graph"
+                     id="graph-icon"
+                     src="./assets/img/graph-icon.png">
+              </mat-icon>
             </button>
             <button id="sort-button"
                     mat-button
@@ -210,8 +223,9 @@
         <div class="window-container"
              (focusin)="onWindowFocus(subview)"
              *ngFor="let subview of subviewManager.subviews | async; trackBy: trackByFn">
-          <app-editor *ngIf="subview.type === 'note'" noteId="{{subview.noteId}}"></app-editor>
-          <app-explore-and-study *ngIf="subview.type === 'explore-and-study'"></app-explore-and-study>
+          <app-editor *ngIf="getViewType(subview) === viewType.NOTE" noteId="{{subview}}"></app-editor>
+          <app-graph *ngIf="getViewType(subview) === viewType.GRAPH"></app-graph>
+          <app-study *ngIf="getViewType(subview) === viewType.FLASHCARDS"></app-study>
         </div>
       </div>
     </as-split-area>

@@ -112,7 +112,7 @@ export class SearchDialogComponent implements OnInit {
     if (e.metaKey || e.ctrlKey) {
       this.subviewManager.openNoteInNewWindow(noteId);
     } else {
-      this.subviewManager.openNoteInActiveWindow(noteId);
+      this.subviewManager.openViewInActiveWindow(noteId);
     }
     this.close();
   }
@@ -125,7 +125,7 @@ export class SearchDialogComponent implements OnInit {
       if (e.ctrlKey) {
         this.subviewManager.openNoteInNewWindow(noteId);
       } else {
-        this.subviewManager.openNoteInActiveWindow(noteId);
+        this.subviewManager.openViewInActiveWindow(noteId);
       }
       this.close();
     } else if (e.key === 'ArrowDown') {
