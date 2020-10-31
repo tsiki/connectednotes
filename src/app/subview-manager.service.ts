@@ -3,12 +3,6 @@ import {NoteService} from './note.service';
 import {BehaviorSubject} from 'rxjs';
 import {ActivatedRoute, Router} from '@angular/router';
 
-
-// export interface Subview {
-//   type: 'note'|'explore-and-study';
-//   noteId?: string;
-// }
-
 export enum ViewType {
   NOTE,
   GRAPH,
@@ -24,8 +18,6 @@ export class SubviewManagerService {
   activeNotes = new BehaviorSubject<string[]>([]);
   activeSubviewIdx: number|null = null;
   somethingOpened = new EventEmitter();
-
-  private currentSubviews: string[] = [];
 
   constructor(
       private readonly noteService: NoteService,
@@ -56,31 +48,36 @@ export class SubviewManagerService {
   }
 
   openNoteInNewWindow(noteId: string) {
-    this.currentSubviews.push(noteId);
-    this.updateUrl();
+    const views = this.subviews.value.slice();
+    views.push(noteId);
+    console.log(views);
+    this.updateUrl(views);
     this.somethingOpened.emit();
   }
 
   openViewInActiveWindow(viewId: string) {
-    if (this.currentSubviews.length === 0) {
-      this.currentSubviews.push(viewId);
+    const views = this.subviews.value.slice();
+    if (views.length === 0) {
+      views.push(viewId);
       this.activeSubviewIdx = 0;
     } else {
-      this.currentSubviews[this.activeSubviewIdx] = viewId;
+      views[this.activeSubviewIdx] = viewId;
     }
-    this.updateUrl();
+    this.updateUrl(views);
     this.somethingOpened.emit();
   }
 
   openGraphInNewWindow() {
-    this.currentSubviews.push('graph');
-    this.updateUrl();
+    const views = this.subviews.value.slice();
+    views.push('graph');
+    this.updateUrl(views);
     this.somethingOpened.emit();
   }
 
   openFlashcardsInNewWindow() {
-    this.currentSubviews.push('graph');
-    this.updateUrl();
+    const views = this.subviews.value.slice();
+    views.push('flashcards');
+    this.updateUrl(views);
     this.somethingOpened.emit();
   }
 
@@ -93,19 +90,20 @@ export class SubviewManagerService {
   }
 
   closeView(viewId: string) {
-    const idx = this.currentSubviews.findIndex(n => n === viewId);
-    this.currentSubviews.splice(idx, 1);
-    if (this.activeSubviewIdx >= this.currentSubviews.length) {
-      this.activeSubviewIdx = this.currentSubviews.length - 1;
+    const views = this.subviews.value.slice();
+    const idx = views.findIndex(n => n === viewId);
+    views.splice(idx, 1);
+    if (this.activeSubviewIdx >= views.length) {
+      this.activeSubviewIdx = views.length - 1;
     }
-    this.updateUrl();
+    this.updateUrl(views);
   }
 
-  private updateUrl() {
+  private updateUrl(views: string[]) {
     this.router.navigate(
         [],
         {
-          queryParams: { views: this.currentSubviews },
+          queryParams: { views },
         });
   }
 }

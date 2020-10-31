@@ -31,7 +31,7 @@ export enum SortDirection {
         flex: '0 0 {{curWidth}}px',
       }), {params: {curWidth: 250}}),
       state('closed', style({
-        flex: '0 0 50px',
+        flex: '0 0 0px',
       })),
       transition('open => closed', [
         animate('0.25s')
@@ -82,16 +82,6 @@ export class ZettelkastenComponent implements OnInit {
     }
 
     this.setUpStorageBackendStatusUpdates();
-
-    // this.route.queryParams.subscribe(params => {
-    //   // TODO: if we change the noteid in the url and change it back to the old, it might trigger this and overwrite
-    //   //  the new version of the note with the old.
-    //
-    //   // TODO: we need to handle multiple views here!!
-    //   if (params.noteid) {
-    //     this.subviewManager.openNoteInNewWindow(params.noteId, false);
-    //   }
-    // });
   }
 
   onWindowFocus(subview: string) {
@@ -152,23 +142,6 @@ export class ZettelkastenComponent implements OnInit {
       this.subviewManager.openGraphInActiveWindow();
     }
   }
-
-  // openExploreAndLearnView(e) {
-  //   if (e.metaKey || e.ctrlKey) {
-  //     this.subviewManager.openExploreAndLearnInNewWindow();
-  //   } else {
-  //     this.subviewManager.openExploreAndLearnInActiveWindow();
-  //   }
-  // }
-  //
-  //
-  // openExploreAndLearnView(e) {
-  //   if (e.metaKey || e.ctrlKey) {
-  //     this.subviewManager.openExploreAndLearnInNewWindow();
-  //   } else {
-  //     this.subviewManager.openExploreAndLearnInActiveWindow();
-  //   }
-  // }
 
   doSort(sortDirection: SortDirection) {
     this.currentSortDirection = sortDirection;

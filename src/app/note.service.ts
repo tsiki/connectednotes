@@ -22,8 +22,8 @@ export enum Backend {
 })
 export class NoteService {
 
-  notes: BehaviorSubject<NoteObject[]> = new BehaviorSubject(null);
-  tagGroups: BehaviorSubject<TagGroup[]> = new BehaviorSubject(null);
+  notes: BehaviorSubject<NoteObject[]> = new BehaviorSubject([]);
+  tagGroups: BehaviorSubject<TagGroup[]> = new BehaviorSubject([]);
   flashcards: BehaviorSubject<Flashcard[]> = new BehaviorSubject(null);
   selectedNotes: BehaviorSubject<NoteObject[]> = new BehaviorSubject([]);
   storedSettings = new BehaviorSubject<UserSettings>(null);
@@ -35,8 +35,9 @@ export class NoteService {
   private noteTitleToNote?: Map<string, NoteObject>;
   private noteTitleToNoteCaseInsensitive?: Map<string, NoteObject>;
   private tags = new Set<string>();
+  private notesAwaitedFor: Map<string, (s: NoteObject) => void> = new Map();
 
-  constructor(private injector: Injector, private router: Router) {}
+  constructor(private injector: Injector) {}
 
   static getTagsForNoteContent(noteContent: string): string[] {
     return noteContent.match(/(^|\W)(#((?![#])[\S])+)/ig);
@@ -60,6 +61,14 @@ export class NoteService {
     this.backend.notes.subscribe(newNotes => {
       if (newNotes) {
         this.notes.next(newNotes);
+        if (this.notesAwaitedFor.size > 0) {
+          for (const note of newNotes) { // TODO: maybe only send updates of new notes?
+            if (this.notesAwaitedFor.has(note.id)) {
+              this.notesAwaitedFor.get(note.id)(note);
+              this.notesAwaitedFor.delete(note.id);
+            }
+          }
+        }
       }
     });
     this.backend.flashcards.subscribe(fcs => {
@@ -92,6 +101,13 @@ export class NoteService {
 
   getNote(noteId: string) {
     return this.noteIdToNote.get(noteId);
+  }
+
+  getNoteWhenReady(noteId: string): Promise<NoteObject> {
+    if (this.noteIdToNote.has(noteId)) {
+      return Promise.resolve(this.noteIdToNote.get(noteId));
+    }
+    return new Promise((resolve) => this.notesAwaitedFor.set(noteId, resolve));
   }
 
   getNoteForTitleCaseInsensitive(title: string) {

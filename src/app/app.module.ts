@@ -41,7 +41,6 @@ import { BackreferencesDialogComponent } from './backreferences-dialog/backrefer
 import { AlreadyExistingNoteDirective } from './already-existing-note.directive';
 import {MatChipsModule} from '@angular/material/chips';
 import { StudyComponent } from './study/study.component';
-import { ExploreAndStudyComponent } from './explore-and-study/explore-and-study.component';
 import {MatTabsModule} from '@angular/material/tabs';
 import { FlashcardDialogComponent } from './create-flashcard-dialog/flashcard-dialog.component';
 import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
@@ -62,7 +61,6 @@ import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
     BackreferencesDialogComponent,
     AlreadyExistingNoteDirective,
     StudyComponent,
-    ExploreAndStudyComponent,
     FlashcardDialogComponent,
   ],
     imports: [

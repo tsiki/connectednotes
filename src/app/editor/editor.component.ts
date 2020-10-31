@@ -151,20 +151,16 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
     });
   }
 
-  ngOnInit(): void {
-    this.noteService.tagGroups.subscribe(val => this.allTags = val.map(t => t.tag));
-    this.selectedNote = this.noteService.getNote(this.noteId);
-    this.noteTitle = this.selectedNote.title;
-    this.attachedFiles = this.noteService.attachmentMetadata.value[this.selectedNote.id];
-
-    this.noteService.notes.subscribe(newNotes => {
-      this.allNoteTitles = newNotes.map(n => n.title);
-    });
-
+  async ngOnInit() {
     window.addEventListener('beforeunload', this.unloadListener);
   }
 
-  ngAfterViewInit(): void {
+  async ngAfterViewInit() {
+    this.noteService.tagGroups.subscribe(val => this.allTags = val.map(t => t.tag));
+    this.noteService.notes.subscribe(newNotes => this.allNoteTitles = newNotes.map(n => n.title));
+    this.selectedNote = await this.noteService.getNoteWhenReady(this.noteId);
+    this.noteTitle = this.selectedNote.title;
+
     this.initializeCodeMirror();
     this.codemirror.setValue(this.selectedNote.content);
     this.codemirror.focus();

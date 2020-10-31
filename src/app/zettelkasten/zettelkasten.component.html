@@ -3,8 +3,10 @@
   #icon-menu {
     align-items: stretch;
     display: flex;
+    flex-direction: column;
     justify-content: space-around;
     min-height: var(--top-bar-height);
+    width: 60px;
   }
 
   #left-end-button-container > *,
@@ -12,6 +14,8 @@
     flex-grow: 1;
     min-width: 0;
     padding: 0;
+    height: 60px;
+    width: 60px;
   }
 
   .vertical #left-end-button-container,
@@ -24,7 +28,7 @@
   }
 
   #left-frame {
-    background-color: var(--low-contrast-background-color);
+    background-color: var(--secondary-background-color);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -55,10 +59,12 @@
   ::ng-deep .as-split-gutter {
     flex-basis: 5px !important;
     background: var(--gutter-color) !important;
+    /*opacity: 0;*/
   }
 
   #left-end-button-container {
     display: flex;
+    flex-direction: column;
   }
 
   #left-end-button-container > * {
@@ -83,6 +89,7 @@
   #graph-icon {
     height: 100%;
     padding: 1px 4px 5px 4px;
+    filter: invert(0.85);
   }
 
   #graph-icon.dark-theme {
@@ -128,91 +135,103 @@
   #save-status-indicator.saved {
     color: var(--save-status-indicator-everything-saved-color);
   }
+
+  #left-icons {
+    background-color: var(--icons-menu-background-color);
+    color: var(--icons-menu-color);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+  }
 </style>
 
 <div id="container">
-  <as-split unit="pixel" direction="horizontal" #split="asSplit">
-    <as-split-area [size]="250"
-                   #sidebar
+
+  <div id="left-icons">
+    <div id="left-frame-start">
+      <div id="icon-menu">
+        <button (click)="toggleSidebar()" mat-button matTooltip="toggle note list">
+          <mat-icon>list</mat-icon>
+        </button>
+        <button (click)="openNewNoteDialog()" mat-button matTooltip="new note (ctrl + k)">
+          <mat-icon>add</mat-icon>
+        </button>
+        <button (click)="openSearchDialog()" mat-button matTooltip="search notes (ctrl + shift + f)">
+          <mat-icon>search</mat-icon>
+        </button>
+        <button (click)="openLearnView($event)" mat-button matTooltip="study">
+          <mat-icon class="material-icons-outlined">school</mat-icon>
+        </button>
+        <button (click)="openGraphView($event)" mat-button matTooltip="graph">
+          <mat-icon>
+            <img [class.dark-theme]="theme === 'dark'"
+                 alt="graph"
+                 id="graph-icon"
+                 src="./assets/img/graph-icon.png">
+          </mat-icon>
+        </button>
+        <button *ngIf="!sidebarCollapsed"
+                [matMenuTriggerFor]="sortMenu"
+                id="sort-button"
+                mat-button
+                matTooltip="sort notes">
+          <mat-icon>sort</mat-icon>
+          <mat-menu #sortMenu="matMenu">
+            <button (click)="doSort(0)"
+                    [class.mat-menu-item-highlighted]="currentSortDirection===0"
+                    mat-menu-item>
+              Modified (newest first)
+            </button>
+            <button (click)="doSort(1)"
+                    [class.mat-menu-item-highlighted]="currentSortDirection===1"
+                    mat-menu-item>
+              Modified (oldest first)
+            </button>
+            <button (click)="doSort(2)"
+                    [class.mat-menu-item-highlighted]="currentSortDirection===2"
+                    mat-menu-item>
+              Alphabetical
+            </button>
+            <button (click)="doSort(3)"
+                    [class.mat-menu-item-highlighted]="currentSortDirection===3"
+                    mat-menu-item>
+              Alphabetical (reversed)
+            </button>
+          </mat-menu>
+        </button>
+      </div>
+    </div>
+    <div id="left-end-button-container">
+      <button (click)="logout()" mat-button matTooltip="logout">
+        <mat-icon>logout</mat-icon>
+      </button>
+      <span [class.saved]="icon === 'saved'"
+            [class.saving]="icon === 'saving'"
+            [class.unsaved]="icon === 'unsaved'"
+            id="save-status-indicator">
+                <mat-icon *ngIf="icon == 'saved'" matTooltip="all changed are saved">check</mat-icon>
+                <mat-icon *ngIf="icon == 'unsaved'" matTooltip="unsaved changes">clear</mat-icon>
+              </span>
+      <button (click)="openSettings()" mat-button matTooltip="settings">
+        <mat-icon class="material-icons-outlined">settings</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <as-split #split="asSplit" direction="horizontal" unit="pixel">
+    <as-split-area #sidebar
                    #sidebarArea="asSplitArea"
-                   [@openClose]="{value: sidebarCollapsed ? 'closed' : 'open', params: {curWidth: unCollapsedSidebarWidth}}">
-      <div id="left-frame" [class.vertical]="sidebarCollapsed">
-        <div id="left-frame-start">
-          <div id="icon-menu">
-            <button (click)="toggleSidebar()" mat-button matTooltip="toggle note list">
-              <mat-icon>list</mat-icon>
-            </button>
-            <button (click)="openNewNoteDialog()" mat-button matTooltip="new note (ctrl + k)">
-              <mat-icon>add</mat-icon>
-            </button>
-            <button (click)="openSearchDialog()" mat-button matTooltip="search notes (ctrl + shift + f)">
-              <mat-icon>search</mat-icon>
-            </button>
-            <button (click)="openLearnView($event)" mat-button matTooltip="study">
-              <mat-icon class="material-icons-outlined">school</mat-icon>
-            </button>
-            <button (click)="openGraphView($event)" mat-button matTooltip="graph">
-              <mat-icon>
-                <img [class.dark-theme]="theme === 'dark'"
-                     alt="graph"
-                     id="graph-icon"
-                     src="./assets/img/graph-icon.png">
-              </mat-icon>
-            </button>
-            <button id="sort-button"
-                    mat-button
-                    matTooltip="sort notes"
-                    [matMenuTriggerFor]="sortMenu"
-                    *ngIf="!sidebarCollapsed">
-              <mat-icon>sort</mat-icon>
-              <mat-menu #sortMenu="matMenu">
-                <button mat-menu-item
-                        [class.mat-menu-item-highlighted]="currentSortDirection===0"
-                        (click)="doSort(0)">
-                  Modified (newest first)
-                </button>
-                <button mat-menu-item
-                        [class.mat-menu-item-highlighted]="currentSortDirection===1"
-                        (click)="doSort(1)">
-                  Modified (oldest first)
-                </button>
-                <button mat-menu-item
-                        [class.mat-menu-item-highlighted]="currentSortDirection===2"
-                        (click)="doSort(2)">
-                  Alphabetical
-                </button>
-                <button mat-menu-item
-                        [class.mat-menu-item-highlighted]="currentSortDirection===3"
-                        (click)="doSort(3)">
-                  Alphabetical (reversed)
-                </button>
-              </mat-menu>
-            </button>
-          </div>
-          <app-filelist #filelist id="note-list" [hidden]="sidebarCollapsed" [sortDirection]="currentSortDirection">
-          </app-filelist>
-        </div>
+                   [@openClose]="{value: sidebarCollapsed ? 'closed' : 'open', params: {curWidth: unCollapsedSidebarWidth}}"
+                   [size]="250">
+      <div [class.vertical]="sidebarCollapsed" id="left-frame">
+        <app-filelist #filelist [hidden]="sidebarCollapsed" [sortDirection]="currentSortDirection" id="note-list">
+        </app-filelist>
 
         <div id="left-frame-end">
           <div id="notifications">
             <div *ngFor="let statusUpdate of activeStatusUpdates">
               {{ statusUpdate.message }}
             </div>
-          </div>
-          <div id="left-end-button-container">
-            <button (click)="logout()" mat-button matTooltip="logout">
-              <mat-icon>logout</mat-icon>
-            </button>
-            <span id="save-status-indicator"
-                  [class.unsaved]="icon === 'unsaved'"
-                  [class.saving]="icon === 'saving'"
-                  [class.saved]="icon === 'saved'">
-              <mat-icon *ngIf="icon == 'saved'" matTooltip="all changed are saved">check</mat-icon>
-              <mat-icon *ngIf="icon == 'unsaved'" matTooltip="unsaved changes">clear</mat-icon>
-            </span>
-            <button (click)="openSettings()" mat-button matTooltip="settings">
-              <mat-icon class="material-icons-outlined">settings</mat-icon>
-            </button>
           </div>
         </div>
       </div>
