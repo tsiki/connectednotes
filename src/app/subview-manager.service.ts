@@ -50,7 +50,6 @@ export class SubviewManagerService {
   openNoteInNewWindow(noteId: string) {
     const views = this.subviews.value.slice();
     views.push(noteId);
-    console.log(views);
     this.updateUrl(views);
     this.somethingOpened.emit();
   }

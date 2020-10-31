@@ -72,6 +72,13 @@
     font-size: 24px;
     text-overflow: ellipsis;
   }
+
+  #loading-spinner {
+    align-items: center;
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+  }
 </style>
 
 <div id="top-bar">
@@ -124,10 +131,15 @@
   </button>
 </div>
 <div id="container">
+  <div *ngIf="showSpinner" id="loading-spinner">
+    <mat-spinner></mat-spinner>
+  </div>
   <div id="codemirror-container"
+       [hidden]="showSpinner"
        #cmContainer
        [class.split-state]="editorState === 'split'">
     <textarea #codemirror id="codemirror"></textarea>
   </div>
-  <div id="markdown-renderer" class="space-evenly" *ngIf="editorState === 'split'" #markdown></div>
+  <div #markdown *ngIf="editorState === 'split'" [hidden]="showSpinner" class="space-evenly" id="markdown-renderer">
+  </div>
 </div>

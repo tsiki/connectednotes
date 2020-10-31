@@ -125,7 +125,6 @@ export class NoteService {
   async createNote(title: string): Promise<string> {
     const newNoteFile = await this.backend.createNote(title);
     const newNote = Object.assign({content: ''}, newNoteFile);
-    console.log(newNote);
     this.noteIdToNote.set(newNoteFile.id, newNote);
     const allNotes = this.notes.value;
     allNotes.push(newNote);

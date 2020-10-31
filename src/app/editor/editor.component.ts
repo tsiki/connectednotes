@@ -113,6 +113,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
   attachedFiles: AttachedFile[]|null = null;
   selectedNote: NoteObject|null = null;
   matcher = new ValidateImmediatelyMatcher();
+  showSpinner = false;
 
   private codemirror: CodeMirror.EditorFromTextArea;
   private previousChar: string;
@@ -128,6 +129,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
   private cmResizeObserver = new ResizeObserver(unused => {
     const {width, height} = this.cmContainer.nativeElement.getBoundingClientRect();
     this.codemirror.setSize(width + 'px', height + 'px');
+    this.codemirror.refresh(); // Apparently setting size doesn't always refresh
   });
 
   private unloadListener = () => this.saveChanges();
@@ -158,7 +160,9 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
   async ngAfterViewInit() {
     this.noteService.tagGroups.subscribe(val => this.allTags = val.map(t => t.tag));
     this.noteService.notes.subscribe(newNotes => this.allNoteTitles = newNotes.map(n => n.title));
+    this.showSpinner = true;
     this.selectedNote = await this.noteService.getNoteWhenReady(this.noteId);
+    this.showSpinner = false;
     this.noteTitle = this.selectedNote.title;
 
     this.initializeCodeMirror();
