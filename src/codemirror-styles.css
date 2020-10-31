@@ -1,5 +1,35 @@
 /* BASICS */
 
+.CodeMirror .cm-header.cm-header-1 {
+  font-size: var(--h1-font-size);
+  color: var(--header-text-color);
+}
+
+.CodeMirror .cm-header.cm-header-2 {
+  font-size: var(--h2-font-size);
+  color: var(--header-text-color);
+}
+
+.CodeMirror .cm-header.cm-header-3 {
+  font-size: var(--h3-font-size);
+  color: var(--header-text-color);
+}
+
+.CodeMirror .cm-header.cm-header-4 {
+  font-size: var(--h4-font-size);
+  color: var(--header-text-color);
+}
+
+.CodeMirror .cm-header.cm-header-5 {
+  font-size: var(--h5-font-size);
+  color: var(--header-text-color);
+}
+
+.CodeMirror .cm-header.cm-header-6 {
+  font-size: var(--h6-font-size);
+  color: var(--header-text-color);
+}
+
 .CodeMirror .existing-tag {
   font-weight: 600;
 }
@@ -12,11 +42,22 @@
   font-family: monospace;
 }
 
+.not-existing-note-link.cm-link,
+.existing-note-link.cm-link {
+  text-decoration: initial;
+}
+
+.ctrl-pressed .not-existing-note-link,
+.ctrl-pressed .existing-note-link {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 .CodeMirror {
   /* Set height, width, borders, and global font properties here */
   /* font-family: monospace; */
   font-family: Helvetica;
-  font-size: 14px;
+  font-size: var(--editor-text-font-size);
   font-weight: 400;
   color: #262626;
   height: 300px;

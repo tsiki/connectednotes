@@ -3,6 +3,7 @@ import {
   Component,
   ElementRef,
   EventEmitter,
+  HostBinding,
   HostListener,
   Input,
   OnDestroy,
@@ -125,6 +126,8 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
   private fcDialogRef: MatDialogRef<FlashcardDialogComponent>;
   private hashtagTextMarkers = new Set<TextMarker>();
   private noteLinkTextMarkers = new Set<TextMarker>();
+  @HostBinding('class.ctrl-pressed') ctrlPressed = false;
+  private fetchSelectedNotePromise: Promise<NoteObject>;
 
   private cmResizeObserver = new ResizeObserver(unused => {
     const {width, height} = this.cmContainer.nativeElement.getBoundingClientRect();
@@ -154,30 +157,40 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
   }
 
   async ngOnInit() {
+    // Initialize selectedNote here instead of in ngAfterViewInit to avoid 'expression has changed after it was last
+    // checked' exceptions.
+    this.selectedNote = this.noteService.getNote(this.noteId);
+    if (!this.selectedNote) {
+      this.showSpinner = true;
+      this.fetchSelectedNotePromise = this.noteService.getNoteWhenReady(this.noteId);
+      this.selectedNote = await this.fetchSelectedNotePromise;
+      this.showSpinner = false;
+    }
+
+    this.noteTitle = this.selectedNote.title;
+    this.noteService.tagGroups.subscribe(val => this.allTags = val.map(t => t.tag));
+    this.noteService.notes.subscribe(newNotes => this.allNoteTitles = newNotes.map(n => n.title));
+    this.noteService.attachmentMetadata.subscribe(metadata => {
+      if (this.selectedNote && metadata && metadata.hasOwnProperty(this.selectedNote.id)) {
+        this.attachedFiles = metadata[this.selectedNote.id];
+      }
+    });
     window.addEventListener('beforeunload', this.unloadListener);
   }
 
+  // Initialize codemirror - we need to do this in ngAfterViewInit since (IIRC) some html elements weren't in place
+  // if we try to do this in ngOnInit
   async ngAfterViewInit() {
-    this.noteService.tagGroups.subscribe(val => this.allTags = val.map(t => t.tag));
-    this.noteService.notes.subscribe(newNotes => this.allNoteTitles = newNotes.map(n => n.title));
-    this.showSpinner = true;
-    this.selectedNote = await this.noteService.getNoteWhenReady(this.noteId);
-    this.showSpinner = false;
-    this.noteTitle = this.selectedNote.title;
+    if (!this.selectedNote) {
+      this.selectedNote = await this.fetchSelectedNotePromise;
+    }
 
     this.initializeCodeMirror();
     this.codemirror.setValue(this.selectedNote.content);
     this.codemirror.focus();
     this.codemirror.setCursor(0, 0);
 
-    this.noteService.attachmentMetadata.subscribe(metadata => {
-      if (this.selectedNote && metadata && metadata.hasOwnProperty(this.selectedNote.id)) {
-        this.attachedFiles = metadata[this.selectedNote.id];
-      }
-    });
-
     if (this.selectedNote) {
-      // TODO: we need to show something like 'no notes selected/created' or something
       this.codemirror.setValue(this.selectedNote.content);
     }
 
@@ -498,21 +511,13 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
     }
   }
 
-  private styleNoteLinks() {
-    for (const textMarker of this.noteLinkTextMarkers) {
-      textMarker.clear();
-    }
-    this.noteLinkTextMarkers.clear();
-    const cursor = this.codemirror.getSearchCursor(/\[\[.*?]]/);
-    while (cursor.findNext()) {
-      const from = { line: cursor.from().line, ch: cursor.from().ch + 2 };
-      const to = { line: cursor.to().line, ch: cursor.to().ch - 2 };
-      const txt = this.codemirror.getRange(from, to);
-      const note = this.noteService.getNoteForTitleCaseInsensitive(txt);
-      if (!note) {
-        const textMarker = this.codemirror.markText(from, to, {className: 'not-existing-note-link'});
-        this.noteLinkTextMarkers.add(textMarker);
-      }
+  @HostListener('window:keydown', ['$event'])
+  onKeyDown(e) {
+    if (e.key === 'Meta' || e.key === 'Control') {
+      this.ctrlPressed = true;
+    } else if (e.key === 'j' && (e.ctrlKey || e.metaKey)) {
+      this.openNewFlashcardDialog();
+      e.stopPropagation();
     }
   }
 
@@ -558,12 +563,30 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
     }
   }
 
-  @HostListener('window:keydown', ['$event'])
-  shortcutHandler(e) {
-    const ctrlPressed = e.ctrlKey || e.metaKey;
-    if (e.key === 'j' && ctrlPressed) {
-      this.openNewFlashcardDialog();
-      e.stopPropagation();
+  @HostListener('window:keyup', ['$event'])
+  onKeyUp(e) {
+    if (e.key === 'Meta' || e.key === 'Control') {
+      this.ctrlPressed = false;
+    }
+  }
+
+  private styleNoteLinks() {
+    for (const textMarker of this.noteLinkTextMarkers) {
+      textMarker.clear();
+    }
+    this.noteLinkTextMarkers.clear();
+    const cursor = this.codemirror.getSearchCursor(/\[\[.*?]]/);
+    while (cursor.findNext()) {
+      const from = { line: cursor.from().line, ch: cursor.from().ch + 2 };
+      const to = { line: cursor.to().line, ch: cursor.to().ch - 2 };
+      const txt = this.codemirror.getRange(from, to);
+      const note = this.noteService.getNoteForTitleCaseInsensitive(txt);
+      if (!note) {
+        const textMarker = this.codemirror.markText(from, to, {className: 'not-existing-note-link'});
+        this.noteLinkTextMarkers.add(textMarker);
+      } else {
+        const textMarker = this.codemirror.markText(from, to, {className: 'existing-note-link'});
+      }
     }
   }
 

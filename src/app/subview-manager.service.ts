@@ -25,6 +25,9 @@ export class SubviewManagerService {
       private activatedRoute: ActivatedRoute) {
     this.activatedRoute.queryParamMap.subscribe(qps => {
       const views = qps.getAll('views');
+      if (views.length && this.activeSubviewIdx === null) {
+        this.activeSubviewIdx = 0;
+      }
       this.subviews.next(views);
       const notes = views.filter(v => !['graph', 'study'].includes(v));
       this.activeNotes.next(notes);
