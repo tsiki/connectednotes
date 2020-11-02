@@ -2,7 +2,7 @@ import {Component, Inject, OnInit, EventEmitter, HostListener, AfterViewInit} fr
 import {MAT_DIALOG_DATA, MatDialogRef} from '@angular/material/dialog';
 import {NoteService} from '../note.service';
 import {Flashcard, FlashcardSuggestion} from '../types';
-import {INITIAL_FLASHCARD_LEARNING_DATA} from '../study/study.component';
+import {INITIAL_FLASHCARD_LEARNING_DATA} from '../flashcard.service';
 
 @Component({
   selector: 'app-flashcard-dialog',

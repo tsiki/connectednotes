@@ -31,7 +31,7 @@ body { margin: 0; font-family: "Helvetica Neue", sans-serif; }
 }
 
 .dark-theme {
-  --primary-text-color: #fff; /* too much contrast? */
+  --primary-text-color: rgb(169, 183, 198); /* too much contrast? Should we actually use this for editor text? */
   --low-contrast-text-color: #bfbfbf;
   --primary-background-color: #2e2e2e;
   --secondary-background-color: #1c1c1c;
@@ -42,4 +42,5 @@ body { margin: 0; font-family: "Helvetica Neue", sans-serif; }
   --save-status-indicator-unsaved-changes-color: #800000;
   --save-status-indicator-saving-color: #808000;
   --save-status-indicator-everything-saved-color: initial;
+  --header-text-color: rgb(169, 183, 198);
 }

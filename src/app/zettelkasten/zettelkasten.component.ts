@@ -13,6 +13,7 @@ import {MatSelect} from '@angular/material/select';
 import {FilelistComponent} from '../filelist/filelist.component';
 import {ValidateImmediatelyMatcher} from '../already-existing-note.directive';
 import {SubviewManagerService, ViewType} from '../subview-manager.service';
+import {FlashcardService} from '../flashcard.service';
 
 
 export enum SortDirection {
@@ -60,6 +61,7 @@ export class ZettelkastenComponent implements OnInit {
     private readonly route: ActivatedRoute,
     private router: Router,
     private readonly noteService: NoteService,
+    readonly flashcardService: FlashcardService,
     readonly subviewManager: SubviewManagerService,
     readonly settingsService: SettingsService,
     public dialog: MatDialog,
@@ -68,6 +70,8 @@ export class ZettelkastenComponent implements OnInit {
     private readonly elRef: ElementRef) { }
 
   ngOnInit(): void {
+    // TODO NEXT: when flashcards are all loaded display the number of due flashcards next to the icon
+
     this.subviewManager.somethingOpened.subscribe(() => {
       if (this.elRef.nativeElement.getBoundingClientRect().width < 600 && !this.sidebarCollapsed) {
         this.toggleSidebar();

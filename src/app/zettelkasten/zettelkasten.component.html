@@ -91,10 +91,6 @@
     filter: invert(0.85);
   }
 
-  #graph-icon.dark-theme {
-    filter: invert(1);
-  }
-
   #note-list {
     flex-basis: 0;
     flex-grow: 1;
@@ -142,6 +138,12 @@
     flex-direction: column;
     justify-content: space-around;
   }
+
+  #due-fc-count {
+    position: absolute;
+    bottom: 0;
+    right: 10px;
+  }
 </style>
 
 <div id="container">
@@ -158,8 +160,11 @@
         <button (click)="openSearchDialog()" mat-button matTooltip="search notes (ctrl + shift + f)">
           <mat-icon>search</mat-icon>
         </button>
-        <button (click)="openLearnView($event)" mat-button matTooltip="study">
+        <button (click)="openLearnView($event)" mat-button matTooltip="flashcards">
           <mat-icon class="material-icons-outlined">school</mat-icon>
+          <span *ngIf="(flashcardService.numDueFlashcards | async) > 0" id="due-fc-count">
+            {{flashcardService.numDueFlashcards | async}}
+          </span>
         </button>
         <button (click)="openGraphView($event)" mat-button matTooltip="graph">
           <mat-icon>

@@ -9,7 +9,6 @@ import {
   StorageBackend,
   TagGroup, UserSettings
 } from './types';
-import {Router} from '@angular/router';
 import {JSON_MIMETYPE, TEXT_MIMETYPE} from './constants';
 
 export enum Backend {

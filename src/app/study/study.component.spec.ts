@@ -64,7 +64,7 @@ fdescribe('StudyComponent', () => {
 
     component.detectChanges();
     await component.whenStable();
-    expect(component.componentInstance.dueFcs.length).toBe(1);
+    expect(component.componentInstance.dueFcsQueue.length).toBe(1);
   });
 
   it("should't display flashcards not due yet", async () => {
@@ -78,7 +78,7 @@ fdescribe('StudyComponent', () => {
     component.componentInstance.noteService.flashcards.next(fcs);
 
     await component.whenStable();
-    expect(component.componentInstance.dueFcs.length).toBe(0);
+    expect(component.componentInstance.dueFcsQueue.length).toBe(0);
   });
 
   it('should extend time if flashcard user is successful', async () => {
@@ -90,7 +90,7 @@ fdescribe('StudyComponent', () => {
     component.componentInstance.noteService.flashcards.next(fcs);
     await component.whenStable();
     component.detectChanges();
-    const fc = component.componentInstance.dueFcs[0];
+    const fc = component.componentInstance.dueFcsQueue[0];
 
     spyOn(component.componentInstance.noteService, 'saveFlashcard').and.callFake(async arg => {
       expect((component.componentInstance as any).getNextRepetitionTimeEpochMillis(arg))

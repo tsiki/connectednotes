@@ -1,7 +1,8 @@
-import {EventEmitter, Injectable} from '@angular/core';
+import {EventEmitter, Injectable, SecurityContext} from '@angular/core';
 import {NoteService} from './note.service';
 import {BehaviorSubject} from 'rxjs';
 import {ActivatedRoute, Router} from '@angular/router';
+import {DomSanitizer} from '@angular/platform-browser';
 
 export enum ViewType {
   NOTE,
@@ -22,9 +23,10 @@ export class SubviewManagerService {
   constructor(
       private readonly noteService: NoteService,
       private router: Router,
-      private activatedRoute: ActivatedRoute) {
+      private activatedRoute: ActivatedRoute,
+      private sanitizer: DomSanitizer) {
     this.activatedRoute.queryParamMap.subscribe(qps => {
-      const views = qps.getAll('views');
+      const views = qps.getAll('views').map(v => sanitizer.sanitize(SecurityContext.URL, v));
       if (views.length && this.activeSubviewIdx === null) {
         this.activeSubviewIdx = 0;
       }
