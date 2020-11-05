@@ -44,6 +44,7 @@ export class FlashcardService {
     } else {
       fc.learningData.easinessFactor = FlashcardService.getNewEasinessFactor(fc.learningData.easinessFactor, rating);
     }
+    fc.learningData.prevRepetitionEpochMillis = new Date().getTime();
     return this.noteService.saveFlashcard(fc);
   }
 

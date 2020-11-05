@@ -140,6 +140,9 @@ export class NoteService {
   }
 
   async saveFlashcard(fc: Flashcard) {
+    const idx = this.flashcards.value.findIndex(f => f.id === fc.id);
+    this.flashcards.value[idx] = fc;
+    this.flashcards.next(this.flashcards.value);
     await this.backend.saveContent(fc.id, JSON.stringify(fc), false, JSON_MIMETYPE);
   }
 

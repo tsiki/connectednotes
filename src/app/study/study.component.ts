@@ -20,7 +20,7 @@ import {SubviewManagerService} from '../subview-manager.service';
                 <span class="queue-name">{{queue[0]}}</span>
               </span>
             </mat-option>
-            <span class="due-count">{{dueFcQueues.get(queue[0]).length}}/{{queue[1].length}} due</span>
+            <span class="due-count">{{dueFcQueues.get(queue[0])?.length || 0}}/{{queue[1]?.length || 0}} due</span>
           </span>
         </mat-select>
       </mat-form-field>
