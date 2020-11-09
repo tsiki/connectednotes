@@ -1,7 +1,7 @@
 @import '@angular/material/prebuilt-themes/deeppurple-amber.css';
 
 html, body { height: 100%; }
-body { margin: 0; font-family: "Helvetica Neue", sans-serif; }
+body { margin: 0; font-family: "Roboto", sans-serif; }
 
 :root {
   --primary-text-color: #000;
@@ -26,7 +26,13 @@ body { margin: 0; font-family: "Helvetica Neue", sans-serif; }
   --h4-font-size: 14px;
   --h5-font-size: 14px;
   --h6-font-size: 14px;
-  --header-text-color: var(--primary-text-color);
+  --h1-font-weight: 900;
+  --h2-font-weight: 700;
+  --h3-font-weight: 500;
+  --h4-font-weight: 500;
+  --h5-font-weight: 500;
+  --h6-font-weight: 500;
+  --header-text-color: #000478;
   --editor-text-font-size: 14px;
 }
 

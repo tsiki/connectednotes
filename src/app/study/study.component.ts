@@ -35,16 +35,16 @@ import {SubviewManagerService} from '../subview-manager.service';
         All done!
       </div>
       <div id="due-fcs-container" class="raisedbox" *ngIf="dueFcsQueue.length > 0">
-        <div class="fc-side">{{displayedFc.side1}}</div>
+        <div class="fc-side" *ngIf="!revealed">{{displayedFc.side1}}</div>
+        <div class="fc-side" *ngIf="revealed">{{displayedFc.side2}}</div>
         <button mat-button *ngIf="!revealed" (click)="reveal()">show answer</button>
         <ng-container *ngIf="revealed">
           <div id="rating-container">
-            <button mat-button (click)="submitRating(3, displayedFc)">Easy</button>
-            <button mat-button (click)="submitRating(2, displayedFc)">Moderate</button>
-            <button mat-button (click)="submitRating(1, displayedFc)">Hard</button>
-            <button mat-button (click)="submitRating(0, displayedFc)">No idea</button>
+            <button mat-button (click)="submitRating(3, displayedFc)" matTooltip="Remembering was easy">Easy</button>
+            <button mat-button (click)="submitRating(2, displayedFc)" matTooltip="Remembering was not easy, not hard">Moderate</button>
+            <button mat-button (click)="submitRating(1, displayedFc)" matTooltip="Remembering was hard">Hard</button>
+            <button mat-button (click)="submitRating(0, displayedFc)" matTooltip="You had no clue">No idea</button>
           </div>
-          <div class="fc-side">{{displayedFc.side2}}</div>
         </ng-container>
       </div>
     </div>
@@ -167,6 +167,7 @@ export class StudyComponent implements OnInit, OnDestroy {
   }
 
   setNextFlashcard() {
+    this.revealed = false;
     this.dueFcsQueue = this.dueFcQueues.get(this.selectedQueue);
     this.displayedFc = this.dueFcsQueue[0];
   }
