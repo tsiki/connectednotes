@@ -59,18 +59,6 @@ export class SubviewManagerService {
     this.somethingOpened.emit();
   }
 
-  openViewInActiveWindow(viewId: string) {
-    const views = this.subviews.value.slice();
-    if (views.length === 0) {
-      views.push(viewId);
-      this.activeSubviewIdx = 0;
-    } else {
-      views[this.activeSubviewIdx] = viewId;
-    }
-    this.updateUrl(views);
-    this.somethingOpened.emit();
-  }
-
   openGraphInNewWindow() {
     const views = this.subviews.value.slice();
     views.push('graph');
@@ -81,6 +69,18 @@ export class SubviewManagerService {
   openFlashcardsInNewWindow() {
     const views = this.subviews.value.slice();
     views.push('flashcards');
+    this.updateUrl(views);
+    this.somethingOpened.emit();
+  }
+
+  openViewInActiveWindow(viewId: string) {
+    const views = this.subviews.value.slice();
+    if (views.length === 0) {
+      views.push(viewId);
+      this.activeSubviewIdx = 0;
+    } else {
+      views[this.activeSubviewIdx] = viewId;
+    }
     this.updateUrl(views);
     this.somethingOpened.emit();
   }

@@ -106,10 +106,21 @@
 
   .window-container {
     flex-grow: 1;
+    position: relative;
     min-height: 0;
     min-width: 0;
     height: 100%;
     width: 100%;
+  }
+
+  .window-container .overlay {
+    background-color: var(--primary-background-color);
+    opacity: 0.2;
+    position: absolute;
+    pointer-events: none;
+    height: 100%;
+    width: 100%;
+    z-index: 100;
   }
 
   #save-status-indicator {
@@ -245,7 +256,8 @@
       <div id="right-frame">
         <div class="window-container"
              (focusin)="onWindowFocus(subview)"
-             *ngFor="let subview of subviewManager.subviews | async; trackBy: trackByFn">
+             *ngFor="let subview of subviewManager.subviews | async; trackBy: trackByFn; let i = index">
+          <span *ngIf="i !== subviewManager.activeSubviewIdx" class="overlay"></span>
           <app-editor *ngIf="getViewType(subview) === viewType.NOTE" noteId="{{subview}}"></app-editor>
           <app-graph *ngIf="getViewType(subview) === viewType.GRAPH"></app-graph>
           <app-study *ngIf="getViewType(subview) === viewType.FLASHCARDS"></app-study>
