@@ -511,7 +511,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
     }
   }
 
-  @HostListener('window:keydown', ['$event'])
+  @HostListener('keydown', ['$event'])
   onKeyDown(e) {
     if (e.key === 'Meta' || e.key === 'Control') {
       this.ctrlPressed = true;

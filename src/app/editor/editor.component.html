@@ -104,15 +104,16 @@
     </mat-error>
   </mat-form-field>
 
-  <button mat-button (click)="toggleSplitView()" matTooltip="show/hide rendered note">
-    <mat-icon>border_vertical</mat-icon>
-  </button>
   <button mat-button (click)="closeNote()" matTooltip="close note">
     <mat-icon>close</mat-icon>
   </button>
   <button mat-button matTooltip="show/hide rendered note" [matMenuTriggerFor]="optionsMenu">
     <mat-icon>more_vert</mat-icon>
     <mat-menu #optionsMenu="matMenu">
+      <button (click)="toggleSplitView()" mat-menu-item matTooltip="show/hide rendered note">
+        <mat-icon>border_vertical</mat-icon>
+        rendered mode
+      </button>
       <button mat-menu-item (click)="openAttachmentsDialog()" matTooltip="attachments for this note">
         <mat-icon>attachment</mat-icon>
         attachments
