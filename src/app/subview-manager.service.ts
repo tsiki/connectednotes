@@ -52,25 +52,28 @@ export class SubviewManagerService {
         this.subviews.value.findIndex(s => s === subview);
   }
 
-  openNoteInNewWindow(noteId: string) {
+  openViewInNewWindow(view: string) {
     const views = this.subviews.value.slice();
-    views.push(noteId);
+    const idx = views.findIndex(n => n === view);
+    if (idx >= 0) {
+      this.activeSubviewIdx = idx;
+      return;
+    }
+    views.push(view);
     this.updateUrl(views);
     this.somethingOpened.emit();
+  }
+
+  openNoteInNewWindow(noteId: string) {
+    this.openViewInNewWindow(noteId);
   }
 
   openGraphInNewWindow() {
-    const views = this.subviews.value.slice();
-    views.push('graph');
-    this.updateUrl(views);
-    this.somethingOpened.emit();
+    this.openViewInNewWindow('graph');
   }
 
   openFlashcardsInNewWindow() {
-    const views = this.subviews.value.slice();
-    views.push('flashcards');
-    this.updateUrl(views);
-    this.somethingOpened.emit();
+    this.openViewInNewWindow('flashcards');
   }
 
   openViewInActiveWindow(viewId: string) {
@@ -79,6 +82,11 @@ export class SubviewManagerService {
       views.push(viewId);
       this.activeSubviewIdx = 0;
     } else {
+      const idx = views.findIndex(n => n === viewId);
+      if (idx >= 0) {
+        this.activeSubviewIdx = idx;
+        return;
+      }
       views[this.activeSubviewIdx] = viewId;
     }
     this.updateUrl(views);
