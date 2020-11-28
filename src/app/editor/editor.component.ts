@@ -68,6 +68,7 @@ import {SubviewManagerService} from '../subview-manager.service';
 import {DomSanitizer} from '@angular/platform-browser';
 import {FlashcardDialogComponent} from '../create-flashcard-dialog/flashcard-dialog.component';
 import {TextMarker} from 'codemirror';
+import {DARK_THEME, LIGHT_THEME} from '../constants';
 
 declare interface CodeMirrorHelper {
   commands: {
@@ -79,9 +80,6 @@ declare interface CodeMirrorHelper {
 }
 
 declare const ResizeObserver;
-
-const DARK_THEME = 'darcula';
-const LIGHT_THEME = 'default';
 
 const FC_SUGGESTION_EXTRACTION_RULES: FlashcardSuggestionExtractionRule[] = [
   {
@@ -407,7 +405,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
       return;
     }
     const cursor = this.codemirror.getCursor();
-    const flashcardSuggestions = this.getFlashcardSuggestion(cursor);
+    const flashcardSuggestions = this.getAutomaticFlashcardSuggestion(cursor);
     const userSelection = this.codemirror.getSelection();
     if (userSelection) {
       const manualSuggestion = {
@@ -590,7 +588,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
     }
   }
 
-  private getFlashcardSuggestion(cursor: CodeMirror.Position): FlashcardSuggestion[] {
+  private getAutomaticFlashcardSuggestion(cursor: CodeMirror.Position): FlashcardSuggestion[] {
     const line = this.codemirror.getLine(cursor.line);
     const lineStart = line.slice(0, cursor.ch);
     const lineEnd = line.slice(cursor.ch);

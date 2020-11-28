@@ -1,10 +1,12 @@
-import {Component, OnDestroy, OnInit} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, OnDestroy, OnInit, SecurityContext, ViewChild} from '@angular/core';
 import {NoteService} from '../note.service';
 import {Flashcard} from '../types';
 import {Subscription} from 'rxjs';
 import {SettingsService} from '../settings.service';
 import {FlashcardService} from '../flashcard.service';
 import {SubviewManagerService} from '../subview-manager.service';
+import * as marked from 'marked';
+import {DomSanitizer} from '@angular/platform-browser';
 
 @Component({
   selector: 'app-study',
@@ -25,7 +27,7 @@ import {SubviewManagerService} from '../subview-manager.service';
         </mat-select>
       </mat-form-field>
 
-      <button mat-button (click)="closeView()" matTooltip="close note">
+      <button mat-button (click)="closeView()" matTooltip="close view">
         <mat-icon>close</mat-icon>
       </button>
     </div>
@@ -34,16 +36,16 @@ import {SubviewManagerService} from '../subview-manager.service';
       <div *ngIf="allFcs.length > 0 && dueFcsQueue.length === 0">
         All done!
       </div>
-      <div id="due-fcs-container" class="raisedbox" *ngIf="dueFcsQueue.length > 0">
-        <div class="fc-side" *ngIf="!revealed">{{displayedFc.side1}}</div>
-        <div class="fc-side" *ngIf="revealed">{{displayedFc.side2}}</div>
+      <div id="due-fcs-container" class="raisedbox" [hidden]="!displayedFc">
+        <div class="fc-side" #front [hidden]="revealed">{{displayedFc?.side1}}</div>
+        <div class="fc-side" #back [hidden]="!revealed">{{displayedFc?.side2}}</div>
         <button mat-button *ngIf="!revealed" (click)="reveal()">show answer</button>
         <ng-container *ngIf="revealed">
           <div id="rating-container">
             <button mat-button (click)="submitRating(3, displayedFc)" matTooltip="Remembering was easy">Easy</button>
             <button mat-button (click)="submitRating(2, displayedFc)" matTooltip="Remembering was not easy, not hard">Moderate</button>
-            <button mat-button (click)="submitRating(1, displayedFc)" matTooltip="Remembering was hard">Hard</button>
-            <button mat-button (click)="submitRating(0, displayedFc)" matTooltip="You had no clue">No idea</button>
+            <button mat-button (click)="submitRating(1, displayedFc)" matTooltip="Remembering was hard or incomplete">Hard</button>
+            <button mat-button (click)="submitRating(0, displayedFc)" matTooltip="Couldn't remember">No idea</button>
           </div>
         </ng-container>
       </div>
@@ -82,7 +84,7 @@ import {SubviewManagerService} from '../subview-manager.service';
       display: flex;
       flex-direction: column;
       margin: 20px;
-      max-width: 350px;
+      width: 350px;
       /*min-height: 500px;*/
       padding: 10px;
     }
@@ -119,7 +121,10 @@ import {SubviewManagerService} from '../subview-manager.service';
 
   `]
 })
-export class StudyComponent implements OnInit, OnDestroy {
+export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
+
+  @ViewChild('front') front: ElementRef;
+  @ViewChild('back') back: ElementRef;
 
   private static dueFcQueueName = 'due flashcards';
   private static allFcQueueName = 'all flashcards';
@@ -138,7 +143,11 @@ export class StudyComponent implements OnInit, OnDestroy {
       private readonly noteService: NoteService,
       private readonly flashcardService: FlashcardService,
       private readonly settings: SettingsService,
-      private readonly subviewManager: SubviewManagerService) {
+      private readonly subviewManager: SubviewManagerService,
+      private sanitizer: DomSanitizer) {
+  }
+
+  ngAfterViewInit() {
     this.sub = this.flashcardService.flashcards.subscribe(fcs => {
       if (!fcs) {
         return;
@@ -169,7 +178,18 @@ export class StudyComponent implements OnInit, OnDestroy {
   setNextFlashcard() {
     this.revealed = false;
     this.dueFcsQueue = this.dueFcQueues.get(this.selectedQueue);
+    if (this.dueFcsQueue.length === 0) {
+      return;
+    }
     this.displayedFc = this.dueFcsQueue[0];
+
+    const side1UnsafeContent = (marked as any)(this.displayedFc.side1);
+    const side1SanitizedContent = this.sanitizer.sanitize(SecurityContext.HTML, side1UnsafeContent);
+    this.front.nativeElement.innerHTML = this.sanitizer.sanitize(SecurityContext.HTML, side1SanitizedContent);
+
+    const side2UnsafeContent = (marked as any)(this.displayedFc.side2);
+    const side2SanitizedContent = this.sanitizer.sanitize(SecurityContext.HTML, side2UnsafeContent);
+    this.back.nativeElement.innerHTML = this.sanitizer.sanitize(SecurityContext.HTML, side2SanitizedContent);
   }
 
   submitRating(rating: number, fc: Flashcard) {
