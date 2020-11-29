@@ -21,6 +21,12 @@ import {DARK_THEME, LIGHT_THEME} from '../constants';
 import {fromEvent} from 'rxjs';
 import {debounceTime} from 'rxjs/operators';
 
+export interface FlashcardDialogData {
+  suggestions?: string[];
+  tags?: string[];
+  flashcardToEdit?: Flashcard;
+}
+
 @Component({
   selector: 'app-flashcard-dialog',
   template: `
@@ -33,7 +39,6 @@ import {debounceTime} from 'rxjs/operators';
 <!--        The final card will consist of the visible side (front) and hidden side (back). To hide a word from the visible-->
 <!--        side click on the word. The flashcard will be associated with the given tags. To remove a tag, click on it.-->
 <!--      </div>-->
-      
       <div id="editor-and-rendered-wrapper">
         <span>
           <h2>Edit</h2>
@@ -155,32 +160,38 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
   @ViewChild('renderedBack') renderedBack: ElementRef;
   @ViewChild('backEditorElem') backEditorElem: ElementRef;
   visibleSentence: string;
-  hiddenWordIndices: Set<number> = new Set();
-
   originalSentence: string[];
-  private frontEditor: CodeMirror.EditorFromTextArea;
-  hiddenWords: boolean[];
   tags: string[];
   selectNextSuggestion = new EventEmitter();
-  suggestions: FlashcardSuggestion[];
+  suggestions: string[];
   selectedSuggestionIndex: number;
   ignoredTags: Set<string> = new Set();
   submitting = false;
+  private frontEditor: CodeMirror.EditorFromTextArea;
   private backEditor: CodeMirror.EditorFromTextArea;
+  private readonly mode: 'create'|'edit';
 
   constructor(
       public dialogRef: MatDialogRef<FlashcardDialogComponent>,
-      @Inject(MAT_DIALOG_DATA) public data: any,
+      @Inject(MAT_DIALOG_DATA) public data: FlashcardDialogData,
       private readonly settingsService: SettingsService,
       private readonly noteService: NoteService,
       private sanitizer: DomSanitizer) {
-    this.suggestions = data.flashcardSuggestions;
-    this.tags = data.tags;
+    if (data.flashcardToEdit) {
+      this.mode = 'edit';
+      this.tags = data.flashcardToEdit.tags;
+    } else {
+      this.mode = 'create';
+      this.suggestions = data.suggestions;
+      this.tags = data.tags;
+    }
   }
 
   ngOnInit(): void {
-    this.selectedSuggestionIndex = 0;
-    this.suggestedContentSelectionChanged();
+    if (this.mode === 'create') {
+      this.selectedSuggestionIndex = 0;
+      this.suggestedContentSelectionChanged();
+    }
   }
 
   ngAfterViewInit() {
@@ -199,8 +210,13 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
           theme,
         });
 
-    this.frontEditor.setValue(this.visibleSentence);
-    this.backEditor.setValue(this.visibleSentence);
+    if (this.mode === 'edit') {
+      this.frontEditor.setValue(this.data.flashcardToEdit.side1);
+      this.backEditor.setValue(this.data.flashcardToEdit.side2);
+    } else {
+      this.frontEditor.setValue(this.visibleSentence);
+      this.backEditor.setValue(this.visibleSentence);
+    }
     this.frontChanged();
     this.backChanged();
 
@@ -216,7 +232,7 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
   @HostListener('window:keydown', ['$event'])
   shortcutHandler(e) {
     const ctrlPressed = e.ctrlKey || e.metaKey;
-    if (e.key === 'j' && ctrlPressed) {
+    if (e.key === 'j' && ctrlPressed && this.mode === 'create') {
       this.selectedSuggestionIndex = (this.selectedSuggestionIndex + 1) % this.suggestions.length;
       this.suggestedContentSelectionChanged();
     }
@@ -224,9 +240,7 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
 
   suggestedContentSelectionChanged() {
     const suggestion = this.suggestions[this.selectedSuggestionIndex];
-    this.visibleSentence = suggestion.text;
-    const {start, end} = this.suggestions[this.selectedSuggestionIndex];
-    this.selectNextSuggestion.emit({start, end});
+    this.visibleSentence = suggestion;
   }
 
   toggleIgnoredTag(tag: string) {
@@ -238,16 +252,22 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
   }
 
   async saveAndClose() {
-    const fc: Flashcard = {
-      tags: this.tags.filter(t => !this.ignoredTags.has(t)),
-      side1: this.visibleSentence,
-      side2: this.originalSentence.join(' '),
-      hiddenWordIndices: [...this.hiddenWordIndices],
-      isTwoWay: false, // TODO: let user select
-      learningData: INITIAL_FLASHCARD_LEARNING_DATA,
-    };
     this.submitting = true;
-    await this.noteService.createFlashcard(fc);
+    let fc;
+    if (this.mode === 'edit') {
+      fc = this.data.flashcardToEdit;
+      fc.side1 = this.frontEditor.getValue();
+      fc.side2 = this.backEditor.getValue();
+      await this.noteService.saveFlashcard(fc);
+    } else {
+      await this.noteService.createFlashcard({
+        tags: this.tags.filter(t => !this.ignoredTags.has(t)),
+        side1: this.frontEditor.getValue(),
+        side2: this.backEditor.getValue(),
+        isTwoWay: false, // TODO: let user select
+        learningData: INITIAL_FLASHCARD_LEARNING_DATA,
+      });
+    }
     this.dialogRef.close();
   }
 

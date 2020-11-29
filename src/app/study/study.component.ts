@@ -7,6 +7,8 @@ import {FlashcardService} from '../flashcard.service';
 import {SubviewManagerService} from '../subview-manager.service';
 import * as marked from 'marked';
 import {DomSanitizer} from '@angular/platform-browser';
+import {FlashcardDialogComponent, FlashcardDialogData} from '../create-flashcard-dialog/flashcard-dialog.component';
+import {MatDialog} from '@angular/material/dialog';
 
 @Component({
   selector: 'app-study',
@@ -26,28 +28,42 @@ import {DomSanitizer} from '@angular/platform-browser';
           </span>
         </mat-select>
       </mat-form-field>
-
       <button mat-button (click)="closeView()" matTooltip="close view">
         <mat-icon>close</mat-icon>
       </button>
     </div>
-    <div id="fc-container">
-      <div *ngIf="allFcs.length === 0">You haven't created any flashcards.</div>
-      <div *ngIf="allFcs.length > 0 && dueFcsQueue.length === 0">
-        All done!
-      </div>
-      <div id="due-fcs-container" class="raisedbox" [hidden]="!displayedFc">
-        <div class="fc-side" #front [hidden]="revealed">{{displayedFc?.side1}}</div>
-        <div class="fc-side" #back [hidden]="!revealed">{{displayedFc?.side2}}</div>
-        <button mat-button *ngIf="!revealed" (click)="reveal()">show answer</button>
-        <ng-container *ngIf="revealed">
-          <div id="rating-container">
-            <button mat-button (click)="submitRating(3, displayedFc)" matTooltip="Remembering was easy">Easy</button>
-            <button mat-button (click)="submitRating(2, displayedFc)" matTooltip="Remembering was not easy, not hard">Moderate</button>
-            <button mat-button (click)="submitRating(1, displayedFc)" matTooltip="Remembering was hard or incomplete">Hard</button>
-            <button mat-button (click)="submitRating(0, displayedFc)" matTooltip="Couldn't remember">No idea</button>
-          </div>
-        </ng-container>
+    <div id="container">
+      <button mat-button id="more-button" [matMenuTriggerFor]="optionsMenu">
+        <mat-icon>more_vert</mat-icon>
+        <mat-menu #optionsMenu="matMenu">
+          <button (click)="editFlashcard(displayedFc)" mat-menu-item matTooltip="edit flashcard">
+            <mat-icon>edit</mat-icon>
+            edit
+          </button>
+          <button (click)="deleteFlashcard(displayedFc.id)" mat-menu-item matTooltip="delete flashcard">
+            <mat-icon>delete_outline</mat-icon>
+            delete
+          </button>
+        </mat-menu>
+      </button>
+      <div id="fc-container">
+        <div *ngIf="allFcs.length === 0">You haven't created any flashcards.</div>
+        <div *ngIf="allFcs.length > 0 && dueFcsQueue.length === 0">
+          All done!
+        </div>
+        <div id="due-fcs-container" class="raisedbox" [hidden]="!displayedFc">
+          <div class="fc-side" #front [hidden]="revealed">{{displayedFc?.side1}}</div>
+          <div class="fc-side" #back [hidden]="!revealed">{{displayedFc?.side2}}</div>
+          <button mat-button *ngIf="!revealed" (click)="reveal()">show answer</button>
+          <ng-container *ngIf="revealed">
+            <div id="rating-container">
+              <button mat-button (click)="submitRating(3, displayedFc)" matTooltip="Remembering was easy">Easy</button>
+              <button mat-button (click)="submitRating(2, displayedFc)" matTooltip="Remembering was not easy, not hard">Moderate</button>
+              <button mat-button (click)="submitRating(1, displayedFc)" matTooltip="Remembering was hard or incomplete">Hard</button>
+              <button mat-button (click)="submitRating(0, displayedFc)" matTooltip="Couldn't remember">No idea</button>
+            </div>
+          </ng-container>
+        </div>
       </div>
     </div>
   `,
@@ -57,6 +73,15 @@ import {DomSanitizer} from '@angular/platform-browser';
       display: flex;
       flex-direction: column;
       justify-content: space-around;
+    }
+
+    #more-button {
+      position: absolute;
+      right: 0;
+    }
+
+    #container {
+      position: relative;
     }
 
     .queue-option-container {
@@ -144,7 +169,8 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
       private readonly flashcardService: FlashcardService,
       private readonly settings: SettingsService,
       private readonly subviewManager: SubviewManagerService,
-      private sanitizer: DomSanitizer) {
+      private sanitizer: DomSanitizer,
+      private dialog: MatDialog) {
   }
 
   ngAfterViewInit() {
@@ -202,6 +228,22 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
 
   closeView() {
     this.subviewManager.closeView('flashcard');
+  }
+
+  deleteFlashcard(id: string) {
+    const result = window.confirm(`Delete this flashcard?`);
+    if (result) {
+      this.noteService.deleteFlashcard(id);
+    }
+  }
+
+  editFlashcard(fc: Flashcard) {
+    this.dialog.open(FlashcardDialogComponent, {
+      position: { top: '10px' },
+      data: {
+        flashcardToEdit: fc
+      } as FlashcardDialogData,
+    });
   }
 
   private calculateQueues(fcs: Flashcard[]) {

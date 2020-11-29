@@ -66,7 +66,7 @@ import {ValidateImmediatelyMatcher} from '../already-existing-note.directive';
 import {PROGRAMMING_LANGUAGES} from './highlighted-programming-languages';
 import {SubviewManagerService} from '../subview-manager.service';
 import {DomSanitizer} from '@angular/platform-browser';
-import {FlashcardDialogComponent} from '../create-flashcard-dialog/flashcard-dialog.component';
+import {FlashcardDialogComponent, FlashcardDialogData} from '../create-flashcard-dialog/flashcard-dialog.component';
 import {TextMarker} from 'codemirror';
 import {DARK_THEME, LIGHT_THEME} from '../constants';
 
@@ -166,7 +166,10 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
     }
 
     this.noteTitle = this.selectedNote.title;
-    this.noteService.tagGroups.subscribe(val => this.allTags = val.map(t => t.tag));
+    this.noteService.tagGroups.subscribe(val => {
+      this.allTags = val.map(t => t.tag);
+      this.allTags.sort();
+    });
     this.noteService.notes.subscribe(newNotes => this.allNoteTitles = newNotes.map(n => n.title));
     this.noteService.attachmentMetadata.subscribe(metadata => {
       if (this.selectedNote && metadata && metadata.hasOwnProperty(this.selectedNote.id)) {
@@ -227,6 +230,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
     this.initializeHighlightModes();
     this.cmResizeObserver.observe(this.cmContainer.nativeElement);
 
+    // Set up autocomplete
     CodeMirror.registerHelper('hint', 'notes', (mirror, options) => {
       const cur = mirror.getCursor();
       const lineSoFar = mirror.getRange({ch: 0, line: cur.line}, cur);
@@ -237,7 +241,6 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
         return;
       }
 
-      // Set up autocomplete
       const hintType: '#'|'[' = lastHashtag > lastBrackets ? '#' : '[';
       if (hintType === '#') {
         const wordSoFar = lineSoFar.slice(lastHashtag);
@@ -252,7 +255,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
         const wordSoFar = lineSoFar.slice(lastBrackets + 2);
         return {
           list: this.allNoteTitles
-              .filter(s => s.startsWith(wordSoFar))
+              .filter(s => s.toLocaleLowerCase().startsWith(wordSoFar.toLocaleLowerCase()))
               .map(s => ({text: '[[' + s + ']] ', displayText: s})),
           from: {line: cur.line, ch: lastBrackets},
           to: {line: cur.line, ch: cur.ch},
@@ -323,13 +326,8 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
             break;
           }
         }
-        let endIdx;
-        for (endIdx = 0; endIdx < end.length; endIdx++) {
-          if (end.substr(endIdx, 2) === ']]') {
-            break;
-          }
-        }
-        if (startIdx !== 0 && endIdx !== end.length) {
+        const endIdx = end.indexOf(']]');
+        if (startIdx !== 0 && endIdx !== -1) {
           const noteTitle = start.substr(startIdx) + end.substr(0, endIdx);
           const note = this.noteService.notes.value.find(n => n.title === noteTitle);
           let noteId;
@@ -408,22 +406,17 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
     const flashcardSuggestions = this.getAutomaticFlashcardSuggestion(cursor);
     const userSelection = this.codemirror.getSelection();
     if (userSelection) {
-      const manualSuggestion = {
-        text: userSelection,
-        start: this.codemirror.getCursor('from'),
-        end: this.codemirror.getCursor('to'),
-      };
-      flashcardSuggestions.unshift(manualSuggestion);
+      flashcardSuggestions.unshift(userSelection);
     }
     this.fcDialogRef = this.dialog.open(FlashcardDialogComponent, {
       position: { top: '10px' },
       data: {
-        flashcardSuggestions,
+        suggestions: flashcardSuggestions,
         tags: NoteService.getTagsForNoteContent(this.codemirror.getValue()),
-      },
+      } as FlashcardDialogData,
     });
-    this.fcDialogRef.componentInstance.selectNextSuggestion.subscribe(
-        (e) => this.codemirror.setSelection(e.start, e.end));
+    // this.fcDialogRef.componentInstance.selectNextSuggestion.subscribe(
+    //     (e) => this.codemirror.setSelection(e.start, e.end));
     this.fcDialogRef.afterClosed().subscribe(() => this.fcDialogRef = null);
   }
 
@@ -588,11 +581,11 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
     }
   }
 
-  private getAutomaticFlashcardSuggestion(cursor: CodeMirror.Position): FlashcardSuggestion[] {
+  private getAutomaticFlashcardSuggestion(cursor: CodeMirror.Position): string[] {
     const line = this.codemirror.getLine(cursor.line);
     const lineStart = line.slice(0, cursor.ch);
     const lineEnd = line.slice(cursor.ch);
-    const suggestions: FlashcardSuggestion[] = [];
+    const suggestions: string[] = [];
     for (const extRule of FC_SUGGESTION_EXTRACTION_RULES) {
       // Make start regex global since we want to get the last match
       const startRegex = new RegExp(extRule.start, extRule.start.flags + 'g');
@@ -607,11 +600,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
       if (extRule.isEndInclusive) {
         endIdx += endMatch[0].length;
       }
-      suggestions.push({
-        text: lineStart.slice(startIdx) + lineEnd.slice(0, endIdx),
-        start: {ch: startIdx, line: cursor.line},
-        end: {ch: lineStart.length + endIdx, line: cursor.line},
-      });
+      suggestions.push(lineStart.slice(startIdx) + lineEnd.slice(0, endIdx));
     }
     return suggestions;
   }

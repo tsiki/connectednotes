@@ -95,7 +95,6 @@ interface Flashcard {
   tags: string[];
   side1: string;
   side2: string;
-  hiddenWordIndices: number[];
   isTwoWay: boolean;
   learningData: FlashcardLearningData;
 }

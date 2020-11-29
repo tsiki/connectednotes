@@ -59,6 +59,10 @@
   text-decoration: underline;
 }
 
+.CodeMirror-hints {
+  font-family: Roboto !important;
+}
+
 .CodeMirror {
   /* Set height, width, borders, and global font properties here */
   /* font-family: monospace; */

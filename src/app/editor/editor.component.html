@@ -108,7 +108,7 @@
   <button mat-button (click)="closeNote()" matTooltip="close note">
     <mat-icon>close</mat-icon>
   </button>
-  <button mat-button matTooltip="show/hide rendered note" [matMenuTriggerFor]="optionsMenu">
+  <button [matMenuTriggerFor]="optionsMenu" mat-button matTooltip="options">
     <mat-icon>more_vert</mat-icon>
     <mat-menu #optionsMenu="matMenu">
       <button (click)="toggleSplitView()" mat-menu-item matTooltip="show/hide rendered note">

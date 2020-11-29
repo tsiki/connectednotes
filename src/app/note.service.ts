@@ -146,6 +146,14 @@ export class NoteService {
     await this.backend.saveContent(fc.id, JSON.stringify(fc), false, JSON_MIMETYPE);
   }
 
+  async deleteFlashcard(id: string) {
+    const idx = this.flashcards.value.findIndex(f => f.id === id);
+    const newFcs = this.flashcards.value.slice();
+    newFcs.splice(idx, 1);
+    this.flashcards.next(newFcs);
+    await this.backend.deleteFile(id);
+  }
+
   getBackreferences(noteId: string) {
     const noteTitle = this.notes.value.find(n => n.id === noteId).title;
     const backrefTitles = this.getGraphRepresentation()
