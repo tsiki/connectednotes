@@ -170,6 +170,7 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
   private frontEditor: CodeMirror.EditorFromTextArea;
   private backEditor: CodeMirror.EditorFromTextArea;
   private readonly mode: 'create'|'edit';
+  private mouseEventWithCtrlActive = false;
 
   constructor(
       public dialogRef: MatDialogRef<FlashcardDialogComponent>,
@@ -201,7 +202,8 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
           mode: 'multiplex',
           lineWrapping: true,
           theme,
-        });
+          configureMouse: (cm, repeat, ev) => ({ addNew: false}),
+        } as any /* for some reason configureMouse is missing from the typings */);
 
     this.backEditor = CodeMirror.fromTextArea(this.backEditorElem.nativeElement,
         {
@@ -227,6 +229,20 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
     fromEvent(this.backEditor, 'changes')
         .pipe(debounceTime(100))
         .subscribe(([cm, changes]) => this.backChanged());
+
+    // Enable ctrl/cmd + click to hide a word
+    this.frontEditor.on('mousedown', (cm, e) => {
+      this.mouseEventWithCtrlActive = e.metaKey || e.ctrlKey;
+    });
+    this.frontEditor.on('cursorActivity', async (cm, event) => {
+      if (this.mouseEventWithCtrlActive) {
+        const wordUnderCursor = cm.findWordAt(cm.getCursor());
+        const word = cm.getRange(wordUnderCursor.anchor, wordUnderCursor.head);
+        const replacementWord = Array(Math.max(1, Math.floor(word.length / 2))).fill('█').join('');
+        this.frontEditor.replaceRange(replacementWord, wordUnderCursor.anchor, wordUnderCursor.head);
+      }
+      this.mouseEventWithCtrlActive = false;
+    });
   }
 
   @HostListener('window:keydown', ['$event'])

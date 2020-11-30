@@ -273,7 +273,7 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
       ...queueToFcs.entries(),
     ];
     queueToDueFcs.set(StudyComponent.dueFcQueueName, dueFcs);
-    queueToDueFcs.set(StudyComponent.allFcQueueName, allFcs);
+    queueToDueFcs.set(StudyComponent.allFcQueueName, dueFcs);
     this.dueFcQueues = queueToDueFcs;
   }
 }
