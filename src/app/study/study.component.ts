@@ -10,6 +10,9 @@ import {DomSanitizer} from '@angular/platform-browser';
 import {FlashcardDialogComponent, FlashcardDialogData} from '../create-flashcard-dialog/flashcard-dialog.component';
 import {MatDialog} from '@angular/material/dialog';
 
+const DUE_FCS_QUEUE_NAME = 'due flashcards';
+const ALL_FCS_QUEUE_NAME = 'all flashcards';
+
 @Component({
   selector: 'app-study',
   template: `
@@ -50,6 +53,9 @@ import {MatDialog} from '@angular/material/dialog';
         <div *ngIf="allFcs.length === 0">You haven't created any flashcards.</div>
         <div *ngIf="allFcs.length > 0 && dueFcsQueue.length === 0">
           All done!
+        </div>
+        <div id="tags">
+          <span *ngFor="let tag of displayedFc?.tags">{{tag}}</span>
         </div>
         <div id="due-fcs-container" class="raisedbox" [hidden]="!displayedFc">
           <div class="fc-side" #front [hidden]="revealed">{{displayedFc?.side1}}</div>
@@ -108,7 +114,6 @@ import {MatDialog} from '@angular/material/dialog';
       box-shadow: 0 0 10px #bdbdbd;
       display: flex;
       flex-direction: column;
-      margin: 20px;
       width: 350px;
       /*min-height: 500px;*/
       padding: 10px;
@@ -116,7 +121,7 @@ import {MatDialog} from '@angular/material/dialog';
 
     #queue-dropdown {
       margin-left: 60px;
-      width: 350px;
+      max-width: 350px;
     }
 
     #rating-container {
@@ -129,7 +134,9 @@ import {MatDialog} from '@angular/material/dialog';
     }
 
     #fc-container {
+      align-items: center;
       display: flex;
+      flex-direction: column;
       justify-content: space-around;
     }
 
@@ -144,6 +151,9 @@ import {MatDialog} from '@angular/material/dialog';
       justify-content: space-between;
     }
 
+    #tags {
+      margin: 20px 0;
+    }
   `]
 })
 export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
@@ -151,8 +161,6 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('front') front: ElementRef;
   @ViewChild('back') back: ElementRef;
 
-  private static dueFcQueueName = 'due flashcards';
-  private static allFcQueueName = 'all flashcards';
   displayedFc?: Flashcard;
   revealed: boolean;
   allFcs: Flashcard[] = [];
@@ -160,7 +168,7 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
   fcQueues: [string, Flashcard[]][];
   dueFcQueues: Map<string, Flashcard[]>;
   numDueFcs: Map<string, number>;
-  selectedQueue = StudyComponent.dueFcQueueName;
+  selectedQueue = DUE_FCS_QUEUE_NAME;
 
   private sub: Subscription;
 
@@ -178,7 +186,7 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
       if (!fcs) {
         return;
       }
-      this.calculateQueues(fcs);
+      this.dueFcQueues = this.getQueueToDueFcs(fcs);
       this.allFcs = fcs;
       this.dueFcsQueue = this.flashcardService.getDueFlashcards();
       // Present first note automatically
@@ -209,10 +217,10 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.displayedFc = this.dueFcsQueue[0];
 
+    // Set rendered contents
     const side1UnsafeContent = (marked as any)(this.displayedFc.side1);
     const side1SanitizedContent = this.sanitizer.sanitize(SecurityContext.HTML, side1UnsafeContent);
     this.front.nativeElement.innerHTML = this.sanitizer.sanitize(SecurityContext.HTML, side1SanitizedContent);
-
     const side2UnsafeContent = (marked as any)(this.displayedFc.side2);
     const side2SanitizedContent = this.sanitizer.sanitize(SecurityContext.HTML, side2UnsafeContent);
     this.back.nativeElement.innerHTML = this.sanitizer.sanitize(SecurityContext.HTML, side2SanitizedContent);
@@ -221,9 +229,11 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
   submitRating(rating: number, fc: Flashcard) {
     this.flashcardService.submitFlashcardRating(rating, fc);
     this.dueFcsQueue = this.dueFcsQueue.slice(1);
-    if (this.dueFcsQueue.length > 0) {
-      this.displayedFc = this.dueFcsQueue[0];
+    if (rating === 0) {
+      // If user couldn't remember the card at all it re-enters queue
+      this.dueFcsQueue.push(fc);
     }
+    this.setNextFlashcard();
   }
 
   closeView() {
@@ -243,10 +253,11 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
       data: {
         flashcardToEdit: fc
       } as FlashcardDialogData,
+      width: '100%',
     });
   }
 
-  private calculateQueues(fcs: Flashcard[]) {
+  private getQueueToDueFcs(fcs: Flashcard[]) {
     const queueToFcs = new Map<string, Flashcard[]>();
     const queueToDueFcs = new Map<string, Flashcard[]>();
     const dueFcs: Flashcard[] = [];
@@ -268,12 +279,12 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
     this.fcQueues = [
-      [StudyComponent.dueFcQueueName, dueFcs],
-      [StudyComponent.allFcQueueName, allFcs],
+      [DUE_FCS_QUEUE_NAME, dueFcs],
+      [ALL_FCS_QUEUE_NAME, allFcs],
       ...queueToFcs.entries(),
     ];
-    queueToDueFcs.set(StudyComponent.dueFcQueueName, dueFcs);
-    queueToDueFcs.set(StudyComponent.allFcQueueName, dueFcs);
-    this.dueFcQueues = queueToDueFcs;
+    queueToDueFcs.set(DUE_FCS_QUEUE_NAME, dueFcs);
+    queueToDueFcs.set(ALL_FCS_QUEUE_NAME, dueFcs);
+    return queueToDueFcs;
   }
 }

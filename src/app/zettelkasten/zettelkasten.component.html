@@ -217,9 +217,6 @@
       </div>
     </div>
     <div id="left-end-button-container">
-      <button (click)="logout()" mat-button matTooltip="logout">
-        <mat-icon>logout</mat-icon>
-      </button>
       <span [class.saved]="icon === 'saved'"
             [class.saving]="icon === 'saving'"
             [class.unsaved]="icon === 'unsaved'"
@@ -227,6 +224,9 @@
                 <mat-icon *ngIf="icon == 'saved'" matTooltip="all changed are saved">check</mat-icon>
                 <mat-icon *ngIf="icon == 'unsaved'" matTooltip="unsaved changes">clear</mat-icon>
               </span>
+      <button (click)="logout()" mat-button matTooltip="logout">
+        <mat-icon>logout</mat-icon>
+      </button>
       <button (click)="openSettings()" mat-button matTooltip="settings">
         <mat-icon class="material-icons-outlined">settings</mat-icon>
       </button>

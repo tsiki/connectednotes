@@ -25,11 +25,11 @@ import {SubviewManagerService} from '../subview-manager.service';
                 mat-button>
           <span *ngFor="let segment of result.titleSegments"
                 [ngClass]="segment.highlighted ? 'title-highlighted' : ''">{{segment.text}}</span>
+          <div class="content" *ngFor="let sample of result.contentSegments">
+            <span *ngFor="let segment of sample"
+                  [ngClass]="segment.highlighted ? 'content-highlighted' : ''">{{segment.text}}</span>
+          </div>
         </button>
-        <div class="content" *ngFor="let sample of result.contentSegments">
-          <span *ngFor="let segment of sample"
-                [ngClass]="segment.highlighted ? 'content-highlighted' : ''">{{segment.text}}</span>
-        </div>
       </div>
     </div>
   `,
@@ -74,6 +74,10 @@ import {SubviewManagerService} from '../subview-manager.service';
 
     .content {
       color: var(--low-contrast-text-color);
+      font-size: 14px;
+      font-weight: 400;
+      line-height: initial;
+      height: initial;
     }
 
     .result {

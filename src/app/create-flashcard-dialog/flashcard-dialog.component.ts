@@ -34,7 +34,8 @@ export interface FlashcardDialogData {
       <div id="loading-spinner" *ngIf="submitting">
         <mat-spinner></mat-spinner>
       </div>
-      <h1>Create a flashcard</h1>
+      <h1 *ngIf="mode === 'create'">Create a flashcard</h1>
+      <h1 *ngIf="mode === 'edit'">Edit a flashcard</h1>
 <!--      <div>-->
 <!--        The final card will consist of the visible side (front) and hidden side (back). To hide a word from the visible-->
 <!--        side click on the word. The flashcard will be associated with the given tags. To remove a tag, click on it.-->

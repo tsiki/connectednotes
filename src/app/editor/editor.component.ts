@@ -399,25 +399,20 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
   }
 
   private openNewFlashcardDialog() {
-    if (this.fcDialogRef) {
-      return;
-    }
     const cursor = this.codemirror.getCursor();
     const flashcardSuggestions = this.getAutomaticFlashcardSuggestion(cursor);
     const userSelection = this.codemirror.getSelection();
     if (userSelection) {
       flashcardSuggestions.unshift(userSelection);
     }
-    this.fcDialogRef = this.dialog.open(FlashcardDialogComponent, {
+    this.dialog.open(FlashcardDialogComponent, {
       position: { top: '10px' },
       data: {
         suggestions: flashcardSuggestions,
         tags: NoteService.getTagsForNoteContent(this.codemirror.getValue()),
       } as FlashcardDialogData,
+      width: '100%',
     });
-    // this.fcDialogRef.componentInstance.selectNextSuggestion.subscribe(
-    //     (e) => this.codemirror.setSelection(e.start, e.end));
-    this.fcDialogRef.afterClosed().subscribe(() => this.fcDialogRef = null);
   }
 
   openBackreferencesDialog() {
