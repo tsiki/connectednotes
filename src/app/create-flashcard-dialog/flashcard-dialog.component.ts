@@ -168,9 +168,9 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
   selectedSuggestionIndex: number;
   ignoredTags: Set<string> = new Set();
   submitting = false;
+  mode: 'create'|'edit';
   private frontEditor: CodeMirror.EditorFromTextArea;
   private backEditor: CodeMirror.EditorFromTextArea;
-  private readonly mode: 'create'|'edit';
   private mouseEventWithCtrlActive = false;
 
   constructor(

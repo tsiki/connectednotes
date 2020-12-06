@@ -22,10 +22,6 @@ export class FlashcardService {
   dueFlashcards = new BehaviorSubject<Flashcard[]>([]);
   numDueFlashcards = new BehaviorSubject<number>(0);
 
-  // forTesting = {
-  //   getNextRepetitionTimeEpochMillis: this.getNextRepetitionTimeEpochMillis
-  // };
-
   constructor(private readonly noteService: NoteService, private readonly settings: SettingsService) {
     this.flashcards = this.noteService.flashcards;
     // weird pattern, should probably improve this
@@ -48,7 +44,7 @@ export class FlashcardService {
       newLearningData.easinessFactor = FlashcardService.getNewEasinessFactor(fc.learningData.easinessFactor, rating);
       newLearningData.prevRepetitionIntervalMillis = new Date().getTime() - fc.learningData.prevRepetitionEpochMillis;
       newLearningData.prevRepetitionEpochMillis = new Date().getTime();
-      newLearningData.numRepetitions++;
+      newLearningData.numRepetitions = fc.learningData.numRepetitions + 1;
     }
     fc.learningData = newLearningData;
     return this.noteService.saveFlashcard(fc);
