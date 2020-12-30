@@ -38,6 +38,10 @@ export class FlashcardService {
     return Math.max(1.3, newEasiness);
   }
 
+  deleteFlashcard(id: string) {
+    this.noteService.deleteFlashcard(id);
+  }
+
   submitFlashcardRating(rating: number, fc: Flashcard) {
     const newLearningData = Object.assign({}, INITIAL_FLASHCARD_LEARNING_DATA);
     if (rating !== 0) {
@@ -55,7 +59,7 @@ export class FlashcardService {
     return this.getNextRepetitionTimeEpochMillis(fc) < curTime;
   }
 
-  getDueFlashcards() {
+  private getDueFlashcards() {
     const fcs = this.flashcards.value;
     const curTime = new Date().getTime();
     const activeFcs = fcs.filter(fc => curTime >= this.getNextRepetitionTimeEpochMillis(fc));

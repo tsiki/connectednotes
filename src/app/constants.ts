@@ -4,3 +4,8 @@ export const TEXT_MIMETYPE = 'text/plain';
 
 export const DARK_THEME = 'darcula';
 export const LIGHT_THEME = 'default';
+
+export const ROOT_TAG_NAME = '(root)';
+export const ALL_NOTES_TAG_NAME = 'all';
+export const UNTAGGED_NOTES_TAG_NAME = 'untagged';
+export const AUTOMATICALLY_GENERATED_TAG_NAMES = [ALL_NOTES_TAG_NAME, UNTAGGED_NOTES_TAG_NAME];

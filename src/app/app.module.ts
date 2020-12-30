@@ -44,6 +44,10 @@ import { StudyComponent } from './study/study.component';
 import {MatTabsModule} from '@angular/material/tabs';
 import { FlashcardDialogComponent } from './create-flashcard-dialog/flashcard-dialog.component';
 import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
+import {DragDropModule} from '@angular/cdk/drag-drop';
+import { TagGroupComponent } from './tag-group/tag-group.component';
+import { EditTagParentsDialogComponent } from './edit-tag-parents-dialog/edit-tag-parents-dialog.component';
+import {MatAutocompleteModule} from '@angular/material/autocomplete';
 
 @NgModule({
   entryComponents: [CreateNoteDialog], // Not declared in template to must be here
@@ -62,6 +66,8 @@ import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
     AlreadyExistingNoteDirective,
     StudyComponent,
     FlashcardDialogComponent,
+    TagGroupComponent,
+    EditTagParentsDialogComponent,
   ],
     imports: [
         BrowserModule,
@@ -73,6 +79,7 @@ import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
         AppRoutingModule,
         AngularFirestoreModule,
         AngularFireAuthModule,
+        DragDropModule,
         FormsModule,
         HttpClientModule,
         BrowserAnimationsModule,
@@ -97,6 +104,7 @@ import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
         MatChipsModule,
         MatTabsModule,
         MatProgressSpinnerModule,
+        MatAutocompleteModule,
     ],
   providers: [],
   bootstrap: [AppComponent]

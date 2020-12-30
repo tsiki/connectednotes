@@ -94,7 +94,7 @@
   #note-list {
     flex-basis: 0;
     flex-grow: 1;
-    overflow-y: scroll;
+    overflow-y: auto;
   }
 
   #left-frame-start {
@@ -154,6 +154,26 @@
     position: absolute;
     bottom: 0;
     right: 10px;
+  }
+
+  #full-screen-message-container {
+    align-items: center;
+    background-color: var(--primary-background-color);
+    display: flex;
+    justify-content: space-around;
+    opacity: .8;
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    z-index: 500;
+  }
+
+  #full-screen-message {
+    opacity: 1;
+  }
+
+  #right-frame-container {
+    position: relative;
   }
 </style>
 
@@ -221,7 +241,7 @@
             [class.saving]="icon === 'saving'"
             [class.unsaved]="icon === 'unsaved'"
             id="save-status-indicator">
-                <mat-icon *ngIf="icon == 'saved'" matTooltip="all changed are saved">check</mat-icon>
+                <mat-icon *ngIf="icon == 'saved'" matTooltip="all changes are saved">check</mat-icon>
                 <mat-icon *ngIf="icon == 'unsaved'" matTooltip="unsaved changes">clear</mat-icon>
               </span>
       <button (click)="logout()" mat-button matTooltip="logout">
@@ -252,7 +272,10 @@
       </div>
     </as-split-area>
 
-    <as-split-area size="*">
+    <as-split-area id="right-frame-container" size="*">
+      <div *ngIf="fullScreenMessage" id="full-screen-message-container">
+        <span id="full-screen-message"><h1>{{fullScreenMessage}}</h1></span>
+      </div>
       <div id="right-frame">
         <div class="window-container"
              (focusin)="onWindowFocus(subview)"

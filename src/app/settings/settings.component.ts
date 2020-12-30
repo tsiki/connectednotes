@@ -15,7 +15,7 @@ import {BehaviorSubject} from 'rxjs';
     </mat-select>
   </mat-form-field>
 
-  <h3 id="ignored-tags-header">Ignored tags:</h3>
+  <h3 id="ignored-tags-header" *ngIf="(ignoredTags | async).length">Ignored tags:</h3>
   <mat-chip-list aria-label="Ignored tags">
     <mat-chip *ngFor="let tag of ignoredTags | async">
       {{ tag }}

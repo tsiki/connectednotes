@@ -47,7 +47,7 @@ export interface FlashcardDialogData {
             <div>
               <h3>Front:</h3>
               <div class="codemirror-container">
-                <textarea class="asd" #frontEditorElem></textarea>
+                <textarea #frontEditorElem></textarea>
               </div>
             </div>
             <div>

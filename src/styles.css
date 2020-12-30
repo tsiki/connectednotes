@@ -19,6 +19,7 @@ body { margin: 0; font-family: "Roboto", sans-serif; }
   --save-status-indicator-unsaved-changes-color: #eb0212;
   --save-status-indicator-saving-color: #d1d13d;
   --save-status-indicator-everything-saved-color: initial;
+  --nested-tag-gutter-color: #d1d1d1;
    /* Text styles */
   --h1-font-size: 22px;
   --h2-font-size: 18px;
@@ -37,7 +38,7 @@ body { margin: 0; font-family: "Roboto", sans-serif; }
 }
 
 .dark-theme {
-  --primary-text-color: rgb(169, 183, 198); /* too much contrast? Should we actually use this for editor text? */
+  --primary-text-color: rgb(209, 209, 209);
   --low-contrast-text-color: #bfbfbf;
   --primary-background-color: #2e2e2e;
   --secondary-background-color: #1c1c1c;
@@ -48,5 +49,6 @@ body { margin: 0; font-family: "Roboto", sans-serif; }
   --save-status-indicator-unsaved-changes-color: #800000;
   --save-status-indicator-saving-color: #808000;
   --save-status-indicator-everything-saved-color: initial;
-  --header-text-color: rgb(169, 183, 198);
-}
+  --header-text-color: rgb(209, 209, 209);
+  --nested-tag-gutter-color: #4d4d4d;
+ }

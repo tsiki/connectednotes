@@ -5,23 +5,45 @@ import {NoteService} from '../note.service';
 import * as d3 from 'd3';
 import {SimulationNodeDatum} from 'd3-force';
 import {NoteAndLinks} from '../types';
+import {SubviewManagerService} from '../subview-manager.service';
 
 @Component({
   selector: 'app-graph',
-  template: `<div id="graph" #graph></div>`,
+  template: `
+    <div id="top-bar">
+      <span><!-- this element is for centering the dropdown --></span>
+      <button mat-button (click)="closeView()" matTooltip="close view">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    <div id="graph" #graph></div>
+  `,
   styles: [`
     #graph {
       height: 50%;
+    }
+
+    #top-bar {
+      display: flex;
+      justify-content: space-between;
+      height: var(--top-bar-height);
+      background: var(--secondary-background-color);
+      border-bottom: 1px solid var(--gutter-color);
     }
   `]
 })
 export class GraphComponent implements AfterViewInit {
   @ViewChild('graph') graph: ElementRef;
 
-  constructor(private readonly noteService: NoteService) { }
+  constructor(private readonly noteService: NoteService,
+              private readonly subviewManager: SubviewManagerService) {}
 
   ngAfterViewInit() {
     this.displayGraphs(this.noteService.getGraphRepresentation());
+  }
+
+  closeView() {
+    this.subviewManager.closeView('graph');
   }
 
   private displayGraphs(notesAndLinks: NoteAndLinks[]) {

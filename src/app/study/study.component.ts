@@ -1,8 +1,6 @@
 import {AfterViewInit, Component, ElementRef, OnDestroy, OnInit, SecurityContext, ViewChild} from '@angular/core';
-import {NoteService} from '../note.service';
 import {Flashcard} from '../types';
 import {Subscription} from 'rxjs';
-import {SettingsService} from '../settings.service';
 import {FlashcardService} from '../flashcard.service';
 import {SubviewManagerService} from '../subview-manager.service';
 import * as marked from 'marked';
@@ -36,7 +34,7 @@ const ALL_FCS_QUEUE_NAME = 'all flashcards';
       </button>
     </div>
     <div id="container">
-      <button mat-button id="more-button" [matMenuTriggerFor]="optionsMenu">
+      <button *ngIf="displayedFc" mat-button id="more-button" [matMenuTriggerFor]="optionsMenu">
         <mat-icon>more_vert</mat-icon>
         <mat-menu #optionsMenu="matMenu">
           <button (click)="editFlashcard(displayedFc)" mat-menu-item matTooltip="edit flashcard">
@@ -50,23 +48,37 @@ const ALL_FCS_QUEUE_NAME = 'all flashcards';
         </mat-menu>
       </button>
       <div id="fc-container">
-        <div *ngIf="allFcs.length === 0">You haven't created any flashcards.</div>
-        <div *ngIf="allFcs.length > 0 && dueFcsQueue.length === 0">
+        <div class="notification" *ngIf="allFcs.length === 0">You haven't created any flashcards.</div>
+        <div class="notification" *ngIf="allFcs.length > 0 && currentDueFcsQueue.length === 0">
           All done!
         </div>
         <div id="tags">
           <span *ngFor="let tag of displayedFc?.tags">{{tag}}</span>
         </div>
-        <div id="due-fcs-container" class="raisedbox" [hidden]="!displayedFc">
+        <div id="due-fcs-container" class="raisedbox" [style.display]="displayedFc ? 'initial' : 'none'">
           <div class="fc-side" #front [hidden]="revealed">{{displayedFc?.side1}}</div>
           <div class="fc-side" #back [hidden]="!revealed">{{displayedFc?.side2}}</div>
-          <button mat-button *ngIf="!revealed" (click)="reveal()">show answer</button>
+          <button id="show-answer-button" mat-button *ngIf="!revealed" (click)="reveal()">
+            show answer
+          </button>
           <ng-container *ngIf="revealed">
             <div id="rating-container">
-              <button mat-button (click)="submitRating(3, displayedFc)" matTooltip="Remembering was easy">Easy</button>
-              <button mat-button (click)="submitRating(2, displayedFc)" matTooltip="Remembering was not easy, not hard">Moderate</button>
-              <button mat-button (click)="submitRating(1, displayedFc)" matTooltip="Remembering was hard or incomplete">Hard</button>
-              <button mat-button (click)="submitRating(0, displayedFc)" matTooltip="Couldn't remember">No idea</button>
+              <button mat-button
+                      (click)="submitRating(3, displayedFc)"
+                      matTooltip="Remembering was easy">Easy
+              </button>
+              <button mat-button
+                      (click)="submitRating(2, displayedFc)"
+                      matTooltip="Remembering was not easy, not hard">Moderate
+              </button>
+              <button mat-button
+                      (click)="submitRating(1, displayedFc)"
+                      matTooltip="Remembering was hard or incomplete">Hard
+              </button>
+              <button mat-button
+                      (click)="submitRating(0, displayedFc)"
+                      matTooltip="Couldn't remember">No idea
+              </button>
             </div>
           </ng-container>
         </div>
@@ -79,6 +91,10 @@ const ALL_FCS_QUEUE_NAME = 'all flashcards';
       display: flex;
       flex-direction: column;
       justify-content: space-around;
+    }
+
+    .fc-side {
+      overflow-wrap: break-word;
     }
 
     #more-button {
@@ -154,6 +170,14 @@ const ALL_FCS_QUEUE_NAME = 'all flashcards';
     #tags {
       margin: 20px 0;
     }
+
+    .notification {
+      margin-top: 10px;
+    }
+
+    #show-answer-button {
+      width: 100%;
+    }
   `]
 })
 export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
@@ -164,7 +188,7 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
   displayedFc?: Flashcard;
   revealed: boolean;
   allFcs: Flashcard[] = [];
-  dueFcsQueue: Flashcard[] = [];
+  currentDueFcsQueue: Flashcard[] = [];
   fcQueues: [string, Flashcard[]][];
   dueFcQueues: Map<string, Flashcard[]>;
   numDueFcs: Map<string, number>;
@@ -173,9 +197,7 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
   private sub: Subscription;
 
   constructor(
-      private readonly noteService: NoteService,
       private readonly flashcardService: FlashcardService,
-      private readonly settings: SettingsService,
       private readonly subviewManager: SubviewManagerService,
       private sanitizer: DomSanitizer,
       private dialog: MatDialog) {
@@ -188,14 +210,14 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       this.dueFcQueues = this.getQueueToDueFcs(fcs);
       this.allFcs = fcs;
-      this.dueFcsQueue = this.flashcardService.getDueFlashcards();
+      this.queueChanged();
       // Present first note automatically
       this.setNextFlashcard();
     });
   }
 
   queueChanged() {
-    this.dueFcsQueue = this.dueFcQueues.get(this.selectedQueue);
+    this.currentDueFcsQueue = this.dueFcQueues.get(this.selectedQueue);
   }
 
   ngOnInit(): void {
@@ -211,11 +233,12 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
 
   setNextFlashcard() {
     this.revealed = false;
-    this.dueFcsQueue = this.dueFcQueues.get(this.selectedQueue);
-    if (this.dueFcsQueue.length === 0) {
+    // TODO: if FC is in two queues we might mess up here, it needs to be removed from both
+    this.currentDueFcsQueue = this.dueFcQueues.get(this.selectedQueue);
+    if (this.currentDueFcsQueue.length === 0) {
       return;
     }
-    this.displayedFc = this.dueFcsQueue[0];
+    this.displayedFc = this.currentDueFcsQueue[0];
 
     // Set rendered contents
     const side1UnsafeContent = (marked as any)(this.displayedFc.side1);
@@ -228,22 +251,23 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
 
   submitRating(rating: number, fc: Flashcard) {
     this.flashcardService.submitFlashcardRating(rating, fc);
-    this.dueFcsQueue = this.dueFcsQueue.slice(1);
+    this.currentDueFcsQueue = this.currentDueFcsQueue.splice(0, 1);
     if (rating === 0) {
       // If user couldn't remember the card at all it re-enters queue
-      this.dueFcsQueue.push(fc);
+      this.currentDueFcsQueue.push(fc);
     }
-    this.setNextFlashcard();
+    // not needed here - note service triggers update on flashcards which propagates to this component
+    // this.setNextFlashcard();
   }
 
   closeView() {
-    this.subviewManager.closeView('flashcard');
+    this.subviewManager.closeView('flashcards');
   }
 
   deleteFlashcard(id: string) {
     const result = window.confirm(`Delete this flashcard?`);
     if (result) {
-      this.noteService.deleteFlashcard(id);
+      this.flashcardService.deleteFlashcard(id);
     }
   }
 
@@ -254,6 +278,7 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
         flashcardToEdit: fc
       } as FlashcardDialogData,
       width: '100%',
+      maxHeight: '90vh' /* to enable scrolling on overflow */,
     });
   }
 

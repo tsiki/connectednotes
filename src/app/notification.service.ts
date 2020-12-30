@@ -10,9 +10,11 @@ export class NotificationService {
   private unsavedNotes = new BehaviorSubject<string[]>([]);
   private sidebarNotifications = new BehaviorSubject<BackendStatusNotification[]>([]);
   private saveIconNotifications = new BehaviorSubject<string>(null);
+  private fullScreenBlockingNotifications = new BehaviorSubject<string>(null);
   unsaved = this.unsavedNotes.asObservable();
   saveIcon = this.saveIconNotifications.asObservable();
   sidebar = this.sidebarNotifications.asObservable();
+  fullScreenBlocking = this.fullScreenBlockingNotifications.asObservable();
 
   private clearStatusUpdateFns = new Map<string, number>();
 
@@ -62,5 +64,9 @@ export class NotificationService {
     newValues.push(fileId);
     this.saveIconNotifications.next('unsaved');
     this.unsavedNotes.next(newValues);
+  }
+
+  showFullScreenBlockingMessage(msg: string) {
+    this.fullScreenBlockingNotifications.next(msg);
   }
 }

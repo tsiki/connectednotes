@@ -6,7 +6,7 @@ import {
   AttachedFile,
   AttachmentMetadata,
   FileMetadata, Flashcard,
-  NoteObject,
+  NoteObject, ParentTagToChildTags,
   StorageBackend,
   UserSettings
 } from '../types';
@@ -21,6 +21,7 @@ const ATTACHMENTS_FOLDER_NAME = 'Attachments';
 const FLASHCARDS_FOLDER_NAME = 'Flashcards';
 const SETTINGS_FILE_NAME = 'settings.json';
 const ATTACHMENT_METADATA_FILE_NAME = 'attachment_metadata.json';
+const NESTED_TAG_GROUPS_FILE_NAME = 'nested_tag_groups.json';
 
 enum ItemType {
   NOTE,
@@ -44,6 +45,7 @@ export class GoogleDriveService implements StorageBackend {
   flashcards = new BehaviorSubject<Flashcard[]>([]);
   storedSettings = new BehaviorSubject<UserSettings>(null);
   attachmentMetadata = new BehaviorSubject<AttachmentMetadata>(null);
+  nestedTagGroups = new BehaviorSubject<ParentTagToChildTags>({});
 
   private rootFolderId = new BehaviorSubject<string>(null);
   private notesFolderId = new BehaviorSubject<string>(null);
@@ -53,6 +55,7 @@ export class GoogleDriveService implements StorageBackend {
   // Not observable since we assume any settings update is done with delay
   private storedSettingsFileId: string;
   private attachmentMetadataFileId: string;
+  private nestedTagGroupsFileId: string;
 
   constructor(private http: HttpClient, private cache: LocalCacheService, private notifications: NotificationService) {}
 
@@ -100,35 +103,10 @@ export class GoogleDriveService implements StorageBackend {
     gapi.auth2.getAuthInstance().signOut();
   }
 
-  private async fetchOrCreateFoldersAndFiles() {
-    const rootFolderId = await this.fetchOrCreateFolder(ROOT_FOLDER_NAME);
-    this.rootFolderId.next(rootFolderId);
-
-    const notes = this.fetchOrCreateFolder(NOTES_FOLDER_NAME, this.rootFolderId.value);
-    const settingsAndMetadata = this.fetchOrCreateFolder(SETTINGS_AND_METADATA_FOLDER_NAME, this.rootFolderId.value);
-    const attachments = this.fetchOrCreateFolder(ATTACHMENTS_FOLDER_NAME, this.rootFolderId.value);
-    const flashcards = this.fetchOrCreateFolder(FLASHCARDS_FOLDER_NAME, this.rootFolderId.value);
-    const folders = await Promise.all([notes, settingsAndMetadata, attachments, flashcards]);
-
-    this.notesFolderId.next(folders[0]);
-    this.settingAndMetadataFolderId.next(folders[1]);
-    this.attachmentsFolderId.next(folders[2]);
-    this.flashcardsFolderId.next(folders[3]);
-
-    // After folders, create or fetch files
-
-    const settingsPromise = this.fetchOrCreateJsonFile(SETTINGS_FILE_NAME, this.settingAndMetadataFolderId.value);
-    const attachmentPromise = this.fetchOrCreateJsonFile(ATTACHMENT_METADATA_FILE_NAME, this.settingAndMetadataFolderId.value);
-
-    const [settingsData, attachmentData] = await Promise.all([settingsPromise, attachmentPromise]);
-
-    const [settingsFileId, settings] = settingsData;
-    this.storedSettings.next(settings);
-    this.storedSettingsFileId = settingsFileId;
-
-    const [attachmentMetadataFileId, attachmentMetadata] = attachmentData;
-    this.attachmentMetadata.next(attachmentMetadata);
-    this.attachmentMetadataFileId = attachmentMetadataFileId;
+  async saveNestedTagGroups(nestedTagGroups: ParentTagToChildTags) {
+    this.nestedTagGroups.next(nestedTagGroups);
+    await this.saveContent(
+        this.nestedTagGroupsFileId, JSON.stringify(this.nestedTagGroups.value), true, JSON_MIMETYPE);
   }
 
   isSignedIn(): Promise<boolean> {
@@ -252,31 +230,44 @@ export class GoogleDriveService implements StorageBackend {
     return folderCreationResp.result.id;
   }
 
-  private async fetchOrCreateJsonFile(fileName: string, parentFolder: string): Promise<[string, {}]> {
-    const metadataReq = await gapi.client.drive.files.list({
-      q: `trashed = false and
-          mimeType='${JSON_MIMETYPE}' and
-          '${parentFolder}' in parents and
-          name='${fileName}'`,
-      fields: `nextPageToken, files(id, name, parents, modifiedTime)`,
-      pageSize: 1000 // 1000 is the max value
-    });
+  private async fetchOrCreateFoldersAndFiles() {
+    const rootFolderId = await this.fetchOrCreateFolder(ROOT_FOLDER_NAME);
+    this.rootFolderId.next(rootFolderId);
 
-    if (metadataReq.result.files.length > 0) {
-      const fileId = metadataReq.result.files[0].id;
-      const promise = this.fetchContents([fileId])[0];
-      // If the file is new it doesn't contain any settings, and isn't JSON parseable -> use empty object as placeholder
-      return [fileId, JSON.parse(await promise || '{}')];
-    }
-    const creationResp = await gapi.client.drive.files.create({
-      resource: {
-        name: fileName,
-        mimeType: JSON_MIMETYPE,
-        parents: [parentFolder],
-      },
-      fields: 'id'
-    });
-    return [creationResp.result.id, {}];
+    const notes = this.fetchOrCreateFolder(NOTES_FOLDER_NAME, this.rootFolderId.value);
+    const settingsAndMetadata = this.fetchOrCreateFolder(SETTINGS_AND_METADATA_FOLDER_NAME, this.rootFolderId.value);
+    const attachments = this.fetchOrCreateFolder(ATTACHMENTS_FOLDER_NAME, this.rootFolderId.value);
+    const flashcards = this.fetchOrCreateFolder(FLASHCARDS_FOLDER_NAME, this.rootFolderId.value);
+    const folders = await Promise.all([notes, settingsAndMetadata, attachments, flashcards]);
+
+    this.notesFolderId.next(folders[0]);
+    this.settingAndMetadataFolderId.next(folders[1]);
+    this.attachmentsFolderId.next(folders[2]);
+    this.flashcardsFolderId.next(folders[3]);
+
+    // After folders, create or fetch files
+
+    const settingsPromise =
+        this.fetchOrCreateJsonFile(SETTINGS_FILE_NAME, this.settingAndMetadataFolderId.value);
+    const attachmentPromise =
+        this.fetchOrCreateJsonFile(ATTACHMENT_METADATA_FILE_NAME, this.settingAndMetadataFolderId.value);
+    const nestedTagGroupsPromise =
+        this.fetchOrCreateJsonFile(NESTED_TAG_GROUPS_FILE_NAME, this.settingAndMetadataFolderId.value);
+
+    const [settingsData, attachmentData, nestedTagGroupsData] =
+        await Promise.all([settingsPromise, attachmentPromise, nestedTagGroupsPromise]);
+
+    const [settingsFileId, settings] = settingsData;
+    this.storedSettings.next(settings);
+    this.storedSettingsFileId = settingsFileId;
+
+    const [attachmentMetadataFileId, attachmentMetadata] = attachmentData;
+    this.attachmentMetadata.next(attachmentMetadata);
+    this.attachmentMetadataFileId = attachmentMetadataFileId;
+
+    const [nestedTagGroupsFileId, nestedTagGroups] = nestedTagGroupsData;
+    this.nestedTagGroups.next(nestedTagGroups);
+    this.nestedTagGroupsFileId = nestedTagGroupsFileId;
   }
 
   private getToken() {
@@ -498,6 +489,33 @@ export class GoogleDriveService implements StorageBackend {
 
     // TODO: cache this
     await req;
+  }
+
+  private async fetchOrCreateJsonFile(fileName: string, parentFolder: string): Promise<[string, {}]> {
+    const metadataReq = await gapi.client.drive.files.list({
+      q: `trashed = false and
+          mimeType='${JSON_MIMETYPE}' and
+          '${parentFolder}' in parents and
+          name='${fileName}'`,
+      fields: `nextPageToken, files(id, name, parents, modifiedTime)`,
+      pageSize: 1000 // 1000 is the max value
+    });
+
+    if (metadataReq.result.files.length > 0) {
+      const fileId = metadataReq.result.files[0].id;
+      const promise = this.fetchContents([fileId])[0];
+      // If the file is new it doesn't contain anything, and isn't JSON parseable -> use empty object as placeholder
+      return [fileId, JSON.parse(await promise || '{}')];
+    }
+    const creationResp = await gapi.client.drive.files.create({
+      resource: {
+        name: fileName,
+        mimeType: JSON_MIMETYPE,
+        parents: [parentFolder],
+      },
+      fields: 'id'
+    });
+    return [creationResp.result.id, {}];
   }
 
   async createNote(noteTitle: string): Promise<FileMetadata> {

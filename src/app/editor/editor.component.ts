@@ -412,6 +412,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
         tags: NoteService.getTagsForNoteContent(this.codemirror.getValue()),
       } as FlashcardDialogData,
       width: '100%',
+      maxHeight: '90vh' /* to enable scrolling on overflow */,
     });
   }
 

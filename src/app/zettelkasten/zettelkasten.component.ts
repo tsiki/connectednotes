@@ -56,6 +56,7 @@ export class ZettelkastenComponent implements OnInit {
   currentSortDirection = SortDirection.MODIFIED_NEWEST_FIRST;
   icon: string;
   viewType = ViewType;
+  fullScreenMessage: string;
 
   constructor(
     private readonly route: ActivatedRoute,
@@ -98,6 +99,9 @@ export class ZettelkastenComponent implements OnInit {
       this.cdr.detectChanges();
     });
     this.notifications.saveIcon.subscribe(newIcon => this.icon = newIcon);
+    this.notifications.fullScreenBlocking.subscribe(msg => {
+      this.fullScreenMessage = msg;
+    });
   }
 
   logout() {

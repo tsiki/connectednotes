@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import {Flashcard, NoteObject} from '../types';
 
-
 const NOTE_STORE_NAME = 'notes';
 const FLASHCARD_STORE_NAME = 'flashcards';
 

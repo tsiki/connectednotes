@@ -4,12 +4,12 @@ import {GoogleDriveService} from './backends/google-drive.service';
 import {
   AttachmentMetadata, Flashcard,
   NoteAndLinks,
-  NoteObject,
+  NoteObject, ParentTagToChildTags,
   RenameResult,
   StorageBackend,
   TagGroup, UserSettings
 } from './types';
-import {JSON_MIMETYPE, TEXT_MIMETYPE} from './constants';
+import {ALL_NOTES_TAG_NAME, JSON_MIMETYPE, TEXT_MIMETYPE, UNTAGGED_NOTES_TAG_NAME} from './constants';
 
 export enum Backend {
   FIREBASE,
@@ -27,6 +27,7 @@ export class NoteService {
   selectedNotes: BehaviorSubject<NoteObject[]> = new BehaviorSubject([]);
   storedSettings = new BehaviorSubject<UserSettings>(null);
   attachmentMetadata = new BehaviorSubject<AttachmentMetadata>(null);
+  nestedTagGroups: BehaviorSubject<ParentTagToChildTags> = new BehaviorSubject({});
 
   private backendType: Backend;
   private backend?: StorageBackend;
@@ -34,12 +35,15 @@ export class NoteService {
   private noteTitleToNote?: Map<string, NoteObject>;
   private noteTitleToNoteCaseInsensitive?: Map<string, NoteObject>;
   private tags = new Set<string>();
+  private tagToTagGroup = new Map<string, TagGroup>();
   private notesAwaitedFor: Map<string, (s: NoteObject) => void> = new Map();
 
   constructor(private injector: Injector) {}
 
   static getTagsForNoteContent(noteContent: string): string[] {
-    return noteContent.match(/(^|\W)(#((?![#])[\S])+)/ig);
+    return noteContent.match(/(^|\s)(#((?![#])[\S])+)/ig)
+        ?.map(t => t[0] !== '#' ? t.slice(1) : t)
+        || [];
   }
 
   static fileIdToLink(fileId: string) {
@@ -57,6 +61,7 @@ export class NoteService {
     this.backendType = backendType;
     this.backend.storedSettings.subscribe(newSettings => this.storedSettings.next(newSettings));
     this.backend.attachmentMetadata.subscribe(newVal => this.attachmentMetadata.next(newVal));
+    this.backend.nestedTagGroups.subscribe(newVal => this.nestedTagGroups.next(newVal));
     this.backend.notes.subscribe(newNotes => {
       if (newNotes) {
         this.notes.next(newNotes);
@@ -87,11 +92,17 @@ export class NoteService {
     });
 
     // Set up processing of tags when we have fetched ignored tags from settings and notes
-    combineLatest([this.notes, this.storedSettings]).subscribe(notesAndSettings => {
-      const [notes, settings] = notesAndSettings;
-      if (notes && settings) {
-        this.tagGroups.next(NoteService.extractTagGroups(notes, settings.ignoredTags || []));
+    combineLatest([this.notes, this.storedSettings, this.nestedTagGroups]).subscribe(
+        data => {
+      const [notes, settings, nestedTagGroups] = data;
+      if (notes && settings && nestedTagGroups) {
+        const tagGroups = this.extractTagGroups(notes, settings.ignoredTags || [], nestedTagGroups);
+        this.tagToTagGroup = new Map();
+        for (const tg of tagGroups) {
+          this.tagToTagGroup.set(tg.tag, tg);
+        }
         this.tags = new Set(this.tagGroups.value.map(t => t.tag));
+        this.tagGroups.next(tagGroups);
       }
     });
 
@@ -222,8 +233,8 @@ export class NoteService {
     // TODO: handle save failing
     const noteExists = this.noteIdToNote.has(noteId); // Might not exist if we just deleted it
     if (noteExists) {
-      // Save the note locally before attempting to save it remotely. In case the remote save fails or takes a while
-      // we don't want the user to see old content.
+      // Save the note locally before attempting to save it remotely. In case the remote save
+      // fails or takes a while we don't want the user to see old content.
       const note = this.noteIdToNote.get(noteId);
       note.content = content;
       note.lastChangedEpochMillis = new Date().getTime();
@@ -238,7 +249,8 @@ export class NoteService {
     return this.backend.uploadFile(content, fileType, fileName);
   }
 
-  async attachUploadedFileToNote(noteId: string, uploadedFileId: string, fileName: string, mimeType: string): Promise<string> {
+  async attachUploadedFileToNote(
+      noteId: string, uploadedFileId: string, fileName: string, mimeType: string): Promise<string> {
     return await this.backend.addAttachmentToNote(noteId, uploadedFileId, fileName, mimeType);
   }
 
@@ -246,11 +258,46 @@ export class NoteService {
     this.backend.updateSettings(settingKey, settingValue);
   }
 
+  async addChildTag(parentTag: string, childTag: string) {
+    if (!this.nestedTagGroups.value[parentTag]) {
+      this.nestedTagGroups.value[parentTag] = [];
+    }
+    if (!this.nestedTagGroups.value[parentTag].includes(childTag)) {
+      this.nestedTagGroups.value[parentTag].push(childTag);
+    }
+    this.backend.saveNestedTagGroups(this.nestedTagGroups.value);
+  }
+
+  async updateParentTags(childTag: string, parentTags: string[]) {
+    // TODO: what if we weren't connected when initializing and now are?
+    //  We would overwrite the whole thing. Overall we need to support offline use cases better.
+
+    // Remove previous parents
+    const newNestedTagGroups = {};
+    for (const [parent, children] of Object.entries(this.nestedTagGroups.value)) {
+      newNestedTagGroups[parent] = children.filter(c => c !== childTag);
+    }
+
+    // Add new parents
+    for (const parentTag of parentTags) {
+      if (!newNestedTagGroups[parentTag]) {
+        newNestedTagGroups[parentTag] = [];
+      }
+      newNestedTagGroups[parentTag].push(childTag);
+    }
+
+    this.backend.saveNestedTagGroups(newNestedTagGroups);
+  }
+
+  getTagGroupForTag(tag: string): TagGroup {
+    return this.tagToTagGroup.get(tag);
+  }
+
   private getAllNotesReferenced(s: string, existingTitles: Set<string>): string[] {
     const ans = [];
     let idx = s.indexOf('[[');
     while (idx !== -1) {
-      // Just in case there's something like [[[title]] (note 3 times '[')
+      // Just in case there's something like [[[[[title]]
       while (s.length > idx + 1 && s[idx] === '[' && s[idx + 1] === '[') {
         idx++;
       }
@@ -264,16 +311,38 @@ export class NoteService {
     return ans;
   }
 
-  private static extractTagGroups(notes: NoteObject[], ignoredTags: string[]): TagGroup[] {
+  // DFS to get the newest timestamp for a tag, taking into account its child tags.
+  // Performance can be improved with caching if that ever becomes necessary.
+  private getNewestNoteChangeTimestamp(
+      tag: string,
+      tagToNotes: Map<string, Set<string>>,
+      nestedTagGroups: ParentTagToChildTags,
+      seen = new Set<string>()) {
+    if (seen.has(tag)) {
+      return 1e15;
+    }
+    seen.add(tag);
+    let newestTs = 1e15;
+    for (const noteId of tagToNotes.get(tag)) {
+      const lastChanged = this.noteIdToNote.get(noteId).lastChangedEpochMillis;
+      newestTs = Math.min(newestTs, lastChanged);
+    }
+    for (const childTag of (nestedTagGroups[tag] || [])) {
+      const tmpBest = this.getNewestNoteChangeTimestamp(childTag, tagToNotes, nestedTagGroups, seen);
+      newestTs = Math.min(tmpBest, newestTs);
+    }
+    return newestTs;
+  }
+
+  private extractTagGroups(
+      notes: NoteObject[], ignoredTags: string[], nestedTagGroups: ParentTagToChildTags): TagGroup[] {
     const tagToNotes = new Map<string, Set<string>>();
-    const tagToNewestTimestamp = new Map<string, number>();
-    const tagToOldestTimestamp = new Map<string, number>();
     for (const note of notes) {
-      let tags = this.getTagsForNoteContent(note.content);
+      let tags = NoteService.getTagsForNoteContent(note.content);
       if (!tags || tags.length === 0) {
-        tags = ['untagged'];
+        tags = [UNTAGGED_NOTES_TAG_NAME];
       }
-      tags.push('all');
+      tags.push(ALL_NOTES_TAG_NAME);
       for (const untrimmedTag of tags) {
         const tag = untrimmedTag.trim();
         if (ignoredTags.includes(tag)) {
@@ -281,21 +350,18 @@ export class NoteService {
         }
         if (!tagToNotes.has(tag)) {
           tagToNotes.set(tag, new Set<string>());
-          tagToNewestTimestamp.set(tag, 0);
-          tagToOldestTimestamp.set(tag, 1e15);
         }
-        tagToNewestTimestamp.set(tag, Math.max(tagToNewestTimestamp.get(tag), note.lastChangedEpochMillis));
-        tagToOldestTimestamp.set(tag, Math.min(tagToNewestTimestamp.get(tag), note.lastChangedEpochMillis));
         tagToNotes.get(tag).add(note.id);
       }
     }
     const ans: TagGroup[] = [];
     for (const [tag, noteIds] of tagToNotes) {
+      const newestTs =
+          this.getNewestNoteChangeTimestamp(tag, tagToNotes, nestedTagGroups);
       const tagGroup = {
         tag,
         noteIds: Array.from(noteIds),
-        newestTimestamp: tagToNewestTimestamp.get(tag),
-        oldestTimestamp: tagToOldestTimestamp.get(tag),
+        newestNoteChangeTimestamp: newestTs,
       };
       ans.push(tagGroup);
     }

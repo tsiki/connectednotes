@@ -17,35 +17,6 @@
     padding: 0;
   }
 
-  .tag-group-note.note-link {
-    display: none;
-  }
-
-  .expanded .tag-group-note.note-link {
-    display: flex;
-    padding-left: 30px;
-    background-color: var(--primary-background-color);
-  }
-
-  .tag-group-link,
-  .tag-group-note {
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  .tag-group-link {
-    padding-left: 0;
-  }
-
-  .tag-group-link,
-  .note-link {
-    cursor: pointer;
-    color: var(--primary-text-color);
-    display: flex;
-    font-weight: 400;
-    width: 100%;
-  }
-
   button {
     outline: none;
   }
@@ -54,74 +25,15 @@
     padding: 0;
   }
 
-  .expand-icon {
-    font-size: 18px;
-    transform: rotate(-90deg);
-  }
-
-  .expanded .expand-icon {
-    transform: initial;
-  }
-
-  .unsaved-marker {
-    position: sticky;
-    right: 0;
-  }
-
-  .more-button {
-    display: none;
-    position: absolute;
-    right: 0;
-    width: 30px;
-  }
-
-  .tag-group-link:hover .more-button {
-    align-items: center;
-    display: inline-flex;
-    height: 100%;
-  }
-
-  .mat-button-toggle-checked {
-    background-color: var(--selected-note-color);
-  }
 </style>
 
-<div id="note-list-container">
-  <span *ngFor="let tagGroup of tagGroups; trackBy: trackByTagFn">
-    <button class="tag-group-link"
-            (click)="toggleTagGroup($event)"
-            mat-button>
-        <mat-icon class="expand-icon">expand_more</mat-icon>
-      {{ tagGroup.tag }}
-      <span class="more-button"
-            *ngIf="!['all', 'untagged'].includes(tagGroup.tag)"
-            mat-button
-            matTooltip="extra options"
-            [matMenuTriggerFor]="sortMenu"
-            (click)="$event.stopPropagation()">
-        <mat-icon>more_vert</mat-icon>
-        <mat-menu #sortMenu="matMenu">
-          <button mat-menu-item (click)="ignoreTag(tagGroup.tag)">
-            Ignore tag {{ tagGroup.tag }}
-          </button>
-        </mat-menu>
-      </span>
-    </button>
-
-    <button *ngFor="let noteId of tagGroup.noteIds; trackBy: trackByIdFn"
-            [class.mat-button-toggle-checked]="selectedNoteIds.has(noteId)"
-            class="note-link tag-group-note"
-            (click)="openNote($event, noteId)"
-            mat-button>
-      <span>{{ noteService.getNote(noteId).title }}<!--
-      --><span class="unsaved-marker" *ngIf="unsavedNotes.has(noteId)">*</span></span>
-    </button>
-  </span>
+<div #droplist
+     (cdkDropListDropped)="nestTags($event)"
+     [cdkDropListSortingDisabled]="true"
+     cdkDropList
+     id="note-list-container">
+  <app-tag-group (tagDraggedOverOtherTag)="onTagDraggedOverOtherTag($event)"
+                 [sortDirection]="sortDirection"
+                 isRoot="true">
+  </app-tag-group>
 </div>
-
-<!--<div id="context-menu" #contextMenu [ngStyle]="{ left: contextMenuX, top: contextMenuY, zIndex: 100 }" *ngIf="showContextMenu">-->
-<!--  <mat-card>-->
-<!--    <mat-list-item><button class="context-menu-button" mat-button (click)="openNoteRenameInput()">Rename</button></mat-list-item>-->
-<!--    <mat-list-item><button class="context-menu-button" mat-button (click)="deleteNote()">Delete</button></mat-list-item>-->
-<!--  </mat-card>-->
-<!--</div>-->
