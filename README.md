@@ -15,7 +15,7 @@ anything serious just yet, but I'd love to get some feedback via github bugs or 
   - Notes are synced in personal cloud (currently Google Drive works)
   - Store notes in plain text with any metadata stored separately
   - Possibly support for local notes (although so far only Chrome has any sort of filesystem API available)
-- Currently markdown based (maybe provide WYSIWYG editor as alternative?)
+- Markdown based
 - Graph view for exploring notes easily
 - Open source (duh)
 
@@ -46,31 +46,22 @@ there shouldn't be risk in having it committed (right...?).
 
 # Tech stack
 
-Angular 9 (so Typescript) is the main framework. Codemirror is used to provide markdown
-highlighting, marked.js provides markdown rendering and d3 the graph view. 
+Angular (ie. Typescript) is the main framework. Codemirror is used to provide markdown
+highlighting, marked.js provides markdown rendering.
 
 # Comparison to other Zettelkasten-ish note taking apps
 
 While there are some
 other open source Zettelkasten based note taking apps (shoutout to the great
-Zettlr) AFAIK none of those provide direct integration with cloud storage and
-accessibility via web/mobile.
+Zettlr) AFAIK none of those provide direct integration with cloud storage,
+accessibility via web/mobile and first-class flashcard integration.
 
-Also, most such apps (open source or not) are currently based on Electron.
-While Electron is powerful and well-supported, I think it carries long-term risks that
-PWAs don't have. Namely, Electron apps must be kept up-to-date by manually releasing
-new versions based on the the latest Electron, whereas PWAs can rely on the user to keep
-their browser udpated which reduces the maintenance load.
-Also, code signing Electron apps is not trivial and increases maintenance load.
-This makes it more important to have support from a commercial company or dedicated
-open source maintainers, where the same doesn't apply for PWAs (to a degree).
+Also, many such apps (open source or not) are currently based on Electron, which
+has its own set of problems.
 
 # Planned timeline
 
-Get major missing features working by the end of July and push out 1.0.
-
-Responsiveness and offline support are probably the biggest time sinks so those might
-get cut from 1.0 depending on how much time there is.
+Alpha will be released by the end of January.
 
 # Setting up your own instance
 
@@ -78,6 +69,9 @@ The only gotcha when setting up your own instance is that you need to create
 Google Drive API key and replace the current one with that (the API key only
 allows certain domains). Aside from that, everything deploying it should be
 a breeze.
+
+In addition, analytics currently works only for connectednotes.net so that would need
+to be set up.
 
 # Contact me
 
