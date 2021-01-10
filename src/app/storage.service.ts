@@ -21,7 +21,7 @@ export enum Backend {
 @Injectable({
   providedIn: 'root',
 })
-export class NoteService { // Should be actually something like BackendService or so since this handles ~everything
+export class StorageService { // Should be actually something like BackendService or so since this handles ~everything
 
   notes: BehaviorSubject<NoteObject[]> = new BehaviorSubject([]);
   tagGroups: BehaviorSubject<TagGroup[]> = new BehaviorSubject([]);
@@ -346,11 +346,31 @@ export class NoteService { // Should be actually something like BackendService o
     return newestTs;
   }
 
+  async updateSettings(settingKey: string, settingValue: string|string[]) {
+    const settings = StorageService.deepCopyObject(this.storedSettings.value);
+    settings[settingKey] = settingValue;
+    try {
+      await this.cache.upsertSettingsInCache(settings);
+    } catch (e) {
+      this.notifications.showFullScreenBlockingMessage(
+          'Failed to update settings in local cache. Try saving again.');
+    }
+    this.storedSettings.next(settings);
+    if (this.backendAvailable) {
+      try {
+        await this.backend.saveSettings(settings);
+      } catch (e) {
+        this.notifications.showFullScreenBlockingMessage(
+            'Failed to update settings. Try saving again.');
+      }
+    }
+  }
+
   private extractTagGroups(
       notes: NoteObject[], ignoredTags: string[], nestedTagGroups: ParentTagToChildTags): TagGroup[] {
     const tagToNotes = new Map<string, Set<string>>();
     for (const note of notes) {
-      let tags = NoteService.getTagsForNoteContent(note.content);
+      let tags = StorageService.getTagsForNoteContent(note.content);
       if (!tags || tags.length === 0) {
         tags = [UNTAGGED_NOTES_TAG_NAME];
       }
@@ -378,25 +398,5 @@ export class NoteService { // Should be actually something like BackendService o
       ans.push(tagGroup);
     }
     return ans;
-  }
-
-  async updateSettings(settingKey: string, settingValue: string|string[]) {
-    const settings = NoteService.deepCopyObject(this.storedSettings.value);
-    settings[settingKey] = settingValue;
-    try {
-      await this.cache.upsertSettingsInCache(settings);
-    } catch (e) {
-      this.notifications.showFullScreenBlockingMessage(
-          'Failed to update settings in local cache. Try saving again.');
-    }
-    this.storedSettings.next(settings);
-    if (this.backendAvailable) {
-      try {
-        await this.backend.saveSettings(settings);
-      } catch (e) {
-        this.notifications.showFullScreenBlockingMessage(
-            'Failed to update settings. Try saving again.');
-      }
-    }
   }
 }

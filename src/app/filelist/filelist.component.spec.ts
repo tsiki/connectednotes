@@ -1,7 +1,7 @@
 import {async, ComponentFixture, fakeAsync, flush, TestBed} from '@angular/core/testing';
 
 import {FilelistComponent} from './filelist.component';
-import {NoteService} from '../note.service';
+import {StorageService} from '../storage.service';
 import {ParentTagToChildTags, TagGroup} from '../types';
 import {BehaviorSubject} from 'rxjs';
 import {NotificationService} from '../notification.service';
@@ -19,13 +19,13 @@ import {CdkDragDrop} from '@angular/cdk/drag-drop';
 describe('FilelistComponent', () => {
   let component: FilelistComponent;
   let fixture: ComponentFixture<FilelistComponent>;
-  let noteService;
+  let storageService;
   let notifications;
   let subviewManager;
 
   beforeEach(async(() => {
     const tagGroups = new BehaviorSubject<TagGroup[]>([]);
-    noteService = {
+    storageService = {
       nestedTagGroups: new BehaviorSubject<ParentTagToChildTags>(null),
       tagGroups,
       getTagGroupForTag: tag => tagGroups.value.find(tg => tg.tag === tag),
@@ -52,7 +52,7 @@ describe('FilelistComponent', () => {
         MatIconModule,
       ],
       providers: [
-          { provide: NoteService, useValue: noteService },
+          { provide: StorageService, useValue: storageService },
           { provide: NotificationService, useValue: notifications },
           { provide: SettingsService, useValue: {} },
           { provide: SubviewManagerService, useValue: subviewManager },
@@ -80,8 +80,8 @@ describe('FilelistComponent', () => {
       { tag: '#root-tag-explicitly-attached', noteIds: ['id3', 'id4'], newestNoteChangeTimestamp: 0 },
       { tag: '#non-root-tag', noteIds: ['id5', 'id6'], newestNoteChangeTimestamp: 0 },
     ];
-    noteService.nestedTagGroups.next(ptct);
-    noteService.tagGroups.next(tagGroups);
+    storageService.nestedTagGroups.next(ptct);
+    storageService.tagGroups.next(tagGroups);
 
     fixture.detectChanges();
     flush();
@@ -107,8 +107,8 @@ describe('FilelistComponent', () => {
       { tag: '#rt3', noteIds: ['id5', 'id6'], newestNoteChangeTimestamp: 4 },
       { tag: '#rt4', noteIds: ['id5', 'id6'], newestNoteChangeTimestamp: 3 },
     ];
-    noteService.nestedTagGroups.next({});
-    noteService.tagGroups.next(tagGroups);
+    storageService.nestedTagGroups.next({});
+    storageService.tagGroups.next(tagGroups);
 
     // Default sorting is SortDirection.MODIFIED_NEWEST_FIRST
     fixture.detectChanges();
@@ -151,7 +151,7 @@ describe('FilelistComponent', () => {
     const tagGroups: TagGroup[] = [
       { tag: '#rt', noteIds: ['id1', 'id2', 'id3', 'id4'], newestNoteChangeTimestamp: 0 },
     ];
-    noteService.getNote = noteId => {
+    storageService.getNote = noteId => {
       switch (noteId) {
         case 'id1':
           return { id: noteId, title: noteId, lastChangedEpochMillis: 1 };
@@ -163,8 +163,8 @@ describe('FilelistComponent', () => {
           return { id: noteId, title: noteId, lastChangedEpochMillis: 2 };
       }
     };
-    noteService.nestedTagGroups.next({});
-    noteService.tagGroups.next(tagGroups);
+    storageService.nestedTagGroups.next({});
+    storageService.tagGroups.next(tagGroups);
 
     fixture.detectChanges();
     flush();
@@ -193,13 +193,13 @@ describe('FilelistComponent', () => {
   }));
 
   it('should create nested tags when one is drag and dropped over another', fakeAsync(() => {
-    noteService.nestedTagGroups.next({});
-    noteService.tagGroups.next([]);
+    storageService.nestedTagGroups.next({});
+    storageService.tagGroups.next([]);
 
     fixture.componentInstance.forTesting.setLastChildTagDragged('#rt1');
     fixture.componentInstance.forTesting.setLastParentTagDragged('#rt2');
 
-    const spy = spyOn(noteService, 'addChildTag');
+    const spy = spyOn(storageService, 'addChildTag');
     fixture.componentInstance.nestTags({ isPointerOverContainer: true } as CdkDragDrop<unknown>);
     expect(spy.calls.mostRecent().args).toEqual(['#rt2', '#rt1']);
   }));

@@ -4,7 +4,7 @@ import {FlashcardService, INITIAL_FLASHCARD_LEARNING_DATA} from './flashcard.ser
 import {Flashcard} from './types';
 import {BehaviorSubject} from 'rxjs';
 import {StudyComponent} from './study/study.component';
-import {NoteService} from './note.service';
+import {StorageService} from './storage.service';
 import {SettingsService} from './settings.service';
 
 
@@ -45,15 +45,15 @@ function waitForFlashcardDebounce() {
 describe('FlashcardService', () => {
   let service: FlashcardService;
   let flashcards: BehaviorSubject<Flashcard[]>;
-  let noteService: NoteService;
+  let storage: StorageService;
 
   beforeEach(() => {
-    noteService = new MockNoteService() as NoteService;
-    flashcards = noteService.flashcards;
+    storage = new MockNoteService() as StorageService;
+    flashcards = storage.flashcards;
     TestBed.configureTestingModule({
       providers: [
         FlashcardService,
-        { provide: NoteService, useValue: noteService },
+        { provide: StorageService, useValue: storage },
         { provide: SettingsService, useClass: MockSettingsService },
       ],
     });
@@ -77,8 +77,8 @@ describe('FlashcardService', () => {
   it('should be due after two initial delays have passed', fakeAsync( () => {
     let fc = createFlashcard( new Date(1_000_000_000).getTime());
     jasmine.clock().mockDate(new Date(1_000_000_000 + INITIAL_DELAY_PERIODS[0] + 1));
-    spyOn(noteService, 'saveFlashcard');
-    const spy = noteService.saveFlashcard as jasmine.Spy;
+    spyOn(storage, 'saveFlashcard');
+    const spy = storage.saveFlashcard as jasmine.Spy;
 
     // Submit 'successfully remembered' rating, take the saved flashcard and re-insert it to the queue
     service.submitFlashcardRating(3, fc);

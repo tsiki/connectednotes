@@ -1,7 +1,7 @@
 import {Component, Inject} from '@angular/core';
 import {NoteObject} from '../types';
 import {MAT_DIALOG_DATA, MatDialogRef} from '@angular/material/dialog';
-import {NoteService} from '../note.service';
+import {StorageService} from '../storage.service';
 import {SubviewManagerService} from '../subview-manager.service';
 
 @Component({
@@ -27,10 +27,10 @@ export class BackreferencesDialogComponent {
   constructor(
       @Inject(MAT_DIALOG_DATA) public data: any,
       public dialogRef: MatDialogRef<BackreferencesDialogComponent>,
-      private readonly noteService: NoteService,
+      private readonly storage: StorageService,
       private readonly subviewManager: SubviewManagerService) {
     this.noteId = data.noteId;
-    this.backrefs = this.noteService.getBackreferences(this.noteId);
+    this.backrefs = this.storage.getBackreferences(this.noteId);
   }
 
   selectNote(e: MouseEvent, noteId: string) {

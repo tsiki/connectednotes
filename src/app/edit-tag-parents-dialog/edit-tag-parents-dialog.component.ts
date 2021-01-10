@@ -4,7 +4,7 @@ import {MatAutocomplete, MatAutocompleteSelectedEvent} from '@angular/material/a
 import {FormControl} from '@angular/forms';
 import {Observable} from 'rxjs';
 import {map} from 'rxjs/operators';
-import {NoteService} from '../note.service';
+import {StorageService} from '../storage.service';
 import {MatChipInputEvent} from '@angular/material/chips';
 import {MAT_DIALOG_DATA, MatDialogRef} from '@angular/material/dialog';
 import {AUTOMATICALLY_GENERATED_TAG_NAMES, ROOT_TAG_NAME} from '../constants';
@@ -66,17 +66,17 @@ export class EditTagParentsDialogComponent {
   constructor(
       public dialogRef: MatDialogRef<EditTagParentsDialogComponent>,
       @Inject(MAT_DIALOG_DATA) public data: any,
-      private readonly noteService: NoteService,
+      private readonly storage: StorageService,
       private snackBar: MatSnackBar) {
     this.tag = data.tag;
-    this.noteService.tagGroups.subscribe(
+    this.storage.tagGroups.subscribe(
         tgs => {
           const selectableParentTags = tgs.map(tg => tg.tag)
               .filter(tag => !AUTOMATICALLY_GENERATED_TAG_NAMES.includes(tag));
           selectableParentTags.push(ROOT_TAG_NAME);
           this.allTags = selectableParentTags;
         });
-    this.noteService.nestedTagGroups.subscribe(ntgs => {
+    this.storage.nestedTagGroups.subscribe(ntgs => {
       for (const [parentTag, childTags] of Object.entries(ntgs)) {
         if (childTags.includes(this.tag)) {
           this.parentTags.push(parentTag);
@@ -125,7 +125,7 @@ export class EditTagParentsDialogComponent {
   }
 
   saveAndClose() {
-    this.noteService.updateParentTags(this.tag, this.parentTags);
+    this.storage.updateParentTags(this.tag, this.parentTags);
     this.dialogRef.close();
   }
 

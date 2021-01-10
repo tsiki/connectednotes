@@ -1,5 +1,5 @@
 import {Component, EventEmitter, HostBinding, Input, OnInit, Output} from '@angular/core';
-import {NoteService} from '../note.service';
+import {StorageService} from '../storage.service';
 import {SettingsService} from '../settings.service';
 import {SubviewManagerService} from '../subview-manager.service';
 import {NotificationService} from '../notification.service';
@@ -59,9 +59,9 @@ import {combineLatest} from 'rxjs';
                 [class.mat-button-toggle-checked]="selectedNoteIds.has(noteId)"
                 class="note-link tag-group-note"
                 (click)="openNote($event, noteId)"
-                matTooltip="{{ noteService.getNote(noteId).title }}"
+                matTooltip="{{ storage.getNote(noteId).title }}"
                 mat-button>
-          <span>{{ noteService.getNote(noteId).title }}<!--
+          <span>{{ storage.getNote(noteId).title }}<!--
           --><span class="unsaved-marker" *ngIf="unsavedNotes.has(noteId)">*</span></span>
         </button>
       </ng-container>
@@ -170,7 +170,7 @@ export class TagGroupComponent implements OnInit {
 
   constructor(
       public dialog: MatDialog,
-      readonly noteService: NoteService,
+      readonly storage: StorageService,
       private readonly settingsService: SettingsService,
       private readonly subviewManager: SubviewManagerService,
       private notifications: NotificationService) {}
@@ -203,11 +203,11 @@ export class TagGroupComponent implements OnInit {
         .subscribe(activeNotes => this.selectedNoteIds = new Set(activeNotes));
 
     if (!this.isRootTagGroup) {
-      this.noteService.nestedTagGroups
+      this.storage.nestedTagGroups
           .subscribe(nestedTagGroups => this.childTags = nestedTagGroups[this.tag]);
     }
 
-    combineLatest([this.noteService.tagGroups, this.noteService.nestedTagGroups])
+    combineLatest([this.storage.tagGroups, this.storage.nestedTagGroups])
         .subscribe(data => {
       const [tagGroups, nestedTagGroups] = data;
       if (tagGroups && nestedTagGroups) {
@@ -247,7 +247,7 @@ export class TagGroupComponent implements OnInit {
     if (!this.childTags) {
       return;
     }
-    const getTagGroupFn = (tag) => this.noteService.getTagGroupForTag(tag);
+    const getTagGroupFn = (tag) => this.storage.getTagGroupForTag(tag);
     if (!this.isRootTagGroup) {
       this.childTags = TagGroupComponent.sortTags(this.childTags, direction, getTagGroupFn);
     } else {
@@ -256,7 +256,7 @@ export class TagGroupComponent implements OnInit {
       const sortedTags = TagGroupComponent.sortTags(toSortTags, direction, getTagGroupFn);
       this.childTags = [...autoTags, ...sortedTags];
     }
-    const getNoteFn = noteId => this.noteService.getNote(noteId);
+    const getNoteFn = noteId => this.storage.getNote(noteId);
     this.noteIds = TagGroupComponent.sortNotes(this.noteIds, direction, getNoteFn);
   }
 

@@ -2,7 +2,7 @@ import {Component, Inject, OnDestroy, OnInit} from '@angular/core';
 import {AttachedFile} from '../types';
 import {MAT_DIALOG_DATA} from '@angular/material/dialog';
 import {Sort} from '@angular/material/sort';
-import {NoteService} from '../note.service';
+import {StorageService} from '../storage.service';
 import {Subscription} from 'rxjs';
 
 function compare(a: number | string, b: number | string, isAsc: boolean) {
@@ -54,11 +54,11 @@ export class AttachmentsDialogComponent implements OnDestroy {
 
   constructor(
       @Inject(MAT_DIALOG_DATA) public data: any,
-      private readonly noteService: NoteService) {
+      private readonly storage: StorageService) {
     this.noteId = data.noteId;
-    this.attachedFiles = this.noteService.attachmentMetadata.value[this.noteId] || [];
+    this.attachedFiles = this.storage.attachmentMetadata.value[this.noteId] || [];
     this.sortData(this.prevSort);
-    this.sub = this.noteService.attachmentMetadata.subscribe(metadata => {
+    this.sub = this.storage.attachmentMetadata.subscribe(metadata => {
       if (metadata) {
         this.attachedFiles = metadata[this.noteId] || [];
         this.sortData(this.prevSort);
@@ -67,7 +67,7 @@ export class AttachmentsDialogComponent implements OnDestroy {
   }
 
   getLink(id: string) {
-    return NoteService.fileIdToLink(id);
+    return StorageService.fileIdToLink(id);
   }
 
   sortData(sort: Sort) {
@@ -88,7 +88,7 @@ export class AttachmentsDialogComponent implements OnDestroy {
   }
 
   deleteAttachment(fileId: string) {
-    this.noteService.deleteAttachment(this.noteId, fileId);
+    this.storage.deleteAttachment(this.noteId, fileId);
   }
 
   ngOnDestroy(): void {

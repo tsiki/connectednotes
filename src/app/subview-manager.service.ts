@@ -1,5 +1,4 @@
 import {EventEmitter, Injectable, SecurityContext} from '@angular/core';
-import {NoteService} from './note.service';
 import {BehaviorSubject} from 'rxjs';
 import {ActivatedRoute, Router} from '@angular/router';
 import {DomSanitizer} from '@angular/platform-browser';
@@ -21,7 +20,6 @@ export class SubviewManagerService {
   somethingOpened = new EventEmitter();
 
   constructor(
-      private readonly noteService: NoteService,
       private router: Router,
       private activatedRoute: ActivatedRoute,
       private sanitizer: DomSanitizer) {

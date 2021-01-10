@@ -9,7 +9,7 @@ import {
   ElementRef, AfterViewInit
 } from '@angular/core';
 import {MAT_DIALOG_DATA, MatDialogRef} from '@angular/material/dialog';
-import {NoteService} from '../note.service';
+import {StorageService} from '../storage.service';
 import {Flashcard, FlashcardSuggestion} from '../types';
 import {INITIAL_FLASHCARD_LEARNING_DATA} from '../flashcard.service';
 import * as marked from 'marked';
@@ -209,7 +209,7 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
       public dialogRef: MatDialogRef<FlashcardDialogComponent>,
       @Inject(MAT_DIALOG_DATA) public data: FlashcardDialogData,
       private readonly settingsService: SettingsService,
-      private readonly noteService: NoteService,
+      private readonly storage: StorageService,
       private sanitizer: DomSanitizer) {
     if (data.flashcardToEdit) {
       this.mode = 'edit';
@@ -220,7 +220,7 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
       this.tags = data.tags;
     }
 
-    this.noteService.tagGroups.subscribe(tgs => this.allTags = tgs.map(tg => tg.tag));
+    this.storage.tagGroups.subscribe(tgs => this.allTags = tgs.map(tg => tg.tag));
     this.filteredTags = this.tagCtrl.valueChanges.pipe(
         map((tag: string | null) => tag ? this._filter(tag) : this.allTags.slice()));
   }
@@ -307,9 +307,9 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
       fc = this.data.flashcardToEdit;
       fc.side1 = this.frontEditor.getValue();
       fc.side2 = this.backEditor.getValue();
-      await this.noteService.saveFlashcard(fc);
+      await this.storage.saveFlashcard(fc);
     } else {
-      await this.noteService.createFlashcard({
+      await this.storage.createFlashcard({
         tags: this.tags.filter(t => !this.ignoredTags.has(t)),
         side1: this.frontEditor.getValue(),
         side2: this.backEditor.getValue(),

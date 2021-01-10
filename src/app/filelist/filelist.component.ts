@@ -1,5 +1,5 @@
 import {Component, ElementRef, Input, OnInit, ViewChild} from '@angular/core';
-import {NoteService} from '../note.service';
+import {StorageService} from '../storage.service';
 import {TagNesting} from '../types';
 import {NotificationService} from '../notification.service';
 import {SortDirection} from '../zettelkasten/zettelkasten.component';
@@ -33,7 +33,7 @@ export class FilelistComponent implements OnInit {
   };
 
   constructor(
-      readonly noteService: NoteService,
+      readonly storage: StorageService,
       private readonly subviewManager: SubviewManagerService,
       private notifications: NotificationService) {
   }
@@ -52,7 +52,7 @@ export class FilelistComponent implements OnInit {
     const childTag = this.lastChildTagDragged;
     const parentTag = this.lastParentTagDragged;
     if (parentTag !== childTag) {
-      await this.noteService.addChildTag(parentTag, childTag);
+      await this.storage.addChildTag(parentTag, childTag);
     }
   }
 

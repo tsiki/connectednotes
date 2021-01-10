@@ -7,7 +7,7 @@ import {
   NgForm,
   Validator,
 } from '@angular/forms';
-import {NoteService} from './note.service';
+import {StorageService} from './storage.service';
 import {ErrorStateMatcher} from '@angular/material/core';
 
 /** Error when invalid control is dirty. */
@@ -24,10 +24,10 @@ export class ValidateImmediatelyMatcher implements ErrorStateMatcher {
 export class AlreadyExistingNoteDirective implements Validator {
   @Input() alreadyExistingTitle;
 
-  constructor(private noteService: NoteService) {}
+  constructor(private storage: StorageService) {}
 
   validate(control: AbstractControl): {[key: string]: any} | null {
-    const noteExists = control.value ? !!this.noteService.getNoteForTitleCaseInsensitive(control.value) : false;
+    const noteExists = control.value ? !!this.storage.getNoteForTitleCaseInsensitive(control.value) : false;
     return noteExists && control.value !== this.alreadyExistingTitle
         ? {forbiddenName: {value: control.value}}
         : null;

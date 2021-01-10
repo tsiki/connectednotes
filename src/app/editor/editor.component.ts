@@ -51,7 +51,7 @@ import 'codemirror/mode/commonlisp/commonlisp';
 import 'codemirror/mode/powershell/powershell';
 import 'codemirror/mode/smalltalk/smalltalk';
 import * as CodeMirror from 'codemirror';
-import {NoteService} from '../note.service';
+import {StorageService} from '../storage.service';
 import {fromEvent, ReplaySubject} from 'rxjs';
 import {debounceTime, takeUntil} from 'rxjs/operators';
 import {AttachedFile, FlashcardSuggestionExtractionRule, NoteObject} from '../types';
@@ -138,7 +138,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
 
   constructor(
       public dialog: MatDialog,
-      private readonly noteService: NoteService,
+      private readonly storage: StorageService,
       private readonly subviewManager: SubviewManagerService,
       private readonly settingsService: SettingsService,
       private readonly notifications: NotificationService,
@@ -158,22 +158,22 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   async ngOnInit() {
     // Initialize selectedNote here instead of in ngAfterViewInit to avoid 'expression has changed after it was last
     // checked' exceptions.
-    this.selectedNote = this.noteService.getNote(this.noteId);
+    this.selectedNote = this.storage.getNote(this.noteId);
     if (!this.selectedNote) {
       this.showSpinner = true;
-      this.fetchSelectedNotePromise = this.noteService.getNoteWhenReady(this.noteId);
+      this.fetchSelectedNotePromise = this.storage.getNoteWhenReady(this.noteId);
       this.selectedNote = await this.fetchSelectedNotePromise;
       this.showSpinner = false;
     }
 
     this.noteTitle = this.selectedNote.title;
-    this.noteService.tagGroups.pipe(takeUntil(this.destroyed)).subscribe(val => {
+    this.storage.tagGroups.pipe(takeUntil(this.destroyed)).subscribe(val => {
       this.allTags = val.map(t => t.tag);
       this.allTags.sort();
     });
-    this.noteService.notes.pipe(takeUntil(this.destroyed))
+    this.storage.notes.pipe(takeUntil(this.destroyed))
         .subscribe(newNotes => this.allNoteTitles = newNotes.map(n => n.title));
-    this.noteService.attachmentMetadata.pipe(takeUntil(this.destroyed)).subscribe(metadata => {
+    this.storage.attachmentMetadata.pipe(takeUntil(this.destroyed)).subscribe(metadata => {
       if (this.selectedNote && metadata && metadata.hasOwnProperty(this.selectedNote.id)) {
         this.attachedFiles = metadata[this.selectedNote.id];
       }
@@ -337,12 +337,12 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
         const endIdx = end.indexOf(']]');
         if (startIdx !== 0 && endIdx !== -1) {
           const noteTitle = start.substr(startIdx) + end.substr(0, endIdx);
-          const note = this.noteService.notes.value.find(n => n.title === noteTitle);
+          const note = this.storage.notes.value.find(n => n.title === noteTitle);
           let noteId;
           if (note) {
             noteId = note.id;
           } else {
-            noteId = await this.noteService.createNote(noteTitle);
+            noteId = await this.storage.createNote(noteTitle);
           }
           if (this.mouseEventWithCtrlAndShiftActive) {
             this.subviewManager.openNoteInNewWindow(noteId);
@@ -381,7 +381,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     const valueToSave = this.codemirror.getValue();
     const noteId = this.selectedNote?.id;
     if (noteId && this.selectedNote.content !== valueToSave) {
-      await this.noteService.saveContent(this.selectedNote.id, valueToSave);
+      await this.storage.saveContent(this.selectedNote.id, valueToSave);
       const userSwitchedToOtherNote = noteId !== this.selectedNote?.id;
       const noteUnchangedWhileSaving = valueToSave === this.codemirror.getValue();
       if (noteUnchangedWhileSaving || userSwitchedToOtherNote) {
@@ -413,22 +413,22 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     });
   }
 
-  private openNewFlashcardDialog() {
-    const cursor = this.codemirror.getCursor();
-    const flashcardSuggestions = this.getAutomaticFlashcardSuggestion(cursor);
-    const userSelection = this.codemirror.getSelection();
-    if (userSelection) {
-      flashcardSuggestions.unshift(userSelection);
+  @HostListener('drop', ['$event'])
+  async evtDrop(e: DragEvent) {
+    const files = e.dataTransfer.files;
+    if (files.length !== 1) {
+      throw new Error(`Was expecting 1 file. Got ${files.length}.`);
     }
-    this.dialog.open(FlashcardDialogComponent, {
-      position: { top: '10px' },
-      data: {
-        suggestions: flashcardSuggestions,
-        tags: NoteService.getTagsForNoteContent(this.codemirror.getValue()),
-      } as FlashcardDialogData,
-      width: '100%',
-      maxHeight: '90vh' /* to enable scrolling on overflow */,
-    });
+    const file = files[0];
+    const name = file.name;
+    const notificationId = this.notifications.createId();
+    this.notifications.toSidebar(notificationId, 'Uploading file');
+    const fileId = await this.storage.uploadFile(file, file.type, file.name);
+    await this.storage.attachUploadedFileToNote(this.selectedNote.id, fileId, file.name, file.type);
+    this.notifications.toSidebar(notificationId, 'File uploaded', 3000);
+    if (file.type.startsWith('image/')) {
+      this.insertImageLinkToCursorPosition(StorageService.fileIdToLink(fileId), name);
+    }
   }
 
   openBackreferencesDialog() {
@@ -450,34 +450,24 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     }
   }
 
-  @HostListener('drop', ['$event'])
-  async evtDrop(e: DragEvent) {
-    const files = e.dataTransfer.files;
-    if (files.length !== 1) {
-      throw new Error(`Was expecting 1 file. Got ${files.length}.`);
-    }
-    const file = files[0];
-    const name = file.name;
-    const notificationId = this.notifications.createId();
-    this.notifications.toSidebar(notificationId, 'Uploading file');
-    const fileId = await this.noteService.uploadFile(file, file.type, file.name);
-    await this.noteService.attachUploadedFileToNote(this.selectedNote.id, fileId, file.name, file.type);
-    this.notifications.toSidebar(notificationId, 'File uploaded', 3000);
-    if (file.type.startsWith('image/')) {
-      this.insertImageLinkToCursorPosition(NoteService.fileIdToLink(fileId), name);
-    }
-  }
-
   async executeRename(newTitle) {
     this.titleRenameInput.nativeElement.blur();
     const noteId = this.selectedNote.id;
-    const curTitle = this.noteService.notes.value.find(n => n.id === noteId).title;
+    const curTitle = this.storage.notes.value.find(n => n.id === noteId).title;
     if (newTitle !== curTitle) {
-      const res = await this.noteService.renameNote(noteId, newTitle);
+      const res = await this.storage.renameNote(noteId, newTitle);
       this.snackBar.open(
           `Renamed ${res.renamedBackRefCount} references in ${res.renamedNoteCount} notes`,
           null,
           {duration: 5000});
+    }
+  }
+
+  async deleteNote() {
+    const result = window.confirm(`Delete ${this.selectedNote.title}?`);
+    if (result) {
+      await this.storage.deleteNote(this.selectedNote.id);
+      this.closeNote();
     }
   }
 
@@ -486,12 +476,22 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     this.titleRenameInput.nativeElement.blur();
   }
 
-  async deleteNote() {
-    const result = window.confirm(`Delete ${this.selectedNote.title}?`);
-    if (result) {
-      await this.noteService.deleteNote(this.selectedNote.id);
-      this.closeNote();
+  private openNewFlashcardDialog() {
+    const cursor = this.codemirror.getCursor();
+    const flashcardSuggestions = this.getAutomaticFlashcardSuggestion(cursor);
+    const userSelection = this.codemirror.getSelection();
+    if (userSelection) {
+      flashcardSuggestions.unshift(userSelection);
     }
+    this.dialog.open(FlashcardDialogComponent, {
+      position: { top: '10px' },
+      data: {
+        suggestions: flashcardSuggestions,
+        tags: StorageService.getTagsForNoteContent(this.codemirror.getValue()),
+      } as FlashcardDialogData,
+      width: '100%',
+      maxHeight: '90vh' /* to enable scrolling on overflow */,
+    });
   }
 
   closeNote() {
@@ -506,7 +506,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     const cursor = this.codemirror.getSearchCursor(/#[^\s#]+\s/);
     while (cursor.findNext()) {
       const txt = this.codemirror.getRange(cursor.from(), cursor.to()).trimEnd();
-      if (this.noteService.tagExists(txt)) {
+      if (this.storage.tagExists(txt)) {
         const textMarker = this.codemirror.markText(cursor.from(), cursor.to(), {className: 'existing-tag'});
         this.hashtagTextMarkers.add(textMarker);
       }
@@ -531,7 +531,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     // Get all images which should be inlined
     for (const attachedFile of this.attachedFiles) {
       if (attachedFile.mimeType.startsWith('image/')) {
-        const link = NoteService.fileIdToLink(attachedFile.fileId);
+        const link = StorageService.fileIdToLink(attachedFile.fileId);
         const cursor = this.codemirror.getSearchCursor(link);
         while (cursor.findNext()) {
           const line = cursor.to().line;
@@ -582,7 +582,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       const from = { line: cursor.from().line, ch: cursor.from().ch + 2 };
       const to = { line: cursor.to().line, ch: cursor.to().ch - 2 };
       const txt = this.codemirror.getRange(from, to);
-      const note = this.noteService.getNoteForTitleCaseInsensitive(txt);
+      const note = this.storage.getNoteForTitleCaseInsensitive(txt);
       if (!note) {
         const textMarker = this.codemirror.markText(from, to, {className: 'not-existing-note-link'});
         this.noteLinkTextMarkers.add(textMarker);

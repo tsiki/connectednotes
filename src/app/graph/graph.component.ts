@@ -1,5 +1,5 @@
 import {AfterViewInit, Component, ElementRef, OnInit, ViewChild} from '@angular/core';
-import {NoteService} from '../note.service';
+import {StorageService} from '../storage.service';
 
 
 import * as d3 from 'd3';
@@ -35,11 +35,11 @@ import {SubviewManagerService} from '../subview-manager.service';
 export class GraphComponent implements AfterViewInit {
   @ViewChild('graph') graph: ElementRef;
 
-  constructor(private readonly noteService: NoteService,
+  constructor(private readonly storage: StorageService,
               private readonly subviewManager: SubviewManagerService) {}
 
   ngAfterViewInit() {
-    this.displayGraphs(this.noteService.getGraphRepresentation());
+    this.displayGraphs(this.storage.getGraphRepresentation());
   }
 
   closeView() {

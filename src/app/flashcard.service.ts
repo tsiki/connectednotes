@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import {sortAscByNumeric} from './utils';
 import {Flashcard, FlashcardLearningData} from './types';
-import {NoteService} from './note.service';
+import {StorageService} from './storage.service';
 import {SettingsService} from './settings.service';
 import {BehaviorSubject, interval} from 'rxjs';
 import {debounce, debounceTime} from 'rxjs/operators';
@@ -22,9 +22,9 @@ export class FlashcardService {
   dueFlashcards = new BehaviorSubject<Flashcard[]>([]);
   numDueFlashcards = new BehaviorSubject<number>(0);
 
-  constructor(private readonly noteService: NoteService, private readonly settings: SettingsService) {
+  constructor(private readonly storage: StorageService, private readonly settings: SettingsService) {
     // weird pattern, should probably improve this
-    const debouncedFcs = this.noteService.flashcards.pipe(debounceTime(500));
+    const debouncedFcs = this.storage.flashcards.pipe(debounceTime(500));
     debouncedFcs.subscribe(fcs => {
       for (const fc of fcs) {
         if (!fc.nextRepetitionEpochMillis) {
@@ -44,7 +44,7 @@ export class FlashcardService {
   }
 
   deleteFlashcard(id: string) {
-    this.noteService.deleteFlashcard(id);
+    this.storage.deleteFlashcard(id);
   }
 
   submitFlashcardRating(rating: number, fc: Flashcard) {
@@ -57,7 +57,7 @@ export class FlashcardService {
     }
     fc.learningData = newLearningData;
     fc.nextRepetitionEpochMillis = this.getNextRepetitionTimeEpochMillis(fc);
-    return this.noteService.saveFlashcard(fc);
+    return this.storage.saveFlashcard(fc);
   }
 
   isDue(fc: Flashcard) {

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import {NoteService} from './note.service';
+import {StorageService} from './storage.service';
 import {BehaviorSubject} from 'rxjs';
 
 export enum Theme {
@@ -21,8 +21,8 @@ export class SettingsService {
 
   colorSchemeListener = e => this.themeSetting.next(e.matches ? Theme.DARK : Theme.LIGHT);
 
-  constructor(private readonly noteService: NoteService) {
-    noteService.storedSettings.asObservable().subscribe(newSettings => {
+  constructor(private readonly storage: StorageService) {
+    storage.storedSettings.asObservable().subscribe(newSettings => {
       if (newSettings?.theme) {
         if (newSettings.theme === Theme.DEVICE) {
           window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', this.colorSchemeListener);
@@ -40,17 +40,17 @@ export class SettingsService {
   }
 
   async setTheme(value: Theme) {
-    await this.noteService.updateSettings('theme', value);
+    await this.storage.updateSettings('theme', value);
   }
 
   async addIgnoredTag(tag: string) {
     const cur = this.ignoredTags.value?.slice() || [];
     cur.push(tag);
-    await this.noteService.updateSettings('ignoredTags', cur);
+    await this.storage.updateSettings('ignoredTags', cur);
   }
 
   async removeIgnoredTag(tag: string) {
     const newTags = this.ignoredTags.value?.slice().filter(existingTag => tag !== existingTag) || [];
-    await this.noteService.updateSettings('ignoredTags', newTags);
+    await this.storage.updateSettings('ignoredTags', newTags);
   }
 }

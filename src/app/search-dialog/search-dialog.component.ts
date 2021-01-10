@@ -1,6 +1,6 @@
 import {Component, HostBinding, OnInit} from '@angular/core';
 import {MatDialogRef} from '@angular/material/dialog';
-import {NoteService} from '../note.service';
+import {StorageService} from '../storage.service';
 import {FormattedSegment, SearchResult} from '../types';
 import {SettingsService, Theme} from '../settings.service';
 import {SubviewManagerService} from '../subview-manager.service';
@@ -97,7 +97,7 @@ export class SearchDialogComponent implements OnInit {
 
   constructor(
       public dialogRef: MatDialogRef<SearchDialogComponent>,
-      private readonly noteService: NoteService,
+      private readonly storage: StorageService,
       private readonly subviewManager: SubviewManagerService,
       private readonly settingsService: SettingsService) {
     this.settingsService.themeSetting.subscribe(theme => {
@@ -144,7 +144,7 @@ export class SearchDialogComponent implements OnInit {
 
   // Searches notes for the corresponding term. Just search titles for now.
   public searchForNotesByTitle(searchTerm: string): SearchResult[] {
-    const notes = this.noteService.notes.value;
+    const notes = this.storage.notes.value;
 
     // First try full match in title.
     const matchingNotes = notes

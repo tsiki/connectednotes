@@ -1,6 +1,6 @@
 import {ChangeDetectorRef, Component, ElementRef, HostListener, OnInit, ViewChild} from '@angular/core';
 import {ActivatedRoute, Router} from '@angular/router';
-import {Backend, NoteService} from '../note.service';
+import {Backend, StorageService} from '../storage.service';
 import {MatDialog, MatDialogRef} from '@angular/material/dialog';
 import { SplitAreaDirective } from 'angular-split';
 import {SearchDialogComponent} from '../search-dialog/search-dialog.component';
@@ -61,7 +61,7 @@ export class ZettelkastenComponent implements OnInit {
   constructor(
     private readonly route: ActivatedRoute,
     private router: Router,
-    private readonly noteService: NoteService,
+    private readonly storage: StorageService,
     readonly flashcardService: FlashcardService,
     readonly subviewManager: SubviewManagerService,
     readonly settingsService: SettingsService,
@@ -81,9 +81,9 @@ export class ZettelkastenComponent implements OnInit {
     this.settingsService.themeSetting.subscribe(newTheme => this.theme = newTheme);
 
     if (this.router.url.split('?')[0] === '/gd') {
-      this.noteService.initialize(Backend.GOOGLE_DRIVE);
+      this.storage.initialize(Backend.GOOGLE_DRIVE);
     } else {
-      this.noteService.initialize(Backend.FIREBASE);
+      this.storage.initialize(Backend.FIREBASE);
     }
 
     this.setUpStorageBackendStatusUpdates();
@@ -105,7 +105,7 @@ export class ZettelkastenComponent implements OnInit {
   }
 
   logout() {
-    this.noteService.logout();
+    this.storage.logout();
     this.router.navigate(['']);
   }
 
@@ -121,7 +121,7 @@ export class ZettelkastenComponent implements OnInit {
     const dialogRef = this.dialog.open(CreateNoteDialog);
     dialogRef.afterClosed().subscribe(async result => {
       if (result) { // result is undefined if user didn't create note
-        const newNoteId = await this.noteService.createNote(result);
+        const newNoteId = await this.storage.createNote(result);
         this.subviewManager.openNoteInNewWindow(newNoteId);
       }
     });
