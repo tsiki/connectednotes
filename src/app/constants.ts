@@ -9,3 +9,5 @@ export const ROOT_TAG_NAME = '(root)';
 export const ALL_NOTES_TAG_NAME = 'all';
 export const UNTAGGED_NOTES_TAG_NAME = 'untagged';
 export const AUTOMATICALLY_GENERATED_TAG_NAMES = [ALL_NOTES_TAG_NAME, UNTAGGED_NOTES_TAG_NAME];
+
+export const ANALYTICS_ENABLED_LOCAL_STORAGE_KEY = 'analyticsEnabled';

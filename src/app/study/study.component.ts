@@ -1,4 +1,12 @@
-import {AfterViewInit, Component, ElementRef, OnDestroy, OnInit, SecurityContext, ViewChild} from '@angular/core';
+import {
+  AfterViewInit,
+  ChangeDetectorRef,
+  Component,
+  ElementRef,
+  OnDestroy,
+  SecurityContext,
+  ViewChild
+} from '@angular/core';
 import {Flashcard} from '../types';
 import {Subscription} from 'rxjs';
 import {FlashcardService} from '../flashcard.service';
@@ -8,8 +16,8 @@ import {DomSanitizer} from '@angular/platform-browser';
 import {FlashcardDialogComponent, FlashcardDialogData} from '../create-flashcard-dialog/flashcard-dialog.component';
 import {MatDialog} from '@angular/material/dialog';
 
-const DUE_FCS_QUEUE_NAME = 'due flashcards';
-const ALL_FCS_QUEUE_NAME = 'all flashcards';
+export const DUE_FCS_QUEUE_NAME = 'due flashcards';
+export const ALL_FCS_QUEUE_NAME = 'all flashcards';
 
 @Component({
   selector: 'app-study',
@@ -52,36 +60,38 @@ const ALL_FCS_QUEUE_NAME = 'all flashcards';
         <div class="notification" *ngIf="allFcs.length > 0 && currentDueFcsQueue.length === 0">
           All done!
         </div>
-        <div id="tags">
-          <span *ngFor="let tag of displayedFc?.tags">{{tag}}</span>
-        </div>
-        <div id="due-fcs-container" class="raisedbox" [style.display]="displayedFc ? 'initial' : 'none'">
-          <div class="fc-side" #front [hidden]="revealed">{{displayedFc?.side1}}</div>
-          <div class="fc-side" #back [hidden]="!revealed">{{displayedFc?.side2}}</div>
-          <button id="show-answer-button" mat-button *ngIf="!revealed" (click)="reveal()">
-            show answer
-          </button>
-          <ng-container *ngIf="revealed">
-            <div id="rating-container">
-              <button mat-button
-                      (click)="submitRating(3, displayedFc)"
-                      matTooltip="Remembering was easy">Easy
-              </button>
-              <button mat-button
-                      (click)="submitRating(2, displayedFc)"
-                      matTooltip="Remembering was not easy, not hard">Moderate
-              </button>
-              <button mat-button
-                      (click)="submitRating(1, displayedFc)"
-                      matTooltip="Remembering was hard or incomplete">Hard
-              </button>
-              <button mat-button
-                      (click)="submitRating(0, displayedFc)"
-                      matTooltip="Couldn't remember">No idea
-              </button>
-            </div>
-          </ng-container>
-        </div>
+        <span [hidden]="displayedFc">
+          <div id="tags">
+            <span *ngFor="let tag of displayedFc?.tags">{{tag}}</span>
+          </div>
+          <div id="due-fc-container" class="raisedbox" [style.display]="displayedFc ? 'initial' : 'none'">
+            <div class="fc-side" #front [hidden]="revealed"></div>
+            <div class="fc-side" #back [hidden]="!revealed"></div>
+            <button id="show-answer-button" mat-button *ngIf="!revealed" (click)="reveal()">
+              show answer
+            </button>
+            <ng-container *ngIf="revealed">
+              <div id="rating-container">
+                <button mat-button
+                        (click)="submitRating(3, displayedFc)"
+                        matTooltip="Remembering was easy">Easy
+                </button>
+                <button mat-button
+                        (click)="submitRating(2, displayedFc)"
+                        matTooltip="Remembering was not easy, not hard">Moderate
+                </button>
+                <button mat-button
+                        (click)="submitRating(1, displayedFc)"
+                        matTooltip="Remembering was hard or incomplete">Hard
+                </button>
+                <button mat-button
+                        (click)="submitRating(0, displayedFc)"
+                        matTooltip="Couldn't remember">No idea
+                </button>
+              </div>
+            </ng-container>
+          </div>
+        </span>
       </div>
     </div>
   `,
@@ -125,7 +135,7 @@ const ALL_FCS_QUEUE_NAME = 'all flashcards';
       border-bottom: 1px solid var(--gutter-color);
     }
 
-    #due-fcs-container {
+    #due-fc-container {
       border-radius: 6px;
       box-shadow: 0 0 10px #bdbdbd;
       display: flex;
@@ -180,7 +190,7 @@ const ALL_FCS_QUEUE_NAME = 'all flashcards';
     }
   `]
 })
-export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
+export class StudyComponent implements AfterViewInit, OnDestroy {
 
   @ViewChild('front') front: ElementRef;
   @ViewChild('back') back: ElementRef;
@@ -200,8 +210,8 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
       private readonly flashcardService: FlashcardService,
       private readonly subviewManager: SubviewManagerService,
       private sanitizer: DomSanitizer,
-      private dialog: MatDialog) {
-  }
+      private dialog: MatDialog,
+      private cdr: ChangeDetectorRef) {}
 
   ngAfterViewInit() {
     this.sub = this.flashcardService.flashcards.subscribe(fcs => {
@@ -213,14 +223,13 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
       this.queueChanged();
       // Present first note automatically
       this.setNextFlashcard();
+      // Tell angular things have changed to prevent ExpressionChangedAfter... error in tests
+      this.cdr.detectChanges();
     });
   }
 
   queueChanged() {
     this.currentDueFcsQueue = this.dueFcQueues.get(this.selectedQueue);
-  }
-
-  ngOnInit(): void {
   }
 
   ngOnDestroy(): void {
@@ -236,17 +245,11 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
     // TODO: if FC is in two queues we might mess up here, it needs to be removed from both
     this.currentDueFcsQueue = this.dueFcQueues.get(this.selectedQueue);
     if (this.currentDueFcsQueue.length === 0) {
+      this.displayedFc = undefined;
       return;
     }
     this.displayedFc = this.currentDueFcsQueue[0];
-
-    // Set rendered contents
-    const side1UnsafeContent = (marked as any)(this.displayedFc.side1);
-    const side1SanitizedContent = this.sanitizer.sanitize(SecurityContext.HTML, side1UnsafeContent);
-    this.front.nativeElement.innerHTML = this.sanitizer.sanitize(SecurityContext.HTML, side1SanitizedContent);
-    const side2UnsafeContent = (marked as any)(this.displayedFc.side2);
-    const side2SanitizedContent = this.sanitizer.sanitize(SecurityContext.HTML, side2UnsafeContent);
-    this.back.nativeElement.innerHTML = this.sanitizer.sanitize(SecurityContext.HTML, side2SanitizedContent);
+    this.setRenderedContents(this.displayedFc);
   }
 
   submitRating(rating: number, fc: Flashcard) {
@@ -256,8 +259,8 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
       // If user couldn't remember the card at all it re-enters queue
       this.currentDueFcsQueue.push(fc);
     }
-    // not needed here - note service triggers update on flashcards which propagates to this component
-    // this.setNextFlashcard();
+    // Call to setNextFlashcard() is not needed here - note service triggers update
+    // on flashcards which propagates to this component.
   }
 
   closeView() {
@@ -282,18 +285,25 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  private setRenderedContents(fc: Flashcard) {
+    const side1UnsafeContent = (marked as any)(fc.side1);
+    const side1SanitizedContent = this.sanitizer.sanitize(SecurityContext.HTML, side1UnsafeContent);
+    this.front.nativeElement.innerHTML = this.sanitizer.sanitize(SecurityContext.HTML, side1SanitizedContent);
+    const side2UnsafeContent = (marked as any)(fc.side2);
+    const side2SanitizedContent = this.sanitizer.sanitize(SecurityContext.HTML, side2UnsafeContent);
+    this.back.nativeElement.innerHTML = this.sanitizer.sanitize(SecurityContext.HTML, side2SanitizedContent);
+  }
+
   private getQueueToDueFcs(fcs: Flashcard[]) {
-    const queueToFcs = new Map<string, Flashcard[]>();
+    const queueToFcs = new Map<string, Flashcard[]>([[ALL_FCS_QUEUE_NAME, []]]);
     const queueToDueFcs = new Map<string, Flashcard[]>();
     const dueFcs: Flashcard[] = [];
-    const allFcs: Flashcard[] = [];
     for (const fc of fcs) {
-      for (const tag of fc.tags) {
+      for (const tag of [ALL_FCS_QUEUE_NAME, ...fc.tags]) {
         if (!queueToFcs.has(tag)) {
           queueToFcs.set(tag, []);
         }
         queueToFcs.get(tag).push(fc);
-        allFcs.push(fc);
         if (this.flashcardService.isDue(fc)) {
           if (!queueToDueFcs.has(tag)) {
             queueToDueFcs.set(tag, []);
@@ -305,11 +315,9 @@ export class StudyComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.fcQueues = [
       [DUE_FCS_QUEUE_NAME, dueFcs],
-      [ALL_FCS_QUEUE_NAME, allFcs],
       ...queueToFcs.entries(),
     ];
     queueToDueFcs.set(DUE_FCS_QUEUE_NAME, dueFcs);
-    queueToDueFcs.set(ALL_FCS_QUEUE_NAME, dueFcs);
     return queueToDueFcs;
   }
 }

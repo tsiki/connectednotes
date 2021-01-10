@@ -46,6 +46,7 @@
     margin-top: 40%
   }
 
+  #text,
   #explanation-container {
     max-width: 500px;
   }
@@ -75,43 +76,174 @@
 
   <h1 id="title">CONNECTED NOTES</h1>
 
-  <h2>Modern note taking tool based on Zettelkasten. Fully <a href="https://github.com/tsiki/connectednotes" target="_blank">open source.</a>
-  Still in alpha with frequent changes, don't use for anything serious.</h2>
+  <a (click)="toGd()">Try it (Google Drive)</a><br><br><br>
+
+  <div id="text">
+    <p>
+      Connected Notes is a note taking tool that aims to make taking notes engaging and effective. It encourages
+      usage of the <a href="https://zettelkasten.de/posts/overview/">Zettelkasten</a> method and spaced repetition
+      to deliver the best learning results.
+    </p>
+
+    <p>It's open source and free to use.</p>
+
+    <p>
+      Connected Notes is in alpha, so expect some roughness and bugs, and please report all bugs at the project's
+      <a href="https://github.com/tsiki/connectednotes/issues/new">GitHub page</a>.
+    </p>
+
+    <h2>Table of contents</h2>
+    <ul>
+      <li>Main features</li>
+      <li>Getting started</li>
+      <li>Running your own instance</li>
+      <li>Future work</li>
+    </ul>
+
+    <h2>Main features</h2>
+
+    <p>
+      Notes are stored in your personal cloud service, meaning they're <b>accessible from anywhere</b>, including
+      mobile.
+      Currently the only backend option is Google Drive, but Connected Notes is designed with interchangeable backends
+      in mind and I expect more backend options to be implemented.
+    </p>
+
+    <p>
+      Connected Notes supports the Zettelkasten method. This means first class support for <b>tagging</b> and
+      <b>connecting notes</b> - in fact, Connected Notes doesn't use folders to organize notes, but uses the tags you've
+      added to structure them (<a href="TODO">see how</a>).
+    </p>
+
+    <p>
+      Notes are written using <b>markdown</b>. This means your notes aren't locked in to a proprietary format, and since
+      they're stored on your personal cloud you'll always have access to them, even if this site was to shut down one
+      day.
+    </p>
+
+    <p>
+      Connected Notes is <b>free</b> and <b>open source</b>. The project is designed to support notes that will live a
+      long time (as any note taking system should), and open sourcing is an essential part of that promise.
+    </p>
+
+    <p>
+      Spaced repetition (ie. <b>flashcards</b>) has been shown to give superior results in learning tasks, not only
+      when measuring the ability to recall, but also when making inferences from learned material
+      (<a href="https://andymatuschak.org/prompts/Karpicke2011.pdf">source</a>). The current version of Connected Notes
+      has flashcard support built-in. The support is currently quite simple but more features will appear in the future.
+    </p>
+
+<!--    <p>-->
+<!--      Personal knowledge can be divided into the knowledge actively in your brain, and the knowledge you know is-->
+<!--      somewhere in your notes, and which you can recall if you need to.-->
+<!--    </p>-->
+
+    <h2>Getting started</h2>
+
+    <h3>Creating a note</h3>
+
+    <p>
+      Creating a note is as easy as clicking on the 'create note' icon (or pressing ctrl + k) and entering the name
+      of the note.
+      You don't need to choose which folder the note is added to, since folders don't exist - instead, organizing notes
+      is based on tags (see next section). This greatly reduces the friction of creating notes.
+    </p>
+
+    <h3>Tagging notes</h3>
+
+    <p>
+      Using tags is an integral part of Connected Notes, and probably the largest difference when compared to other
+      note taking apps.
+      To add a tag, simply add a hashtag anywhere to the note, like
+      #this. You will then see the hashtag appear in the left side menu, with the note nested under it (TODO: image).
+      Each note appears under its tags.
+    </p>
+
+    <p>
+      In the left menu, each tag is represented by a 'folder' that contains all the notes it appears in. If a note
+      doesn't have any hashtags, it's added to the special 'untagged' folder.
+    </p>
+
+    <p>
+      Tags can be nested under each other. This might be sensible if you have a tag which is clearly a part of some
+      other tag. For example, if you have tags #car-brands and #toyota, you might not want to have #toyota appear
+      on the top level.
+    </p>
+    (TODO: image here)
+    <p>
+      This can be achieved by dragging the child tag over the parent tag.
+    </p>
+    (TODO: animation here)
+
+    <p>
+      Finally, tags can appear under many tags. Let's say you have tags #car-brands and #electric-cars. In a traditional
+      folder structure you'd have to make a choice where to place #tesla, but in Connected Notes #tesla could
+      appear under both tags. To achieve this, click on the three dots menu next to #tesla and choose
+      the parent tags. (TODO: images)
+    </p>
+
+    <p>
+      In comparison, traditional folders are essentially
+      equivalent to each note having a single tag and each tag having at most one other tag as their parent.
+    </p>
+
+    <h3>Connecting notes</h3>
+
+    <p>
+      Notes can be connected by typing two square brackets '[[' and selecting the note you want to reference from the
+      autocompletion list.
+
+      You can also directly write the name of the note [[like so]] and the note will be linked. You can then use ctrl
+      + click to jump to the note. If the note doesn't exist, a new note will be created when jumping into it.
+    </p>
+
+    <h3>Flashcards</h3>
+
+    <p>Create a new flashcard by opening a note and pressing ctrl + j. This will open a dialog where you can edit
+    the front and back of the card before saving it (TODO image).</p>
+
+    <p>By default, the flashcard is populated with the sentence your cursor is currently on. If you have selected a
+    piece of text before pressing ctrl + j, that text will be prepopulated instead.</p>
+
+    <p>To study your flashcards, click on the 'study' icon in the left menu. By default, you'll be shown all due
+    flashcards you have created.</p>
+
+    <p>Currently there's no interoperability with Anki but the plan is to make the flashcard experience more
+      Anki-like (just with markdown), allowing exporting/importing.</p>
+
+    <h2>Running your own instance</h2>
+
+    <p>
+      More details on how to set up your own instance of Connected Notes can be found at the projects
+      <a href="https://github.com/tsiki/connectednotes">GitHub page</a>.
+    </p>
+
+    <p>
+      This section details how to go about running your own instance of Connected Notes which uses Google Drive as the
+      backend.
+    </p>
+
+    <p>
+      First, you'll need to create an API key for Google Drive by following the instructions
+      <a href="https://developers.google.com/drive/api/v3/enable-drive-api">here</a>.
+    </p>
+
+    <h3>Caveat</h3>
+    If you're planning to start your own instance, note that Google Drive files are only accessible from whitelisted
+    domains, so notes created in connectednotes.net won't be accessible from someotherdomain.com. The solution is to
+    copy the files and re-upload them via the new correct domain.
+
+    <h2>Future work</h2>
+
+    <p>
+      Currently the code base is lacking a lot of tests and has some known issues, but as we finalize the design
+      and structure the number of tests should ramp up and that of issues down.
+    </p>
+
+    <p>
+
+    </p>
 
 
-
-<!--  This is a test version, please don't use it for any serious note taking just yet. I'd however love to hear some-->
-<!--  feedback.-->
-
-  <a (click)="toGd()">Try the Google Drive -backed version here.</a>
-
-  <div id="explanation-container">
-    <h2 id="about-title">What is Connected Notes</h2>
-    It's an open source note taking app based on a modern version of the Zettelkasten system.<br><br>
-
-    We all study to be able to use the information we study later. For this, we need to take the notes we've written
-    before and connect them to each other. This is where Zettelkasten comes in.<br><br>
-
-    The notes are stored in your Google Drive (more cloud storage options coming later).<br><br>
-
-    <h2 id="features-title">Features</h2>
-
-    <h3>Privacy</h3>
-    We don’t store your notes - we simply connect to your Google Drive (more cloud services are on the way) and store
-    them there. What you write is between your cloud storage and you.
-
-    <h3>Everywhere</h3>
-    Access your notes from phone or laptop. Notes are synchronized across devices.
-
-    <h3>Reliability</h3>
-    We don’t want you to worry about losing your notes if a fledgling startup goes under or a domain name expires -
-    your notes are stored where you have complete control over them.
-
-    <h3>No lock-in</h3>
-    Everything is stored as markdown files, in plain text. Don't like the service? Just download the notes from your
-    Google Drive and transfer them to another service.
-
-    <h3>Open source</h3>
-    Any note service should be in it for the long haul. In our mind, being open source is a necessary part of that.
   </div>
 </div>

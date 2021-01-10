@@ -1,8 +1,12 @@
-import {AfterViewInit, Component, ElementRef, HostListener, Injector, OnInit, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, Injector, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {Router} from '@angular/router';
 import {GoogleDriveService} from '../backends/google-drive.service';
-import {EditorComponent} from '../editor/editor.component';
 import {StorageBackend} from '../types';
+import {BackreferencesDialogComponent} from '../backreferences-dialog/backreferences-dialog.component';
+import {MatDialog} from '@angular/material/dialog';
+import {ConfirmationDialogComponent, ConfirmDialogData} from '../confirmation-dialog/confirmation-dialog.component';
+import {ANALYTICS_ENABLED_LOCAL_STORAGE_KEY} from '../constants';
+import {ReplaySubject} from 'rxjs';
 
 const RADIUS = 8;
 const LINE_WIDTH = 15;
@@ -11,32 +15,31 @@ const LINE_WIDTH = 15;
   selector: 'app-frontpage',
   templateUrl: './frontpage.component.html',
 })
-export class FrontpageComponent implements OnInit, AfterViewInit {
+export class FrontpageComponent implements OnInit, AfterViewInit, OnDestroy {
   showSpinner = false;
 
   @ViewChild('canvas') canvas: ElementRef<HTMLCanvasElement>;
 
   private googleDriveBackend: StorageBackend;
+  private readonly onDestroy = new ReplaySubject(1);
 
-  constructor(private router: Router, private injector: Injector) {
+  constructor(private router: Router, private injector: Injector, public dialog: MatDialog) {
     this.googleDriveBackend = this.injector.get(GoogleDriveService);
-
-  }
-
-  async checkIfSignedInAndMaybeRedirect() {
-    const signedIn = await this.googleDriveBackend.isSignedIn();
-    if (signedIn) {
-      await this.googleDriveBackend.signInIfNotSignedIn().then(() =>
-          this.router.navigate(['gd'])
-      );
-    }
   }
 
   async ngOnInit() {
     this.showSpinner = true;
-    await this.googleDriveBackend.loadScript();
     await this.checkIfSignedInAndMaybeRedirect();
     this.showSpinner = false;
+  }
+
+  async checkIfSignedInAndMaybeRedirect() {
+    const shouldRedirect = await this.googleDriveBackend.shouldUseThisBackend();
+    if (shouldRedirect) {
+      await this.googleDriveBackend.initialize().then(() =>
+          this.router.navigate(['gd'])
+      );
+    }
   }
 
   ngAfterViewInit(): void {
@@ -72,9 +75,8 @@ export class FrontpageComponent implements OnInit, AfterViewInit {
     };
 
     for (let i = 0; i < 25; i++) {
-      setTimeout(() => drawFn(), Math.random() * 500);
+      setTimeout(() => drawFn(), Math.random() * 1000);
     }
-
   }
 
   mainDrawLoop(toDraw) {
@@ -206,9 +208,46 @@ export class FrontpageComponent implements OnInit, AfterViewInit {
   }
 
   async toGd() {
-    // Initialize service here - if we initialize immediately after redirecting to new URL the popup is more likely to
-    // get blocked by the browser and it'll be confusing when the user lands on the page and can't create notes.
-    await this.googleDriveBackend.signInIfNotSignedIn();
+    if (localStorage.getItem(ANALYTICS_ENABLED_LOCAL_STORAGE_KEY) === 'true') {
+      await this.googleDriveBackend.initialize();
+      this.router.navigate(['gd']);
+      return;
+    }
+
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      width: '600px',
+      data: {
+        title: 'Analytics usage',
+        message: 'Would you like to enable analytics? We use analytics for detecting error states'
+         + ' and particularly heavy usage to know which features and bug fixes should be prioritized.'
+         + ' Enabling this option sends some anonymous data for us to analyze. Loading analytics is likely to'
+         + ' be blocked by adblockers - please consider disabling adblockers on this site if you would like to'
+         + ' enable analytics (not like we have ads anyway).',
+        confirmButtonText: 'Enable analytics',
+        rejectButtonText: 'Disable analytics',
+      } as ConfirmDialogData,
+    });
+
+    const ans = await dialogRef.afterClosed().toPromise();
+    if (ans === undefined) {
+      return;
+    }
+    if (ans) {
+      (window as any).gtag('consent', 'default', {
+        'ad_storage': 'denied',
+        'analytics_storage': 'granted'
+      });
+    }
+    localStorage.setItem(ANALYTICS_ENABLED_LOCAL_STORAGE_KEY, ans.toString());
+    // Initialize backends here - at least for Google Drive if we initialize immediately after redirecting to new URL
+    // the popup is more likely to get blocked by the browser and it'll be confusing when the user lands on the page
+    // and can't create notes without understanding why.
+    await this.googleDriveBackend.initialize();
     this.router.navigate(['gd']);
+    // });
+  }
+
+  ngOnDestroy() {
+    this.onDestroy.next(undefined);
   }
 }

@@ -1,27 +1,48 @@
-import {async, ComponentFixture, flush, TestBed, waitForAsync} from '@angular/core/testing';
+import {async, ComponentFixture, fakeAsync, flush, TestBed, waitForAsync} from '@angular/core/testing';
 
-import {StudyComponent} from './study.component';
-import {FlashcardService} from '../flashcard.service';
+import {ALL_FCS_QUEUE_NAME, DUE_FCS_QUEUE_NAME, StudyComponent} from './study.component';
+import {FlashcardService, INITIAL_FLASHCARD_LEARNING_DATA} from '../flashcard.service';
 import {BehaviorSubject} from 'rxjs';
 import {Flashcard} from '../types';
-import {FilelistComponent} from '../filelist/filelist.component';
 import {By} from '@angular/platform-browser';
+import {SubviewManagerService} from '../subview-manager.service';
+import {MatDialogModule} from '@angular/material/dialog';
+import {MatSelectModule} from '@angular/material/select';
+import {MatFormFieldModule} from '@angular/material/form-field';
+import {NoopAnimationsModule} from '@angular/platform-browser/animations';
+import {MatIconModule} from '@angular/material/icon';
+import {MatMenuModule} from '@angular/material/menu';
 
-
-describe('StudyComponent', () => {
+fdescribe('StudyComponent', () => {
   let component: StudyComponent;
   let fixture: ComponentFixture<StudyComponent>;
   let flashcardService;
+  let subviewManager;
 
   beforeEach(waitForAsync(() => {
     flashcardService = {
       flashcards: new BehaviorSubject<Flashcard[]>([]),
+      submitFlashcardRating: () => {},
+      isDue: () => true,
+    };
+
+    subviewManager = {
+      closeView: () => {},
     };
 
     TestBed.configureTestingModule({
       declarations: [ StudyComponent ],
+      imports: [
+        MatDialogModule,
+        MatSelectModule,
+        MatFormFieldModule,
+        NoopAnimationsModule,
+        MatIconModule,
+        MatMenuModule,
+      ],
       providers: [
         { provide: FlashcardService, useValue: flashcardService },
+        { provide: SubviewManagerService, useValue: subviewManager },
       ],
     })
     .compileComponents();
@@ -32,28 +53,63 @@ describe('StudyComponent', () => {
     component = fixture.componentInstance;
   });
 
-  // TODO: finish testing this view
-  // it('displays no flashcards after submitting last', () => {
-  //   const fc = {
-  //     side1: 'visible side',
-  //     side2: 'hidden side',
-  //     tags: [],
-  //     learningData: {
-  //       easinessFactor: 1,
-  //       numRepetitions: 0,
-  //       prevRepetitionIntervalMillis: 0,
-  //       prevRepetitionEpochMillis: 0,
-  //     }
-  //   } as Flashcard;
-  //   flashcardService.flashcards.next([ fc ]);
-  //   component.submitRating(3, fc);
-  //
-  //   // fixture.detectChanges();
-  //   // flush();
-  //
-  //   fixture.detectChanges();
-  //   flush();
-  //
-  //   expect(fixture.debugElement.queryAll(By.css('')))
-  // });
+  // test cases:
+  // remove: if FC is in two queues we might mess up here, it needs to be removed from both
+  // that FCs end up in 'all FCs' and/or 'due FCs' queue
+
+  it("receive one flashcard, submit rating, ensure it's not shown again", fakeAsync(() => {
+    const fc = {
+      side1: 'visible side',
+      side2: 'hidden side',
+      tags: [],
+      learningData: INITIAL_FLASHCARD_LEARNING_DATA
+    } as Flashcard;
+
+    const spy = spyOn(flashcardService, 'submitFlashcardRating');
+    fixture.detectChanges();
+    flashcardService.flashcards.next([ fc ]);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.front.nativeElement.innerHTML).toContain('visible side');
+    expect(fixture.componentInstance.back.nativeElement.innerHTML).toContain('hidden side');
+    const revealButton = fixture.debugElement.queryAll(
+        By.css('#show-answer-button'))[0].nativeElement as HTMLButtonElement;
+    revealButton.click();
+    fixture.detectChanges();
+    const remeberingWasEasyButton = fixture.debugElement.queryAll(
+        By.css('#rating-container > button'))[0].nativeElement as HTMLButtonElement;
+    remeberingWasEasyButton.click();
+    fixture.detectChanges();
+    expect(spy.calls.mostRecent().args).toEqual([3, fc]);
+    flashcardService.isDue = f => false;
+    flashcardService.flashcards.next([fc]);
+    fixture.detectChanges();
+    flush();
+    expect(fixture.componentInstance.displayedFc).toBeFalsy();
+    expect(fixture.debugElement.query(By.css('#fc-container')).nativeElement.innerHTML)
+        .toContain('All done');
+  }));
+
+  it('displays queue for each tag in flashcard', fakeAsync(() => {
+    const fc1 = {
+      side1: 'visible side',
+      side2: 'hidden side',
+      tags: ['#tag1', '#tag2'],
+      learningData: INITIAL_FLASHCARD_LEARNING_DATA
+    } as Flashcard;
+    const fc2 = {
+      side1: 'visible side',
+      side2: 'hidden side',
+      tags: ['#tag2', '#tag3'],
+      learningData: INITIAL_FLASHCARD_LEARNING_DATA
+    } as Flashcard;
+
+    fixture.detectChanges();
+    flashcardService.flashcards.next([ fc1, fc2 ]);
+    fixture.detectChanges();
+    const queues = fixture.componentInstance.fcQueues.map(t => t[0]);
+    expect(queues).toEqual(
+        jasmine.arrayContaining(
+            [DUE_FCS_QUEUE_NAME, ALL_FCS_QUEUE_NAME, '#tag1', '#tag2', '#tag3']));
+    expect(fixture.componentInstance.dueFcQueues.get(ALL_FCS_QUEUE_NAME).length).toBe(2);
+  }));
 });

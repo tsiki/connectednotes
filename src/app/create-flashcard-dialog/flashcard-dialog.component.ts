@@ -18,8 +18,12 @@ import {DomSanitizer} from '@angular/platform-browser';
 import * as CodeMirror from 'codemirror';
 import {SettingsService, Theme} from '../settings.service';
 import {DARK_THEME, LIGHT_THEME} from '../constants';
-import {fromEvent} from 'rxjs';
-import {debounceTime} from 'rxjs/operators';
+import {fromEvent, Observable} from 'rxjs';
+import {debounceTime, map} from 'rxjs/operators';
+import {FormControl} from '@angular/forms';
+import {COMMA, ENTER} from '@angular/cdk/keycodes';
+import {MatChipInputEvent} from '@angular/material/chips';
+import {MatAutocompleteSelectedEvent} from '@angular/material/autocomplete';
 
 export interface FlashcardDialogData {
   suggestions?: string[];
@@ -36,10 +40,10 @@ export interface FlashcardDialogData {
       </div>
       <h1 *ngIf="mode === 'create'">Create a flashcard</h1>
       <h1 *ngIf="mode === 'edit'">Edit a flashcard</h1>
-<!--      <div>-->
-<!--        The final card will consist of the visible side (front) and hidden side (back). To hide a word from the visible-->
-<!--        side click on the word. The flashcard will be associated with the given tags. To remove a tag, click on it.-->
-<!--      </div>-->
+      <!--      <div>-->
+      <!--        The final card will consist of the visible side (front) and hidden side (back). To hide a word from the visible-->
+      <!--        side click on the word. The flashcard will be associated with the given tags. To remove a tag, click on it.-->
+      <!--      </div>-->
       <div id="editor-and-rendered-wrapper">
         <span>
           <h2>Edit</h2>
@@ -73,13 +77,31 @@ export interface FlashcardDialogData {
         </span>
       </div>
       <h3>Queues:</h3>
-      <div id="tags">
-        <mat-chip-list>
-          <mat-chip *ngFor="let tag of tags" (click)="toggleIgnoredTag(tag)">
-            <span [class.greyed-out]="ignoredTags.has(tag)">{{ tag }}</span>
+
+      <mat-form-field class="chip-list">
+        <mat-chip-list #chipList aria-label="Tag selection">
+          <mat-chip
+              *ngFor="let tag of tags"
+              [selectable]="true"
+              [removable]="true"
+              (removed)="removeTag(tag)">
+            {{tag}}
+            <mat-icon matChipRemove>cancel</mat-icon>
           </mat-chip>
+          <input
+              #tagInput
+              [formControl]="tagCtrl"
+              [matAutocomplete]="auto"
+              [matChipInputFor]="chipList"
+              [matChipInputSeparatorKeyCodes]="separatorKeysCodes"
+              (matChipInputTokenEnd)="add($event)">
         </mat-chip-list>
-      </div>
+        <mat-autocomplete #auto="matAutocomplete" (optionSelected)="selected($event)">
+          <mat-option *ngFor="let tag of filteredTags | async" [value]="tag">
+            {{tag}}
+          </mat-option>
+        </mat-autocomplete>
+      </mat-form-field>
       <div>
         <button mat-button (click)="saveAndClose()">save</button>
         <button mat-button (click)="dialogRef.close()">cancel</button>
@@ -153,6 +175,10 @@ export interface FlashcardDialogData {
       opacity: 0.5;
       z-index: 10;
     }
+
+    .chip-list {
+      width: 100%;
+    }
   `]
 })
 export class FlashcardDialogComponent implements OnInit, AfterViewInit {
@@ -160,15 +186,21 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
   @ViewChild('frontEditorElem') frontEditorElem: ElementRef;
   @ViewChild('renderedBack') renderedBack: ElementRef;
   @ViewChild('backEditorElem') backEditorElem: ElementRef;
+  @ViewChild('tagInput') tagInput: ElementRef<HTMLInputElement>;
+
   visibleSentence: string;
   originalSentence: string[];
   tags: string[];
-  selectNextSuggestion = new EventEmitter();
   suggestions: string[];
   selectedSuggestionIndex: number;
   ignoredTags: Set<string> = new Set();
   submitting = false;
   mode: 'create'|'edit';
+  tagCtrl = new FormControl();
+  separatorKeysCodes: number[] = [ENTER, COMMA];
+  filteredTags: Observable<string[]>;
+  allTags: string[];
+
   private frontEditor: CodeMirror.EditorFromTextArea;
   private backEditor: CodeMirror.EditorFromTextArea;
   private mouseEventWithCtrlActive = false;
@@ -187,6 +219,10 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
       this.suggestions = data.suggestions;
       this.tags = data.tags;
     }
+
+    this.noteService.tagGroups.subscribe(tgs => this.allTags = tgs.map(tg => tg.tag));
+    this.filteredTags = this.tagCtrl.valueChanges.pipe(
+        map((tag: string | null) => tag ? this._filter(tag) : this.allTags.slice()));
   }
 
   ngOnInit(): void {
@@ -260,12 +296,8 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
     this.visibleSentence = suggestion;
   }
 
-  toggleIgnoredTag(tag: string) {
-    if (this.ignoredTags.has(tag)) {
-      this.ignoredTags.delete(tag);
-    } else {
-      this.ignoredTags.add(tag);
-    }
+  removeTag(tag: string) {
+    this.tags = this.tags.filter(tg => tg !== tag);
   }
 
   async saveAndClose() {
@@ -288,6 +320,27 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
     this.dialogRef.close();
   }
 
+  add(event: MatChipInputEvent) {
+    const input = event.input;
+    const value = event.value;
+
+    if ((value || '').trim()) {
+      this.tags.push(value.trim());
+    }
+
+    if (input) {
+      input.value = '';
+    }
+
+    this.tagCtrl.setValue(null);
+  }
+
+  selected(event: MatAutocompleteSelectedEvent): void {
+    this.tags.push(event.option.viewValue);
+    this.tagInput.nativeElement.value = '';
+    this.tagCtrl.setValue(null);
+  }
+
   private frontChanged() {
     const unsafeContent = (marked as any)(this.frontEditor.getValue());
     const sanitizedContent = this.sanitizer.sanitize(SecurityContext.HTML, unsafeContent);
@@ -298,5 +351,10 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
     const unsafeContent = (marked as any)(this.backEditor.getValue());
     const sanitizedContent = this.sanitizer.sanitize(SecurityContext.HTML, unsafeContent);
     this.renderedBack.nativeElement.innerHTML = this.sanitizer.sanitize(SecurityContext.HTML, sanitizedContent);
+  }
+
+  private _filter(value: string): string[] {
+    const filterValue = value.toLowerCase();
+    return this.allTags.filter(tag => tag.toLowerCase().indexOf(filterValue) === 0);
   }
 }

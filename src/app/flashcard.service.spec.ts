@@ -42,7 +42,7 @@ function waitForFlashcardDebounce() {
   tick(600);
 }
 
-fdescribe('FlashcardService', () => {
+describe('FlashcardService', () => {
   let service: FlashcardService;
   let flashcards: BehaviorSubject<Flashcard[]>;
   let noteService: NoteService;

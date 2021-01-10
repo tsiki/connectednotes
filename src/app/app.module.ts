@@ -48,6 +48,7 @@ import {DragDropModule} from '@angular/cdk/drag-drop';
 import { TagGroupComponent } from './tag-group/tag-group.component';
 import { EditTagParentsDialogComponent } from './edit-tag-parents-dialog/edit-tag-parents-dialog.component';
 import {MatAutocompleteModule} from '@angular/material/autocomplete';
+import { ConfirmationDialogComponent } from './confirmation-dialog/confirmation-dialog.component';
 
 @NgModule({
   entryComponents: [CreateNoteDialog], // Not declared in template to must be here
@@ -68,6 +69,7 @@ import {MatAutocompleteModule} from '@angular/material/autocomplete';
     FlashcardDialogComponent,
     TagGroupComponent,
     EditTagParentsDialogComponent,
+    ConfirmationDialogComponent,
   ],
     imports: [
         BrowserModule,

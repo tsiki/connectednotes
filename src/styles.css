@@ -8,6 +8,7 @@ body { margin: 0; font-family: "Roboto", sans-serif; }
   --low-contrast-text-color: #4d4d4d;
   --primary-background-color: #fff;
   --secondary-background-color: #fafafa;
+  --warning-background-color: #ffed61;
   --icons-menu-background-color: #2e2e2e;
   --icons-menu-color: #d1d1d1;
   --navigation-border-color: #d1d1d1;
@@ -43,6 +44,7 @@ body { margin: 0; font-family: "Roboto", sans-serif; }
   --primary-background-color: #2e2e2e;
   --secondary-background-color: #1c1c1c;
   --highlight-color: #bd9400;
+  --warning-background-color: #bd9400;
   --low-contrast-highlight-color: #666600;
   --selected-note-color: rgb(50, 50, 50);
   --gutter-color: #1c1c1c;

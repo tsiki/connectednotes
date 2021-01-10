@@ -196,7 +196,6 @@ describe('FilelistComponent', () => {
     noteService.nestedTagGroups.next({});
     noteService.tagGroups.next([]);
 
-    console.log(fixture.componentInstance);
     fixture.componentInstance.forTesting.setLastChildTagDragged('#rt1');
     fixture.componentInstance.forTesting.setLastParentTagDragged('#rt2');
 

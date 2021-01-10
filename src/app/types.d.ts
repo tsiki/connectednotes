@@ -77,6 +77,7 @@ interface BackendStatusNotification {
 interface UserSettings {
   theme?: Theme;
   ignoredTags?: string[];
+  analyticsEnabled?: boolean;
 }
 
 interface AttachmentMetadata {
@@ -93,6 +94,9 @@ interface Flashcard {
   id?: string; // Not set if unsaved
   createdEpochMillis?: number; // Not set if unsaved
   lastChangedEpochMillis?: number; // Not set if unsaved
+  // Only for debugging - this might not reflect the actual next repetition time if
+  // user has changed some settings (like initial delay period) after this was calculated
+  nextRepetitionEpochMillis?: number;
   tags: string[];
   side1: string;
   side2: string;
@@ -139,12 +143,9 @@ interface StorageBackend {
   storedSettings: BehaviorSubject<UserSettings>;
   attachmentMetadata: BehaviorSubject<AttachmentMetadata>;
   nestedTagGroups: BehaviorSubject<ParentTagToChildTags>;
-  initialize();
+  shouldUseThisBackend(): Promise<boolean>;
+  initialize(): Promise<void>;
   // Loads any javascript needed for the backend to operate (should maybe be combined with 'initialize'?)
-  loadScript();
-  signInIfNotSignedIn();
-  isSignedIn(): Promise<boolean>;
-  updateSettings(settingKey: string, settingValue: string|string[]);
   createNote(title: string): Promise<FileMetadata>;
   createFlashcard(fc: Flashcard): Promise<FileMetadata>;
   renameFile(fileId: string, newTitle: string): Promise<void>;
@@ -154,42 +155,39 @@ interface StorageBackend {
   uploadFile(content: any, fileType: string, fileName: string): Promise<string>;
   addAttachmentToNote(noteId: string, fileId: string, fileName: string, mimeType: string);
   removeAttachmentFromNote(noteId: string, fileId: string);
+
+  saveSettings(settings: UserSettings): Promise<void>;
+  // saveNestedTagGroups(nestedTagGroups: ParentTagToChildTags): Promise<void>;
+  // saveAttachmentData(attachments: AttachmentMetadata): Promise<void>;
+
   logout();
 }
 
-/*
-
-Minimal interface for storage:
-
-Notes/settings/attachmentMetadata/flashcards can be abstracted behind a 'fetch file' interface, ie.
-we just declare that they're plain text.
-
-After this, necessary functions are:
-
-- initialize: handles signing in (if not already) and loading the scripts
-- isSignedIn: (maybe better to rename to shouldRedirectToStorageSpecificView or so) checks if signed in
-- synchronizeFiles: syncs backend and cache
-- markFileAsDirty: marks file as dirty, ie. it's been changed locally. In general should just store the
-  dirty file and mark it as clean again, but if there's no connection keep it as 'dirty'. We can abstract
-  most functions behind this, eg. updateSettings, createNote, createFlashcard, renameFile, deleteFile,
-  saveContent, addAttachmentToNote, removeAttachmentFromNote
-- uploadFile: i guess initially we can just use this directly from the cloud and disallow file uploads
-  if there's no connection
-- logout
-
-
-So the final form would be something like:
-
-interface StorageBackend {
-  initialize(): success|connection_failure|unknown_failure;
-  isSignedIn(): yes/no/connection_failure/unknown_failure?;
-  markFileAsDirty(fileId: string): stored (inc. fileMetadata)/no_connection/unknown_failure
-  synchronizeFiles();
-  uploadFile(content: any, fileType, fileName): success (inc. fileMetadata)/no_connection/unknown_failure
-  logout(): success/unknown_failure;
-}
-
-In this case we'd split the backend into 2 parts: cache storage and storage which syncs cache to cloud
-
-*/
-
+// interface StorageBackend {
+//   shouldUseThisBackend(): Promise<boolean>;
+//   initialize(): Promise<void>;
+//   syncLocalAndBackend(): Promise<void>;
+//
+//   // isNoteSynced(id: string): Promise<boolean>; // resolved when note has been syncronized with the backend
+//   // OPTIONS:
+//   // 1. unsyncedNotes: BehaviorSubject<string[]>
+//   // 2. getUnsyncedNotes(): Promise<string[]>
+//   // 3. getNoteIdToLastChanged(): Promise<Map<string, number>>  AND  syncNotes(string[]): Promise<void>
+//
+//   // Return ID, should probably also return the creation time for caching purposes
+//   createNote(title: string): Promise<string>;
+//   updateNote(note: NoteObject): Promise<void>; // this too?
+//   deleteNote(noteId: string): Promise<void>;
+//
+//   createFlashcard(fc: Flashcard);
+//   updateFlashcard(fc: Flashcard);
+//   deleteFlashcard(fcId: Flashcard);
+//
+//   uploadFile(content: any, filename: string, filetype: string); // for uploading larger files
+//
+//   saveSettings(settings: UserSettings): Promise<void>;
+//   saveNestedTagGroups(nestedTagGroups: ParentTagToChildTags): Promise<void>;
+//   saveAttachmentData(attachments: AttachmentMetadata): Promise<void>;
+//
+//   logout();
+// }

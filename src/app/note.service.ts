@@ -10,6 +10,8 @@ import {
   TagGroup, UserSettings
 } from './types';
 import {ALL_NOTES_TAG_NAME, JSON_MIMETYPE, TEXT_MIMETYPE, UNTAGGED_NOTES_TAG_NAME} from './constants';
+import {InMemoryCache} from './backends/in-memory-cache.service';
+import {NotificationService} from './notification.service';
 
 export enum Backend {
   FIREBASE,
@@ -19,11 +21,11 @@ export enum Backend {
 @Injectable({
   providedIn: 'root',
 })
-export class NoteService {
+export class NoteService { // Should be actually something like BackendService or so since this handles ~everything
 
   notes: BehaviorSubject<NoteObject[]> = new BehaviorSubject([]);
   tagGroups: BehaviorSubject<TagGroup[]> = new BehaviorSubject([]);
-  flashcards: BehaviorSubject<Flashcard[]> = new BehaviorSubject(null);
+  flashcards: BehaviorSubject<Flashcard[]> = new BehaviorSubject([]);
   selectedNotes: BehaviorSubject<NoteObject[]> = new BehaviorSubject([]);
   storedSettings = new BehaviorSubject<UserSettings>(null);
   attachmentMetadata = new BehaviorSubject<AttachmentMetadata>(null);
@@ -31,6 +33,7 @@ export class NoteService {
 
   private backendType: Backend;
   private backend?: StorageBackend;
+  private backendAvailable = false;
   private noteIdToNote?: Map<string, NoteObject>;
   private noteTitleToNote?: Map<string, NoteObject>;
   private noteTitleToNoteCaseInsensitive?: Map<string, NoteObject>;
@@ -38,7 +41,10 @@ export class NoteService {
   private tagToTagGroup = new Map<string, TagGroup>();
   private notesAwaitedFor: Map<string, (s: NoteObject) => void> = new Map();
 
-  constructor(private injector: Injector) {}
+  constructor(
+      private injector: Injector,
+      private cache: InMemoryCache,
+      private notifications: NotificationService) {}
 
   static getTagsForNoteContent(noteContent: string): string[] {
     return noteContent.match(/(^|\s)(#((?![#])[\S])+)/ig)
@@ -50,63 +56,8 @@ export class NoteService {
     return `https://drive.google.com/uc?id=${fileId}`;
   }
 
-  async initialize(backendType: Backend) {
-    if (backendType === Backend.FIREBASE) {
-      // this.backend = this.injector.get(FirebaseService);
-    }
-    if (backendType === Backend.GOOGLE_DRIVE) {
-      this.backend = this.injector.get(GoogleDriveService);
-      this.backend.initialize();
-    }
-    this.backendType = backendType;
-    this.backend.storedSettings.subscribe(newSettings => this.storedSettings.next(newSettings));
-    this.backend.attachmentMetadata.subscribe(newVal => this.attachmentMetadata.next(newVal));
-    this.backend.nestedTagGroups.subscribe(newVal => this.nestedTagGroups.next(newVal));
-    this.backend.notes.subscribe(newNotes => {
-      if (newNotes) {
-        this.notes.next(newNotes);
-        if (this.notesAwaitedFor.size > 0) {
-          for (const note of newNotes) { // TODO: maybe only send updates of new notes?
-            if (this.notesAwaitedFor.has(note.id)) {
-              this.notesAwaitedFor.get(note.id)(note);
-              this.notesAwaitedFor.delete(note.id);
-            }
-          }
-        }
-      }
-    });
-    this.backend.flashcards.subscribe(fcs => {
-      if (fcs) {
-        this.flashcards.next(fcs);
-      }
-    });
-    this.notes.subscribe(newNotes => {
-      this.noteIdToNote = new Map();
-      this.noteTitleToNote = new Map();
-      this.noteTitleToNoteCaseInsensitive = new Map();
-      for (const note of newNotes) {
-        this.noteIdToNote.set(note.id, note);
-        this.noteTitleToNote.set(note.title, note);
-        this.noteTitleToNoteCaseInsensitive.set(note.title.toLowerCase(), note);
-      }
-    });
-
-    // Set up processing of tags when we have fetched ignored tags from settings and notes
-    combineLatest([this.notes, this.storedSettings, this.nestedTagGroups]).subscribe(
-        data => {
-      const [notes, settings, nestedTagGroups] = data;
-      if (notes && settings && nestedTagGroups) {
-        const tagGroups = this.extractTagGroups(notes, settings.ignoredTags || [], nestedTagGroups);
-        this.tagToTagGroup = new Map();
-        for (const tg of tagGroups) {
-          this.tagToTagGroup.set(tg.tag, tg);
-        }
-        this.tags = new Set(this.tagGroups.value.map(t => t.tag));
-        this.tagGroups.next(tagGroups);
-      }
-    });
-
-    this.notes.next(this.backend.notes.value);
+  private static deepCopyObject(obj: {}): {} {
+    return JSON.parse(JSON.stringify(obj));
   }
 
   getNote(noteId: string) {
@@ -254,8 +205,69 @@ export class NoteService {
     return await this.backend.addAttachmentToNote(noteId, uploadedFileId, fileName, mimeType);
   }
 
-  async updateSettings(settingKey: string, settingValue: string|string[]) {
-    this.backend.updateSettings(settingKey, settingValue);
+  async initialize(backendType: Backend) {
+    if (backendType === Backend.FIREBASE) {
+      // this.backend = this.injector.get(FirebaseService);
+    }
+    if (backendType === Backend.GOOGLE_DRIVE) {
+      this.backend = this.injector.get(GoogleDriveService);
+      try {
+        await this.backend.initialize();
+      } catch (e) {
+        this.backendAvailable = false;
+        // TODO: offline mode here some day
+      }
+      this.backendAvailable = true;
+    }
+    this.backendType = backendType;
+    this.backend.storedSettings.subscribe(newSettings => this.storedSettings.next(newSettings));
+    this.backend.attachmentMetadata.subscribe(newVal => this.attachmentMetadata.next(newVal));
+    this.backend.nestedTagGroups.subscribe(newVal => this.nestedTagGroups.next(newVal));
+    this.backend.notes.subscribe(newNotes => {
+      if (newNotes) {
+        this.notes.next(newNotes);
+        if (this.notesAwaitedFor.size > 0) {
+          for (const note of newNotes) {
+            if (this.notesAwaitedFor.has(note.id)) {
+              this.notesAwaitedFor.get(note.id)(note);
+              this.notesAwaitedFor.delete(note.id);
+            }
+          }
+        }
+      }
+    });
+    this.backend.flashcards.subscribe(fcs => {
+      if (fcs) {
+        this.flashcards.next(fcs);
+      }
+    });
+    this.notes.subscribe(newNotes => {
+      this.noteIdToNote = new Map();
+      this.noteTitleToNote = new Map();
+      this.noteTitleToNoteCaseInsensitive = new Map();
+      for (const note of newNotes) {
+        this.noteIdToNote.set(note.id, note);
+        this.noteTitleToNote.set(note.title, note);
+        this.noteTitleToNoteCaseInsensitive.set(note.title.toLowerCase(), note);
+      }
+    });
+
+    // Set up processing of tags when we have fetched ignored tags from settings and notes
+    combineLatest([this.notes, this.storedSettings, this.nestedTagGroups]).subscribe(
+        data => {
+      const [notes, settings, nestedTagGroups] = data;
+      if (notes && settings && nestedTagGroups) {
+        const tagGroups = this.extractTagGroups(notes, settings.ignoredTags || [], nestedTagGroups);
+        this.tagToTagGroup = new Map();
+        for (const tg of tagGroups) {
+          this.tagToTagGroup.set(tg.tag, tg);
+        }
+        this.tags = new Set(this.tagGroups.value.map(t => t.tag));
+        this.tagGroups.next(tagGroups);
+      }
+    });
+
+    this.notes.next(this.backend.notes.value);
   }
 
   async addChildTag(parentTag: string, childTag: string) {
@@ -366,5 +378,25 @@ export class NoteService {
       ans.push(tagGroup);
     }
     return ans;
+  }
+
+  async updateSettings(settingKey: string, settingValue: string|string[]) {
+    const settings = NoteService.deepCopyObject(this.storedSettings.value);
+    settings[settingKey] = settingValue;
+    try {
+      await this.cache.upsertSettingsInCache(settings);
+    } catch (e) {
+      this.notifications.showFullScreenBlockingMessage(
+          'Failed to update settings in local cache. Try saving again.');
+    }
+    this.storedSettings.next(settings);
+    if (this.backendAvailable) {
+      try {
+        await this.backend.saveSettings(settings);
+      } catch (e) {
+        this.notifications.showFullScreenBlockingMessage(
+            'Failed to update settings. Try saving again.');
+      }
+    }
   }
 }

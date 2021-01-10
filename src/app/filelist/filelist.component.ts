@@ -19,6 +19,10 @@ export class FilelistComponent implements OnInit {
   @Input() set sortDirection(direction: SortDirection) {
     this.currentSortDirection = direction;
   }
+  get sortDirection() {
+    return this.currentSortDirection;
+  }
+
   private lastChildTagDragged: string;
 
   private currentSortDirection: SortDirection = SortDirection.MODIFIED_NEWEST_FIRST;
@@ -27,10 +31,6 @@ export class FilelistComponent implements OnInit {
     setLastChildTagDragged: val => this.lastChildTagDragged = val,
     setLastParentTagDragged: val => this.lastParentTagDragged = val,
   };
-
-  get sortDirection() {
-    return this.currentSortDirection;
-  }
 
   constructor(
       readonly noteService: NoteService,
@@ -41,7 +41,7 @@ export class FilelistComponent implements OnInit {
   ngOnInit(): void {
   }
 
-  nestTags(e: CdkDragDrop<unknown>) {
+  async nestTags(e: CdkDragDrop<unknown>) {
     this.notifications.showFullScreenBlockingMessage(null);
     if (!e.isPointerOverContainer) {
       return;
@@ -52,7 +52,7 @@ export class FilelistComponent implements OnInit {
     const childTag = this.lastChildTagDragged;
     const parentTag = this.lastParentTagDragged;
     if (parentTag !== childTag) {
-      this.noteService.addChildTag(parentTag, childTag);
+      await this.noteService.addChildTag(parentTag, childTag);
     }
   }
 

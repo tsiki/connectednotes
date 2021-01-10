@@ -39,11 +39,11 @@ import {combineLatest} from 'rxjs';
         </mat-menu>
       </span>
     </button>
-<!--    ['#root-tag1', '#root-tag2']-->
     <ng-container *ngIf="expanded || isRootTagGroup">
       <app-tag-group
-          *ngFor="let tag of childTags; trackBy: trackByTagFn"
+          *ngFor="let tag of childTags"
           cdkDrag
+          [class.highlighted]="isRootTagGroup"
           (cdkDragMoved)="onDragMoved($event)"
           (tagDraggedOverOtherTag)="tagDraggedOverOtherTag.emit($event)"
           class="tag-group"
@@ -55,7 +55,7 @@ import {combineLatest} from 'rxjs';
       </app-tag-group>
 
       <ng-container *ngIf="!isRootTagGroup">
-        <button *ngFor="let noteId of noteIds; trackBy: trackByIdFn"
+        <button *ngFor="let noteId of noteIds"
                 [class.mat-button-toggle-checked]="selectedNoteIds.has(noteId)"
                 class="note-link tag-group-note"
                 (click)="openNote($event, noteId)"
@@ -173,8 +173,7 @@ export class TagGroupComponent implements OnInit {
       readonly noteService: NoteService,
       private readonly settingsService: SettingsService,
       private readonly subviewManager: SubviewManagerService,
-      private notifications: NotificationService) {
-  }
+      private notifications: NotificationService) {}
 
   get isRoot() {
     return this.isRootTagGroup;
@@ -197,6 +196,95 @@ export class TagGroupComponent implements OnInit {
     return this.expanded
         ? '1px solid var(--nested-tag-gutter-color)'
         : '1px solid transparent';
+  }
+
+  ngOnInit(): void {
+    this.subviewManager.activeNotes
+        .subscribe(activeNotes => this.selectedNoteIds = new Set(activeNotes));
+
+    if (!this.isRootTagGroup) {
+      this.noteService.nestedTagGroups
+          .subscribe(nestedTagGroups => this.childTags = nestedTagGroups[this.tag]);
+    }
+
+    combineLatest([this.noteService.tagGroups, this.noteService.nestedTagGroups])
+        .subscribe(data => {
+      const [tagGroups, nestedTagGroups] = data;
+      if (tagGroups && nestedTagGroups) {
+        if (this.isRootTagGroup) {
+          this.childTags = this.getRootTags(tagGroups.map(tg => tg.tag), nestedTagGroups);
+        } else {
+          this.noteIds = tagGroups?.find(tg => tg.tag === this.tag)?.noteIds || [];
+          this.childTags = nestedTagGroups[this.tag] || [];
+        }
+        this.setSortDirection(this.currentSortDirection);
+      }
+    });
+    this.notifications.unsaved.subscribe(
+        unsavedNotes => this.unsavedNotes = new Set<string>(unsavedNotes));
+  }
+
+  ignoreTag(tag: string) {
+    this.settingsService.addIgnoredTag(tag);
+  }
+
+  editParentTags(tag: string) {
+    this.dialog.open(EditTagParentsDialogComponent, {
+      position: { top: '10px' },
+      data: { tag },
+    });
+  }
+
+  openNote(e: MouseEvent, noteId: string) {
+    if (e.metaKey || e.ctrlKey) {
+      this.subviewManager.openNoteInNewWindow(noteId);
+    } else {
+      this.subviewManager.openViewInActiveWindow(noteId);
+    }
+  }
+
+  setSortDirection(direction: SortDirection) {
+    if (!this.childTags) {
+      return;
+    }
+    const getTagGroupFn = (tag) => this.noteService.getTagGroupForTag(tag);
+    if (!this.isRootTagGroup) {
+      this.childTags = TagGroupComponent.sortTags(this.childTags, direction, getTagGroupFn);
+    } else {
+      const autoTags = this.childTags.filter(tag => AUTOMATICALLY_GENERATED_TAG_NAMES.includes(tag));
+      const toSortTags = this.childTags.filter(tag => !AUTOMATICALLY_GENERATED_TAG_NAMES.includes(tag));
+      const sortedTags = TagGroupComponent.sortTags(toSortTags, direction, getTagGroupFn);
+      this.childTags = [...autoTags, ...sortedTags];
+    }
+    const getNoteFn = noteId => this.noteService.getNote(noteId);
+    this.noteIds = TagGroupComponent.sortNotes(this.noteIds, direction, getNoteFn);
+  }
+
+  onDragMoved(e: CdkDragMove) {
+    const sourceTag = e.source.element.nativeElement.dataset.tag;
+    for (const elem of e.event.composedPath()) {
+      if ((elem as HTMLElement).tagName === 'APP-TAG-GROUP') {
+        const targetTag = (elem as HTMLElement).dataset.tag;
+        this.tagDraggedOverOtherTag.emit({ parentTag: targetTag, childTag: sourceTag });
+        return;
+      }
+    }
+    this.tagDraggedOverOtherTag.emit({ parentTag: null, childTag: sourceTag });
+  }
+
+  /**
+   * If a tag is the child tag of another tag, it won't show up on the 'root' level
+   * unless it's explicitly marked as having root as its parent. Otherwise it'll only
+   * show up as a child under its parent tag(s). If a tag doesn't have any parent tags,
+   * it only appears on the root level.
+   */
+  private getRootTags(allTags: string[], nestedTagGroups: ParentTagToChildTags) {
+    // Get tag groups have no specified parent or have explicitly specified root as their
+    // parent - these are the root tags.
+    const tagsWithExplicitRoot = new Set(nestedTagGroups[ROOT_TAG_NAME] || []);
+    const tagsWithParent = Object.values(nestedTagGroups).flat();
+    const tagsNotOnRootLevel = new Set(tagsWithParent.filter(tag => !tagsWithExplicitRoot.has(tag)));
+    return allTags.filter(tag => !tagsNotOnRootLevel.has(tag));
   }
 
   static sortNotes(noteIds: string[], direction: SortDirection, getNoteFn: (noteId: string) => NoteObject) {
@@ -241,102 +329,5 @@ export class TagGroupComponent implements OnInit {
         break;
     }
     return tags;
-  }
-
-  ngOnInit(): void {
-    this.subviewManager.activeNotes
-        .subscribe(activeNotes => this.selectedNoteIds = new Set(activeNotes));
-
-    if (!this.isRootTagGroup) {
-      this.noteService.nestedTagGroups
-          .subscribe(nestedTagGroups => this.childTags = nestedTagGroups[this.tag]);
-    }
-
-    combineLatest([this.noteService.tagGroups, this.noteService.nestedTagGroups])
-        .subscribe(data => {
-      const [tagGroups, nestedTagGroups] = data;
-      if (tagGroups && nestedTagGroups) {
-        if (this.isRootTagGroup) {
-          this.childTags = this.getRootTags(tagGroups.map(tg => tg.tag), nestedTagGroups);
-        } else {
-          this.noteIds = tagGroups?.find(tg => tg.tag === this.tag)?.noteIds || [];
-          this.childTags = nestedTagGroups[this.tag] || [];
-        }
-        this.setSortDirection(this.currentSortDirection);
-      }
-    });
-    this.notifications.unsaved.subscribe(
-        unsavedNotes => this.unsavedNotes = new Set<string>(unsavedNotes));
-  }
-
-  ignoreTag(tag: string) {
-    this.settingsService.addIgnoredTag(tag);
-  }
-
-  editParentTags(tag: string) {
-    this.dialog.open(EditTagParentsDialogComponent, {
-      position: { top: '10px' },
-      data: { tag },
-    });
-  }
-
-  trackByIdFn(index: number, item: NoteObject) {
-    return item.id;
-  }
-
-  openNote(e: MouseEvent, noteId: string) {
-    if (e.metaKey || e.ctrlKey) {
-      this.subviewManager.openNoteInNewWindow(noteId);
-    } else {
-      this.subviewManager.openViewInActiveWindow(noteId);
-    }
-  }
-
-  setSortDirection(direction: SortDirection) {
-    if (!this.childTags) {
-      return;
-    }
-    const getTagGroupFn = (tag) => this.noteService.getTagGroupForTag(tag);
-    if (!this.isRootTagGroup) {
-      this.childTags = TagGroupComponent.sortTags(this.childTags, direction, getTagGroupFn);
-    } else {
-      const autoTags = this.childTags.filter(tag => AUTOMATICALLY_GENERATED_TAG_NAMES.includes(tag));
-      const toSortTags = this.childTags.filter(tag => !AUTOMATICALLY_GENERATED_TAG_NAMES.includes(tag));
-      const sortedTags = TagGroupComponent.sortTags(toSortTags, direction, getTagGroupFn);
-      this.childTags = [...autoTags, ...sortedTags];
-    }
-    const getNoteFn = noteId => this.noteService.getNote(noteId);
-    this.noteIds = TagGroupComponent.sortNotes(this.noteIds, direction, getNoteFn);
-  }
-
-  trackByTagFn(index: number, item: TagGroup) {
-    return item.tag;
-  }
-
-  onDragMoved(e: CdkDragMove) {
-    const sourceTag = e.source.element.nativeElement.dataset.tag;
-    for (const elem of e.event.composedPath()) {
-      if ((elem as HTMLElement).tagName === 'APP-TAG-GROUP') {
-        const targetTag = (elem as HTMLElement).dataset.tag;
-        this.tagDraggedOverOtherTag.emit({ parentTag: targetTag, childTag: sourceTag });
-        return;
-      }
-    }
-    this.tagDraggedOverOtherTag.emit({ parentTag: null, childTag: sourceTag });
-  }
-
-  /**
-   * If a tag is the child tag of another tag, it won't show up on the 'root' level
-   * unless it's explicitly marked as having root as its parent. Otherwise it'll only
-   * show up as a child under its parent tag(s). If a tag doesn't have any parent tags,
-   * it only appears on the root level.
-   */
-  private getRootTags(allTags: string[], nestedTagGroups: ParentTagToChildTags) {
-    // Get tag groups have no specified parent or have explicitly specified root as their
-    // parent - these are the root tags.
-    const tagsWithExplicitRoot = new Set(nestedTagGroups[ROOT_TAG_NAME] || []);
-    const tagsWithParent = Object.values(nestedTagGroups).flat();
-    const tagsNotOnRootLevel = new Set(tagsWithParent.filter(tag => !tagsWithExplicitRoot.has(tag)));
-    return allTags.filter(tag => !tagsNotOnRootLevel.has(tag));
   }
 }

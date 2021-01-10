@@ -1,13 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 
-import { InMemoryCache } from './in-memory-cache.service';
+import { AnalyticsService } from './analytics.service';
 
-describe('LocalCacheService', () => {
-  let service: InMemoryCache;
+describe('AnalyticsService', () => {
+  let service: AnalyticsService;
 
   beforeEach(() => {
     TestBed.configureTestingModule({});
-    service = TestBed.inject(InMemoryCache);
+    service = TestBed.inject(AnalyticsService);
   });
 
   it('should be created', () => {

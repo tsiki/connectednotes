@@ -52,9 +52,9 @@ import 'codemirror/mode/powershell/powershell';
 import 'codemirror/mode/smalltalk/smalltalk';
 import * as CodeMirror from 'codemirror';
 import {NoteService} from '../note.service';
-import {fromEvent} from 'rxjs';
-import {debounceTime} from 'rxjs/operators';
-import {AttachedFile, FlashcardSuggestion, FlashcardSuggestionExtractionRule, NoteObject} from '../types';
+import {fromEvent, ReplaySubject} from 'rxjs';
+import {debounceTime, takeUntil} from 'rxjs/operators';
+import {AttachedFile, FlashcardSuggestionExtractionRule, NoteObject} from '../types';
 import {SettingsService, Theme} from '../settings.service';
 import {NotificationService} from '../notification.service';
 import * as marked from 'marked';
@@ -99,13 +99,15 @@ const FC_SUGGESTION_EXTRACTION_RULES: FlashcardSuggestionExtractionRule[] = [
   templateUrl: './editor.component.html',
   styles: [],
 })
-export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterViewInit {
+export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   @ViewChild('codemirror') cm: ElementRef;
   @ViewChild('cmContainer') cmContainer: ElementRef;
   @ViewChild('markdown') markdown: ElementRef;
   @ViewChild('titleRenameInput', { read: ElementRef }) titleRenameInput: ElementRef;
   @Output() contentChange = new EventEmitter();
   @Input() noteId;
+
+  @HostBinding('class.ctrl-pressed') ctrlPressed = false;
 
   noteTitle: string;
   editorState: 'editor'|'split' = 'editor';
@@ -121,11 +123,10 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
   private mouseEventWithCtrlActive = false;
   private mouseEventWithCtrlAndShiftActive = false;
   private inlinedImages: Map<string, CodeMirror.LineWidget> = new Map();
-  private fcDialogRef: MatDialogRef<FlashcardDialogComponent>;
   private hashtagTextMarkers = new Set<TextMarker>();
   private noteLinkTextMarkers = new Set<TextMarker>();
-  @HostBinding('class.ctrl-pressed') ctrlPressed = false;
   private fetchSelectedNotePromise: Promise<NoteObject>;
+  private readonly destroyed = new ReplaySubject(1);
 
   private cmResizeObserver = new ResizeObserver(unused => {
     const {width, height} = this.cmContainer.nativeElement.getBoundingClientRect();
@@ -143,7 +144,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
       private readonly notifications: NotificationService,
       private snackBar: MatSnackBar,
       private sanitizer: DomSanitizer) {
-    this.settingsService.themeSetting.subscribe(theme => {
+    this.settingsService.themeSetting.pipe(takeUntil(this.destroyed)).subscribe(theme => {
       switch (theme) {
         case Theme.DARK:
           this.codemirror?.setOption('theme', DARK_THEME);
@@ -166,12 +167,13 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
     }
 
     this.noteTitle = this.selectedNote.title;
-    this.noteService.tagGroups.subscribe(val => {
+    this.noteService.tagGroups.pipe(takeUntil(this.destroyed)).subscribe(val => {
       this.allTags = val.map(t => t.tag);
       this.allTags.sort();
     });
-    this.noteService.notes.subscribe(newNotes => this.allNoteTitles = newNotes.map(n => n.title));
-    this.noteService.attachmentMetadata.subscribe(metadata => {
+    this.noteService.notes.pipe(takeUntil(this.destroyed))
+        .subscribe(newNotes => this.allNoteTitles = newNotes.map(n => n.title));
+    this.noteService.attachmentMetadata.pipe(takeUntil(this.destroyed)).subscribe(metadata => {
       if (this.selectedNote && metadata && metadata.hasOwnProperty(this.selectedNote.id)) {
         this.attachedFiles = metadata[this.selectedNote.id];
       }
@@ -180,7 +182,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
   }
 
   // Initialize codemirror - we need to do this in ngAfterViewInit since (IIRC) some html elements weren't in place
-  // if we try to do this in ngOnInit
+  // if we try to do this in ngOnInit, probably codemirror
   async ngAfterViewInit() {
     if (!this.selectedNote) {
       this.selectedNote = await this.fetchSelectedNotePromise;
@@ -195,11 +197,12 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
       this.codemirror.setValue(this.selectedNote.content);
     }
 
-    this.contentChange.pipe(debounceTime(100)).subscribe(newContent => {
-      if (this.editorState === 'split') {
-        this.setRenderedMarkdown(newContent);
-      }
-    });
+    this.contentChange.pipe(debounceTime(100)).pipe(takeUntil(this.destroyed))
+        .subscribe(newContent => {
+          if (this.editorState === 'split') {
+            this.setRenderedMarkdown(newContent);
+          }
+        });
   }
 
   private setRenderedMarkdown(content: string) {
@@ -241,8 +244,8 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
         return;
       }
 
-      const hintType: '#'|'[' = lastHashtag > lastBrackets ? '#' : '[';
-      if (hintType === '#') {
+      const hintType: 'tag'|'note' = lastHashtag > lastBrackets ? 'tag' : 'note';
+      if (hintType === 'tag') {
         const wordSoFar = lineSoFar.slice(lastHashtag);
         return {
           list: this.allTags
@@ -251,7 +254,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
           from: {line: cur.line, ch: lastHashtag},
           to: {line: cur.line, ch: cur.ch},
         };
-      } else if (hintType === '[') {
+      } else if (hintType === 'note') {
         const wordSoFar = lineSoFar.slice(lastBrackets + 2);
         return {
           list: this.allNoteTitles
@@ -265,7 +268,8 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
 
     (CodeMirror as unknown as CodeMirrorHelper).commands.autocomplete = (cm) => {
       cm.showHint({
-        hint: (CodeMirror as unknown as CodeMirrorHelper).hint.notes
+        hint: (CodeMirror as unknown as CodeMirrorHelper).hint.notes,
+        closeCharacters: /[]/, // Only close the autocomplete menu when there are no suggestions left
       });
     };
 
@@ -283,6 +287,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
     // Set up notification of unsaved changes
     fromEvent(this.codemirror, 'changes')
         .pipe(debounceTime(100))
+        .pipe(takeUntil(this.destroyed))
         .subscribe(([cm, changes]) => {
           const isInitialValueSet = changes[0].origin === 'setValue';
           if (!isInitialValueSet) {
@@ -291,7 +296,10 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
         });
 
     // Autosave after some inactivity
-    fromEvent(this.codemirror, 'changes').pipe(debounceTime(3_000)).subscribe(() => this.saveChanges());
+    fromEvent(this.codemirror, 'changes')
+        .pipe(debounceTime(3_000))
+        .pipe(takeUntil(this.destroyed))
+        .subscribe(() => this.saveChanges());
 
     // Enables keyboard navigation in autocomplete list
     this.codemirror.on('keyup', (cm, event) => {
@@ -347,19 +355,26 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy, AfterV
     });
 
     // Inline images
-    this.contentChange.pipe(debounceTime(100)).subscribe(e => this.inlineImages());
+    this.contentChange.pipe(debounceTime(100))
+        .pipe(takeUntil(this.destroyed))
+        .subscribe(e => this.inlineImages());
 
     // Style hashtags
-    this.contentChange.pipe(debounceTime(100)).subscribe(e => this.styleHashtags());
+    this.contentChange.pipe(debounceTime(100))
+        .pipe(takeUntil(this.destroyed))
+        .subscribe(e => this.styleHashtags());
 
     // Style note links
-    this.contentChange.pipe(debounceTime(100)).subscribe(e => this.styleNoteLinks());
+    this.contentChange.pipe(debounceTime(100))
+        .pipe(takeUntil(this.destroyed))
+        .subscribe(e => this.styleNoteLinks());
   }
 
   ngOnDestroy(): void {
     this.cmResizeObserver.disconnect();
     this.saveChanges();
     window.removeEventListener('beforeunload', this.unloadListener);
+    this.destroyed.next(undefined);
   }
 
   async saveChanges() {

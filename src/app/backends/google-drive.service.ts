@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import {BehaviorSubject} from 'rxjs';
+import {BehaviorSubject, combineLatest} from 'rxjs';
 import {environment} from '../../environments/environment';
 import {HttpClient} from '@angular/common/http';
 import {
@@ -10,9 +10,10 @@ import {
   StorageBackend,
   UserSettings
 } from '../types';
-import {LocalCacheService} from './local-cache.service';
+import {InMemoryCache} from './in-memory-cache.service';
 import {NotificationService} from '../notification.service';
 import {JSON_MIMETYPE, TEXT_MIMETYPE} from '../constants';
+import {AnalyticsService} from '../analytics.service';
 
 const ROOT_FOLDER_NAME = 'Connected Notes';
 const NOTES_FOLDER_NAME = 'Notes';
@@ -28,7 +29,7 @@ enum ItemType {
   FLASHCARD,
 }
 
-interface WindowWithGapi extends Window {
+declare interface WindowWithGapi extends Window {
   gapi: object;
 }
 
@@ -52,46 +53,55 @@ export class GoogleDriveService implements StorageBackend {
   private settingAndMetadataFolderId = new BehaviorSubject<string>(null);
   private attachmentsFolderId = new BehaviorSubject<string>(null);
   private flashcardsFolderId = new BehaviorSubject<string>(null);
-  // Not observable since we assume any settings update is done with delay
+  // Not observable since we assume any settings/attachment/nested group update is done with delay
   private storedSettingsFileId: string;
   private attachmentMetadataFileId: string;
   private nestedTagGroupsFileId: string;
+  private initialized = false;
 
-  constructor(private http: HttpClient, private cache: LocalCacheService, private notifications: NotificationService) {}
+  constructor(
+      private http: HttpClient,
+      private cache: InMemoryCache,
+      private notifications: NotificationService,
+      private analytics: AnalyticsService) {}
+
+
+  async shouldUseThisBackend(): Promise<boolean> {
+    try {
+      await this.loadScript();
+      const isSignedIn = await this.isSignedIn();
+      this.analytics.recordEvent('Google Drive backend loaded', {isSignedIn});
+      return isSignedIn;
+    } catch (e) {
+      this.analytics.recordEvent('Failed to load Google Drive backend', { error: e?.message });
+      return Promise.resolve(false);
+    }
+  }
 
   // Fetch/create all folders, notes and flashcards
   async initialize() {
-    await this.loadScript();
-
-    this.signInIfNotSignedIn().then(() => {
-      this.fetchOrCreateFoldersAndFiles();
-      this.notesFolderId.subscribe(folderId => {
-        if (folderId) {
-          this.refreshAllNotes();
-        }
-      });
-      this.flashcardsFolderId.subscribe(folderId => {
-        if (folderId) {
-          this.refreshAllFlashcards();
-        }
-      });
-    }).catch(async err => {
-      this.notes.next(await this.cache.getAllNotesInCache());
-      this.flashcards.next(await this.cache.getAllFlashcardsInCache());
-    });
-  }
-
-  loadScript() {
-    return new Promise((resolve, reject) => {
-      if (window.gapi) {
-        resolve();
+    if (this.initialized) {
+      return;
+    }
+    this.initialized = true;
+    try {
+      await this.loadScript();
+      await this.signInIfNotSignedIn();
+      await this.fetchOrCreateFoldersAndFiles();
+    } catch (e) {
+      this.initialized = false;
+      this.notifications.showFullScreenBlockingMessage(`Couldn't initialize backend: ${e?.message}`);
+      this.analytics.recordEvent(`Initialization failure: ${e.message}`);
+      return;
+    }
+    this.analytics.recordEvent('Google Drive backend initialized successfully');
+    combineLatest([this.notesFolderId, this.flashcardsFolderId]).subscribe(async data => {
+      const [notesFolderId, fcFolderId] = data;
+      // Settings, attachment data etc. is initialized in fetchOrCreateFoldersAndFiles()
+      if (notesFolderId && fcFolderId) {
+        const promise = Promise.all([this.refreshAllNotes(), this.refreshAllFlashcards()]);
+        await promise;
       }
-      const scriptElem = document.createElement('script');
-      scriptElem.src = 'https://apis.google.com/js/api.js';
-      scriptElem.type = 'text/javascript';
-      scriptElem.onload = () => resolve();
-      scriptElem.onerror = () => reject();
-      document.querySelector('head').appendChild(scriptElem);
     });
   }
 
@@ -109,7 +119,30 @@ export class GoogleDriveService implements StorageBackend {
         this.nestedTagGroupsFileId, JSON.stringify(this.nestedTagGroups.value), true, JSON_MIMETYPE);
   }
 
-  isSignedIn(): Promise<boolean> {
+  async saveSettings(settings: UserSettings) {
+    await this.saveContent(this.storedSettingsFileId, JSON.stringify(settings), true, JSON_MIMETYPE);
+  }
+
+  private loadScript() {
+    return new Promise((resolve, reject) => {
+      if (window.gapi) {
+        resolve();
+      }
+      const scriptElem = document.createElement('script');
+      scriptElem.src = 'https://apis.google.com/js/api.js';
+      scriptElem.type = 'text/javascript';
+      scriptElem.onload = () => resolve();
+      scriptElem.onerror = () => reject();
+      document.querySelector('head').appendChild(scriptElem);
+    });
+  }
+
+  async signInIfNotSignedIn() {
+    await this.loadAndInitGapiAuth();
+    await this.signIn();
+  }
+
+  private isSignedIn(): Promise<boolean> {
     return new Promise((resolve, reject) => {
       gapi.load('client:auth2', async () => {
         await gapi.client.init({
@@ -119,25 +152,6 @@ export class GoogleDriveService implements StorageBackend {
           scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.install'
         });
         resolve(gapi.auth2.getAuthInstance().isSignedIn.get());
-      });
-    });
-  }
-
-  async signInIfNotSignedIn() {
-    await this.loadAndInitGapiAuth();
-    await this.signIn();
-  }
-
-  private async loadAndInitGapiAuth() {
-    return new Promise((resolve) => {
-      gapi.load('client:auth2', async () => {
-        await gapi.client.init({
-          apiKey: environment.googleDrive.gdriveApiKey,
-          clientId: environment.googleDrive.gdriveClientKey,
-          discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
-          scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.install'
-        });
-        resolve();
       });
     });
   }
@@ -155,11 +169,18 @@ export class GoogleDriveService implements StorageBackend {
     });
   }
 
-  async updateSettings(settingKey: string, settingValue: string|string[]) {
-    const current = this.storedSettings.getValue();
-    current[settingKey] = settingValue;
-    await this.saveContent(this.storedSettingsFileId, JSON.stringify(current), true, JSON_MIMETYPE);
-    this.storedSettings.next(current);
+  private async loadAndInitGapiAuth() {
+    await new Promise((resolve) => {
+      gapi.load('client:auth2', async () => {
+        await gapi.client.init({
+          apiKey: environment.googleDrive.gdriveApiKey,
+          clientId: environment.googleDrive.gdriveClientKey,
+          discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+          scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.install'
+        });
+        resolve();
+      });
+    });
   }
 
   renameFile(fileId: string, newTitle: string) {
