@@ -7,7 +7,7 @@ const routes: Routes = [
   { path: '', component: FrontpageComponent },
   { path: 'zks/:userid', component: ZettelkastenComponent },
   { path: 'gd', component: ZettelkastenComponent },
-  { path: 'gd/:noteid', component: ZettelkastenComponent },
+  { path: 'test', component: ZettelkastenComponent },
 ];
 
 @NgModule({

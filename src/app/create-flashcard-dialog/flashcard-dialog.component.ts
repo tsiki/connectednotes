@@ -2,7 +2,6 @@ import {
   Component,
   Inject,
   OnInit,
-  EventEmitter,
   HostListener,
   SecurityContext,
   ViewChild,
@@ -10,14 +9,12 @@ import {
 } from '@angular/core';
 import {MAT_DIALOG_DATA, MatDialogRef} from '@angular/material/dialog';
 import {StorageService} from '../storage.service';
-import {Flashcard, FlashcardSuggestion} from '../types';
-import {INITIAL_FLASHCARD_LEARNING_DATA} from '../flashcard.service';
+import {Flashcard} from '../types';
 import * as marked from 'marked';
-import {MatSnackBar} from '@angular/material/snack-bar';
 import {DomSanitizer} from '@angular/platform-browser';
 import * as CodeMirror from 'codemirror';
 import {SettingsService, Theme} from '../settings.service';
-import {DARK_THEME, LIGHT_THEME} from '../constants';
+import {DARK_THEME, INITIAL_FLASHCARD_LEARNING_DATA, LIGHT_THEME} from '../constants';
 import {fromEvent, Observable} from 'rxjs';
 import {debounceTime, map} from 'rxjs/operators';
 import {FormControl} from '@angular/forms';

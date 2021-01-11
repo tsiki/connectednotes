@@ -40,6 +40,7 @@ import {combineLatest} from 'rxjs';
       </span>
     </button>
     <ng-container *ngIf="expanded || isRootTagGroup">
+      <div id="group-indicator" *ngIf="!isRootTagGroup"></div>
       <app-tag-group
           *ngFor="let tag of childTags"
           cdkDrag
@@ -48,7 +49,6 @@ import {combineLatest} from 'rxjs';
           (tagDraggedOverOtherTag)="tagDraggedOverOtherTag.emit($event)"
           class="tag-group"
           [ngStyle]="{'margin-left.px': isRootTagGroup ? 0 : 10}"
-          showBorder="true"
           [attr.data-tag]="tag"
           [tag]="tag"
           [sortDirection]="currentSortDirection">
@@ -73,6 +73,16 @@ import {combineLatest} from 'rxjs';
       display: flex;
       flex-direction: column;
       font-weight: 300;
+      position: relative;
+    }
+
+    #group-indicator {
+      height: calc(100% - 30px);
+      width: 1px;
+      position: absolute;
+      left: 8px;
+      top: 30px;
+      background-color: var(--nested-tag-gutter-color);
     }
 
     #icon-menu > * {
@@ -130,6 +140,7 @@ import {combineLatest} from 'rxjs';
 
     .expanded .expand-icon {
       transform: initial;
+      margin-left: -3px;
     }
 
     .unsaved-marker {
@@ -186,16 +197,6 @@ export class TagGroupComponent implements OnInit {
   @Input() set sortDirection(direction: SortDirection) {
     this.currentSortDirection = direction;
     this.setSortDirection(direction);
-  }
-
-  @HostBinding('style.border-left')
-  get borderLeft(): string {
-    if (this.isRootTagGroup) {
-      return '';
-    }
-    return this.expanded
-        ? '1px solid var(--nested-tag-gutter-color)'
-        : '1px solid transparent';
   }
 
   ngOnInit(): void {

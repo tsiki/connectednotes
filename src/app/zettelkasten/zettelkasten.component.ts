@@ -71,8 +71,6 @@ export class ZettelkastenComponent implements OnInit {
     private readonly elRef: ElementRef) { }
 
   ngOnInit(): void {
-    // TODO NEXT: when flashcards are all loaded display the number of due flashcards next to the icon
-
     this.subviewManager.somethingOpened.subscribe(() => {
       if (this.elRef.nativeElement.getBoundingClientRect().width < 600 && !this.sidebarCollapsed) {
         this.toggleSidebar();
@@ -82,6 +80,8 @@ export class ZettelkastenComponent implements OnInit {
 
     if (this.router.url.split('?')[0] === '/gd') {
       this.storage.initialize(Backend.GOOGLE_DRIVE);
+    } else if (this.router.url.split('?')[0] === '/test') {
+      this.storage.initialize(Backend.TEST_DATA);
     } else {
       this.storage.initialize(Backend.FIREBASE);
     }

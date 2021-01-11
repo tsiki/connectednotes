@@ -16,7 +16,8 @@ import {SubviewManagerService} from '../subview-manager.service';
         <mat-icon>close</mat-icon>
       </button>
     </div>
-    <div id="graph" #graph></div>
+<!--    <div id="graph" #graph></div>-->
+    Graph view coming by the end of January.
   `,
   styles: [`
     #graph {

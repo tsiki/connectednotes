@@ -5,13 +5,7 @@ import {StorageService} from './storage.service';
 import {SettingsService} from './settings.service';
 import {BehaviorSubject, interval} from 'rxjs';
 import {debounce, debounceTime} from 'rxjs/operators';
-
-export const INITIAL_FLASHCARD_LEARNING_DATA: FlashcardLearningData = Object.freeze({
-  easinessFactor: 2.5,
-  numRepetitions: 0,
-  prevRepetitionEpochMillis: 0,
-  prevRepetitionIntervalMillis: 0,
-});
+import {INITIAL_FLASHCARD_LEARNING_DATA} from './constants';
 
 @Injectable({
   providedIn: 'root'

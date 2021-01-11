@@ -65,18 +65,35 @@
     height: 100%;
     width: 100%;
   }
+
+  .link {
+    cursor: pointer;
+    color: blue;
+    text-decoration: none;
+  }
+
+  .image {
+    margin: 10px 30px 30px 30px;
+    width: 300px;
+  }
+
+  .image-container {
+    display: flex;
+    justify-content: space-around;
+  }
 </style>
 
 <div id="container">
 
-<!--  <canvas id="canvas" #canvas width="1000"></canvas>-->
   <div id="loading-spinner" *ngIf="showSpinner">
     <mat-spinner></mat-spinner>
   </div>
 
   <h1 id="title">CONNECTED NOTES</h1>
 
-  <a (click)="toGd()">Try it (Google Drive)</a><br><br><br>
+  <a href="/test">Demo (read-only)</a><br>
+
+  <a (click)="toGd()" class="link">Try it (Google Drive authorization required)</a><br>
 
   <div id="text">
     <p>
@@ -88,7 +105,8 @@
     <p>It's open source and free to use.</p>
 
     <p>
-      Connected Notes is in alpha, so expect some roughness and bugs, and please report all bugs at the project's
+      Connected Notes is in alpha, so expect roughness, bugs and some missing features.
+      Please report all bugs at the project's
       <a href="https://github.com/tsiki/connectednotes/issues/new">GitHub page</a>.
     </p>
 
@@ -112,7 +130,7 @@
     <p>
       Connected Notes supports the Zettelkasten method. This means first class support for <b>tagging</b> and
       <b>connecting notes</b> - in fact, Connected Notes doesn't use folders to organize notes, but uses the tags you've
-      added to structure them (<a href="TODO">see how</a>).
+      added to structure them (see 'getting started' below).
     </p>
 
     <p>
@@ -147,7 +165,8 @@
       Creating a note is as easy as clicking on the 'create note' icon (or pressing ctrl + k) and entering the name
       of the note.
       You don't need to choose which folder the note is added to, since folders don't exist - instead, organizing notes
-      is based on tags (see next section). This greatly reduces the friction of creating notes.
+      is based on tags (see next section). This greatly reduces the friction of creating notes (see
+      <a href="https://zettelkasten.de/posts/no-categories/">for more</a>).
     </p>
 
     <h3>Tagging notes</h3>
@@ -156,32 +175,41 @@
       Using tags is an integral part of Connected Notes, and probably the largest difference when compared to other
       note taking apps.
       To add a tag, simply add a hashtag anywhere to the note, like
-      #this. You will then see the hashtag appear in the left side menu, with the note nested under it (TODO: image).
-      Each note appears under its tags.
+      #this. You will then see the hashtag appear in the left side menu, and if you click on it,
+      you will see all notes that contain this tag:
+    </p>
+    <div class="image-container"><img class="image" src="./assets/img/tag-and-notes.jpg"></div>
+
+    <p>
+      If a note
+      doesn't have any hashtags, it's added to the special 'untagged' tag. All notes appear under 'all'.
     </p>
 
     <p>
-      In the left menu, each tag is represented by a 'folder' that contains all the notes it appears in. If a note
-      doesn't have any hashtags, it's added to the special 'untagged' folder.
-    </p>
-
-    <p>
-      Tags can be nested under each other. This might be sensible if you have a tag which is clearly a part of some
+      Tags can be nested under each other, creating a 'tag/subtag' structure.
+      This might be sensible if you have a tag which is clearly a part of some
       other tag. For example, if you have tags #car-brands and #toyota, you might not want to have #toyota appear
       on the top level.
     </p>
-    (TODO: image here)
+
     <p>
-      This can be achieved by dragging the child tag over the parent tag.
+      This can be achieved by dragging the child tag over the parent tag:
     </p>
-    (TODO: animation here)
+
+    <div class="image-container"><img class="image" src="./assets/img/drag-and-drop-tag.gif"></div>
 
     <p>
       Finally, tags can appear under many tags. Let's say you have tags #car-brands and #electric-cars. In a traditional
       folder structure you'd have to make a choice where to place #tesla, but in Connected Notes #tesla could
       appear under both tags. To achieve this, click on the three dots menu next to #tesla and choose
-      the parent tags. (TODO: images)
+      the parent tags.
     </p>
+    <p>
+      Or, for example, in this image the note 'Game theory optimal poker' appears both under
+      '#texas-holdem-strategies' and '#game-theory':
+    </p>
+
+    <div class="image-container"><img class="image" src="./assets/img/multiple-tags-per-note.jpg"></div>
 
     <p>
       In comparison, traditional folders are essentially
@@ -234,6 +262,8 @@
     domains, so notes created in connectednotes.net won't be accessible from someotherdomain.com. The solution is to
     copy the files and re-upload them via the new correct domain.
 
+    <br>
+    <br>
     <h2>Future work</h2>
 
     <p>

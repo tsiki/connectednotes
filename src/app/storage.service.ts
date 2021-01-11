@@ -12,10 +12,12 @@ import {
 import {ALL_NOTES_TAG_NAME, JSON_MIMETYPE, TEXT_MIMETYPE, UNTAGGED_NOTES_TAG_NAME} from './constants';
 import {InMemoryCache} from './backends/in-memory-cache.service';
 import {NotificationService} from './notification.service';
+import {TestDataService} from './backends/test-data.service';
 
 export enum Backend {
   FIREBASE,
   GOOGLE_DRIVE,
+  TEST_DATA,
 }
 
 @Injectable({
@@ -218,6 +220,9 @@ export class StorageService { // Should be actually something like BackendServic
         // TODO: offline mode here some day
       }
       this.backendAvailable = true;
+    }
+    if (backendType === Backend.TEST_DATA) {
+      this.backend = this.injector.get(TestDataService);
     }
     this.backendType = backendType;
     this.backend.storedSettings.subscribe(newSettings => this.storedSettings.next(newSettings));

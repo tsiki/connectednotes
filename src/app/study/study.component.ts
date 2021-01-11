@@ -60,11 +60,13 @@ export const ALL_FCS_QUEUE_NAME = 'all flashcards';
         <div class="notification" *ngIf="allFcs.length > 0 && currentDueFcsQueue.length === 0">
           All done!
         </div>
-        <span [hidden]="displayedFc">
+        <span [style.display]="displayedFc ? 'initial' : 'none'">
           <div id="tags">
-            <span *ngFor="let tag of displayedFc?.tags">{{tag}}</span>
+            <div id="tags-container">
+                <span class="tag" *ngFor="let tag of displayedFc?.tags">{{tag}}</span>
+            </div>
           </div>
-          <div id="due-fc-container" class="raisedbox" [style.display]="displayedFc ? 'initial' : 'none'">
+          <div id="due-fc-container" class="raisedbox">
             <div class="fc-side" #front [hidden]="revealed"></div>
             <div class="fc-side" #back [hidden]="!revealed"></div>
             <button id="show-answer-button" mat-button *ngIf="!revealed" (click)="reveal()">
@@ -178,7 +180,13 @@ export const ALL_FCS_QUEUE_NAME = 'all flashcards';
     }
 
     #tags {
+      display: flex;
+      justify-content: space-around;
       margin: 20px 0;
+    }
+
+    .tag {
+      margin-left: 10px;
     }
 
     .notification {

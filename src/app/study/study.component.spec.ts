@@ -69,6 +69,7 @@ fdescribe('StudyComponent', () => {
     fixture.detectChanges();
     flashcardService.flashcards.next([ fc ]);
     fixture.detectChanges();
+    expect(fixture.componentInstance.displayedFc).toBeTruthy();
     expect(fixture.componentInstance.front.nativeElement.innerHTML).toContain('visible side');
     expect(fixture.componentInstance.back.nativeElement.innerHTML).toContain('hidden side');
     const revealButton = fixture.debugElement.queryAll(

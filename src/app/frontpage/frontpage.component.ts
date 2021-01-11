@@ -220,7 +220,7 @@ export class FrontpageComponent implements OnInit, AfterViewInit, OnDestroy {
         title: 'Analytics usage',
         message: 'Would you like to enable analytics? We use analytics for detecting error states'
          + ' and particularly heavy usage to know which features and bug fixes should be prioritized.'
-         + ' Enabling this option sends some anonymous data for us to analyze. Loading analytics is likely to'
+         + ' Enabling this option sends some anonymous data for us to analyze. Loading analytics might'
          + ' be blocked by adblockers - please consider disabling adblockers on this site if you would like to'
          + ' enable analytics (not like we have ads anyway).',
         confirmButtonText: 'Enable analytics',

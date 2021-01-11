@@ -11,11 +11,11 @@ import {BehaviorSubject} from 'rxjs';
     <mat-select [(value)]="selectedTheme" (selectionChange)="changeTheme($event)">
       <mat-option value="LIGHT">Light</mat-option>
       <mat-option value="DARK">Dark</mat-option>
-      <mat-option value="DEVICE">Follow Device Settings</mat-option>
+      <mat-option value="DEVICE">Follow Device Settings (default)</mat-option>
     </mat-select>
   </mat-form-field>
 
-  <h3 id="ignored-tags-header" *ngIf="(ignoredTags | async).length">Ignored tags:</h3>
+  <h3 id="ignored-tags-header" *ngIf="(ignoredTags | async)?.length">Ignored tags:</h3>
   <mat-chip-list aria-label="Ignored tags">
     <mat-chip *ngFor="let tag of ignoredTags | async">
       {{ tag }}

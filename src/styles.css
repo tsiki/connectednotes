@@ -20,7 +20,7 @@ body { margin: 0; font-family: "Roboto", sans-serif; }
   --save-status-indicator-unsaved-changes-color: #eb0212;
   --save-status-indicator-saving-color: #d1d13d;
   --save-status-indicator-everything-saved-color: initial;
-  --nested-tag-gutter-color: #d1d1d1;
+  --nested-tag-gutter-color: #c9c9c9;
    /* Text styles */
   --h1-font-size: 22px;
   --h2-font-size: 18px;
