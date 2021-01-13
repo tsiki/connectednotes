@@ -93,16 +93,14 @@
 
   <a href="/test">Demo (read-only)</a><br>
 
-  <a (click)="toGd()" class="link">Try it (Google Drive authorization required)</a><br>
+  <a (click)="toGd()" class="link">Try the alpha version (Google Drive authorization required)</a><br>
 
   <div id="text">
     <p>
-      Connected Notes is a note taking tool that aims to make taking notes engaging and effective. It encourages
-      usage of the <a href="https://zettelkasten.de/posts/overview/">Zettelkasten</a> method and spaced repetition
-      to deliver the best learning results.
+      Connected Notes is a tool for non-hierarchical notes and flashcards. It encourages
+      usage of the <a href="https://zettelkasten.de/posts/overview/">Zettelkasten</a> method and spaced repetition,
+      and is open source and free to use.
     </p>
-
-    <p>It's open source and free to use.</p>
 
     <p>
       Connected Notes is in alpha, so expect roughness, bugs and some missing features.
@@ -165,31 +163,35 @@
       Creating a note is as easy as clicking on the 'create note' icon (or pressing ctrl + k) and entering the name
       of the note.
       You don't need to choose which folder the note is added to, since folders don't exist - instead, organizing notes
-      is based on tags (see next section). This greatly reduces the friction of creating notes (see
-      <a href="https://zettelkasten.de/posts/no-categories/">for more</a>).
+      is based on tags (see next section). This greatly reduces the friction of creating notes and avoids having
+      to think in strict categories and hierarchies
+      (<a href="https://zettelkasten.de/posts/no-categories/">more</a>).
     </p>
 
     <h3>Tagging notes</h3>
 
     <p>
-      Using tags is an integral part of Connected Notes, and probably the largest difference when compared to other
-      note taking apps.
-      To add a tag, simply add a hashtag anywhere to the note, like
+      Using tags is an integral part of Connected Notes. Since tags essentially replace folders,
+      learning to use them is worthwhile.
+      To add a tag, simply add a Twitter style hashtag anywhere to the note, like
       #this. You will then see the hashtag appear in the left side menu, and if you click on it,
-      you will see all notes that contain this tag:
+      you will see all the notes that contain the tag:
     </p>
     <div class="image-container"><img class="image" src="./assets/img/tag-and-notes.jpg"></div>
 
     <p>
       If a note
-      doesn't have any hashtags, it's added to the special 'untagged' tag. All notes appear under 'all'.
+      doesn't have any hashtags, it appears under the special 'untagged' tag. Similarly, all notes appear under 'all'.
+      Also, since notes can contain multiple tags, they can also appear under multiple tags:
     </p>
+
+    <div class="image-container"><img class="image" src="./assets/img/multiple-tags-per-note.jpg"></div>
 
     <p>
       Tags can be nested under each other, creating a 'tag/subtag' structure.
       This might be sensible if you have a tag which is clearly a part of some
-      other tag. For example, if you have tags #car-brands and #toyota, you might not want to have #toyota appear
-      on the top level.
+      other tag. For example, if you have tags #texas-holdem (a popular card game) and #texas-holdem-strategies,
+      you might not want to have #texas-holdem-strategies appear on the top level.
     </p>
 
     <p>
@@ -199,17 +201,12 @@
     <div class="image-container"><img class="image" src="./assets/img/drag-and-drop-tag.gif"></div>
 
     <p>
-      Finally, tags can appear under many tags. Let's say you have tags #car-brands and #electric-cars. In a traditional
+      Finally, tags can appear under multiple tags. Let's say you have tags #car-brands and #electric-cars.
+      In a traditional
       folder structure you'd have to make a choice where to place #tesla, but in Connected Notes #tesla could
       appear under both tags. To achieve this, click on the three dots menu next to #tesla and choose
       the parent tags.
     </p>
-    <p>
-      Or, for example, in this image the note 'Game theory optimal poker' appears both under
-      '#texas-holdem-strategies' and '#game-theory':
-    </p>
-
-    <div class="image-container"><img class="image" src="./assets/img/multiple-tags-per-note.jpg"></div>
 
     <p>
       In comparison, traditional folders are essentially
@@ -237,24 +234,14 @@
     <p>To study your flashcards, click on the 'study' icon in the left menu. By default, you'll be shown all due
     flashcards you have created.</p>
 
-    <p>Currently there's no interoperability with Anki but the plan is to make the flashcard experience more
-      Anki-like (just with markdown), allowing exporting/importing.</p>
+    <p>Currently there's no interoperability with Anki but in the future I'd like to have a more Anki-like flashcard
+      experience and allow exporting/importing.</p>
 
     <h2>Running your own instance</h2>
 
     <p>
-      More details on how to set up your own instance of Connected Notes can be found at the projects
-      <a href="https://github.com/tsiki/connectednotes">GitHub page</a>.
-    </p>
-
-    <p>
-      This section details how to go about running your own instance of Connected Notes which uses Google Drive as the
-      backend.
-    </p>
-
-    <p>
-      First, you'll need to create an API key for Google Drive by following the instructions
-      <a href="https://developers.google.com/drive/api/v3/enable-drive-api">here</a>.
+      More details on how to set up your own instance of Connected Notes will be at the
+      <a href="https://github.com/tsiki/connectednotes">GitHub page</a> once the project exits beta.
     </p>
 
     <h3>Caveat</h3>

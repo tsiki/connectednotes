@@ -40,8 +40,8 @@ export class ConfirmationDialogComponent {
       public dialogRef: MatDialogRef<ConfirmationDialogComponent>) {
     this.title = data.title;
     this.message = data.message;
-    this.confirmButtonText = data.confirmButtonText || 'ok';
-    this.rejectButtonText = data.rejectButtonText || 'cancel';
+    this.confirmButtonText = data.confirmButtonText;
+    this.rejectButtonText = data.rejectButtonText;
   }
 
   confirm() {

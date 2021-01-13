@@ -8,6 +8,7 @@ const routes: Routes = [
   { path: 'zks/:userid', component: ZettelkastenComponent },
   { path: 'gd', component: ZettelkastenComponent },
   { path: 'test', component: ZettelkastenComponent },
+  { path: 'demo', component: ZettelkastenComponent },
 ];
 
 @NgModule({

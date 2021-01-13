@@ -15,6 +15,7 @@ import * as marked from 'marked';
 import {DomSanitizer} from '@angular/platform-browser';
 import {FlashcardDialogComponent, FlashcardDialogData} from '../create-flashcard-dialog/flashcard-dialog.component';
 import {MatDialog} from '@angular/material/dialog';
+import {ConfirmationDialogComponent, ConfirmDialogData} from '../confirmation-dialog/confirmation-dialog.component';
 
 export const DUE_FCS_QUEUE_NAME = 'due flashcards';
 export const ALL_FCS_QUEUE_NAME = 'all flashcards';
@@ -275,8 +276,17 @@ export class StudyComponent implements AfterViewInit, OnDestroy {
     this.subviewManager.closeView('flashcards');
   }
 
-  deleteFlashcard(id: string) {
-    const result = window.confirm(`Delete this flashcard?`);
+  async deleteFlashcard(id: string) {
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      width: '600px',
+      data: {
+        title: 'Confirmation',
+        message: 'Delete this flashcard?',
+        confirmButtonText: 'Delete',
+        rejectButtonText: 'Cancel',
+      } as ConfirmDialogData,
+    });
+    const result  = await dialogRef.afterClosed().toPromise();
     if (result) {
       this.flashcardService.deleteFlashcard(id);
     }

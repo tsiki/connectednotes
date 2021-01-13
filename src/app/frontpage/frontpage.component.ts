@@ -2,7 +2,6 @@ import {AfterViewInit, Component, ElementRef, Injector, OnDestroy, OnInit, ViewC
 import {Router} from '@angular/router';
 import {GoogleDriveService} from '../backends/google-drive.service';
 import {StorageBackend} from '../types';
-import {BackreferencesDialogComponent} from '../backreferences-dialog/backreferences-dialog.component';
 import {MatDialog} from '@angular/material/dialog';
 import {ConfirmationDialogComponent, ConfirmDialogData} from '../confirmation-dialog/confirmation-dialog.component';
 import {ANALYTICS_ENABLED_LOCAL_STORAGE_KEY} from '../constants';

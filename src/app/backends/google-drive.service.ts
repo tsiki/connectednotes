@@ -142,18 +142,15 @@ export class GoogleDriveService implements StorageBackend {
     await this.signIn();
   }
 
-  private isSignedIn(): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      gapi.load('client:auth2', async () => {
-        await gapi.client.init({
-          apiKey: environment.googleDrive.gdriveApiKey,
-          clientId: environment.googleDrive.gdriveClientKey,
-          discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
-          scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.install'
-        });
-        resolve(gapi.auth2.getAuthInstance().isSignedIn.get());
-      });
+  private async isSignedIn(): Promise<boolean> {
+    await new Promise(resolve => gapi.load('client:auth2', () => resolve()));
+    await gapi.client.init({
+      apiKey: environment.googleDrive.gdriveApiKey,
+      clientId: environment.googleDrive.gdriveClientKey,
+      discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+      scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.install'
     });
+    return gapi.auth2.getAuthInstance().isSignedIn.get();
   }
 
   private async signIn() {

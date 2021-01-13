@@ -14,6 +14,7 @@ import {FilelistComponent} from '../filelist/filelist.component';
 import {ValidateImmediatelyMatcher} from '../already-existing-note.directive';
 import {SubviewManagerService, ViewType} from '../subview-manager.service';
 import {FlashcardService} from '../flashcard.service';
+import {ConfirmationDialogComponent, ConfirmDialogData} from '../confirmation-dialog/confirmation-dialog.component';
 
 
 export enum SortDirection {
@@ -80,7 +81,18 @@ export class ZettelkastenComponent implements OnInit {
 
     if (this.router.url.split('?')[0] === '/gd') {
       this.storage.initialize(Backend.GOOGLE_DRIVE);
-    } else if (this.router.url.split('?')[0] === '/test') {
+    } else if (['/test', '/demo'].includes(this.router.url.split('?')[0])) {
+      this.dialog.open(ConfirmationDialogComponent, {
+        width: '600px',
+        data: {
+          title: 'Demo',
+          message:
+              "This is a (mostly) read-only demo of Connected Notes. It's meant for testing the overall flow and "
+              + 'structure. Some changes are working (eg. restructuring notes) and some not (eg. creating notes), '
+              + 'but all changes will be lost when the page is refreshed.',
+          confirmButtonText: 'ok',
+        } as ConfirmDialogData,
+      });
       this.storage.initialize(Backend.TEST_DATA);
     } else {
       this.storage.initialize(Backend.FIREBASE);

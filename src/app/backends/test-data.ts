@@ -131,7 +131,7 @@ export const TEST_FLASHCARDS: Flashcard[] = [
         id: '1',
         createdEpochMillis: 0,
         lastChangedEpochMillis: 0,
-        tags: ['#zettelkasten', '#test'],
+        tags: ['#zettelkasten', '#some-another-tag'],
         side1: 'The two basic components of Zettelkasten are ...',
         side2: 'The two basic components of Zettelkasten are tagging and connecting notes',
         isTwoWay: false,

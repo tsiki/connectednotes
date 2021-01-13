@@ -29,11 +29,29 @@ export class TestDataService implements StorageBackend {
   }
 
   createFlashcard(fc: Flashcard): Promise<FileMetadata> {
-    return Promise.resolve(undefined);
+    this.flashcards.value.push(fc);
+    this.flashcards.next(this.flashcards.value);
+    const curTime = new Date().getTime();
+    return Promise.resolve({
+      id: Math.random().toString(),
+      title: 'fc',
+      lastChangedEpochMillis: curTime,
+      createdEpochMillis: curTime
+    });
   }
 
   createNote(title: string): Promise<FileMetadata> {
-    return Promise.resolve(undefined);
+    const curTime = new Date().getTime();
+    const id = Math.random().toString();
+    const note = { id, title, content: '', lastChangedEpochMillis: curTime};
+    this.notes.value.push(note);
+    this.notes.next(this.notes.value);
+    return Promise.resolve({
+      id,
+      title,
+      lastChangedEpochMillis: curTime,
+      createdEpochMillis: curTime
+    });
   }
 
   deleteFile(fileId: string) {
