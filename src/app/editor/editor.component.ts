@@ -488,6 +488,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       data: {
         suggestions: flashcardSuggestions,
         tags: StorageService.getTagsForNoteContent(this.codemirror.getValue()),
+        noteTitle: this.selectedNote.title,
       } as FlashcardDialogData,
       width: '100%',
       maxHeight: '90vh' /* to enable scrolling on overflow */,

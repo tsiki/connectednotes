@@ -36,7 +36,7 @@ export class StorageService { // Should be actually something like BackendServic
   private backendType: Backend;
   private backend?: StorageBackend;
   private backendAvailable = false;
-  private noteIdToNote?: Map<string, NoteObject>;
+  private noteIdToNote = new Map<string, NoteObject>();
   private noteTitleToNote?: Map<string, NoteObject>;
   private noteTitleToNoteCaseInsensitive?: Map<string, NoteObject>;
   private tags = new Set<string>();
@@ -62,7 +62,7 @@ export class StorageService { // Should be actually something like BackendServic
     return JSON.parse(JSON.stringify(obj));
   }
 
-  getNote(noteId: string) {
+  getNote(noteId: string): NoteObject|null {
     return this.noteIdToNote.get(noteId);
   }
 

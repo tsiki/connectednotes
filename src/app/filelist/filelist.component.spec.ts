@@ -29,7 +29,7 @@ describe('FilelistComponent', () => {
       nestedTagGroups: new BehaviorSubject<ParentTagToChildTags>(null),
       tagGroups,
       getTagGroupForTag: tag => tagGroups.value.find(tg => tg.tag === tag),
-      getNote: noteId => ({ id: noteId, lastChangedEpochMillis: 0 }),
+      getNote: noteId => ({ id: noteId, title: noteId, lastChangedEpochMillis: 0 }),
       addChildTag: () => {},
     };
 

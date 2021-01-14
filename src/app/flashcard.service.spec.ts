@@ -1,11 +1,12 @@
 import {discardPeriodicTasks, fakeAsync, TestBed, tick} from '@angular/core/testing';
 
-import {FlashcardService, INITIAL_FLASHCARD_LEARNING_DATA} from './flashcard.service';
+import {FlashcardService} from './flashcard.service';
 import {Flashcard} from './types';
 import {BehaviorSubject} from 'rxjs';
 import {StudyComponent} from './study/study.component';
 import {StorageService} from './storage.service';
 import {SettingsService} from './settings.service';
+import {INITIAL_FLASHCARD_LEARNING_DATA} from './constants';
 
 
 

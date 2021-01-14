@@ -17,24 +17,23 @@ import {FlashcardDialogComponent, FlashcardDialogData} from '../create-flashcard
 import {MatDialog} from '@angular/material/dialog';
 import {ConfirmationDialogComponent, ConfirmDialogData} from '../confirmation-dialog/confirmation-dialog.component';
 
-export const DUE_FCS_QUEUE_NAME = 'due flashcards';
 export const ALL_FCS_QUEUE_NAME = 'all flashcards';
 
 @Component({
   selector: 'app-study',
   template: `
     <div id="top-bar">
-      <span><!-- this element is for centering the dropdown --></span>
+      <span><!-- empty element for centering the dropdown --></span>
       <mat-form-field id="queue-dropdown" appearance="fill">
         <mat-label>Flashcard queue</mat-label>
-        <mat-select [(value)]="selectedQueue" (selectionChange)="queueChanged()">
-          <span class="queue-option-container" *ngFor="let queue of fcQueues">
-            <mat-option [value]="queue[0]">
+        <mat-select [(value)]="selectedQueue" (selectionChange)="queueChanged($event)">
+          <span class="queue-option-container" *ngFor="let kv of queueToFcs | keyvalue">
+            <mat-option [value]="kv.key">
               <span class="queue-info-container">
-                <span class="queue-name">{{queue[0]}}</span>
+                <span class="queue-name">{{kv.key}}</span>
               </span>
             </mat-option>
-            <span class="due-count">{{dueFcQueues.get(queue[0])?.length || 0}}/{{queue[1]?.length || 0}} due</span>
+            <span class="due-count">{{queueToDueFcs.get(kv.key)?.length || 0}}/{{kv.value.length || 0}} due</span>
           </span>
         </mat-select>
       </mat-form-field>
@@ -57,8 +56,8 @@ export const ALL_FCS_QUEUE_NAME = 'all flashcards';
         </mat-menu>
       </button>
       <div id="fc-container">
-        <div class="notification" *ngIf="allFcs.length === 0">You haven't created any flashcards.</div>
-        <div class="notification" *ngIf="allFcs.length > 0 && currentDueFcsQueue.length === 0">
+        <div class="notification" *ngIf="queueToFcs.size === 0">You haven't created any flashcards.</div>
+        <div class="notification" *ngIf="queueToFcs.size > 0 && queueToDueFcs.get(this.selectedQueue)?.length === 0">
           All done!
         </div>
         <span [style.display]="displayedFc ? 'initial' : 'none'">
@@ -206,14 +205,17 @@ export class StudyComponent implements AfterViewInit, OnDestroy {
 
   displayedFc?: Flashcard;
   revealed: boolean;
-  allFcs: Flashcard[] = [];
-  currentDueFcsQueue: Flashcard[] = [];
-  fcQueues: [string, Flashcard[]][];
-  dueFcQueues: Map<string, Flashcard[]>;
-  numDueFcs: Map<string, number>;
-  selectedQueue = DUE_FCS_QUEUE_NAME;
+  // allFcs: Flashcard[] = [];
+  currentQueue: Flashcard[] = [];
+
+  queueToFcs = new Map<string, Flashcard[]>([[ALL_FCS_QUEUE_NAME, []]]);
+  queueToDueFcs = new Map<string, Flashcard[]>([[ALL_FCS_QUEUE_NAME, []]]);
+
+  // numDueFcs: Map<string, number>;
+  selectedQueue = ALL_FCS_QUEUE_NAME;
 
   private sub: Subscription;
+  private fcIds = new Set<string>();
 
   constructor(
       private readonly flashcardService: FlashcardService,
@@ -227,18 +229,26 @@ export class StudyComponent implements AfterViewInit, OnDestroy {
       if (!fcs) {
         return;
       }
-      this.dueFcQueues = this.getQueueToDueFcs(fcs);
-      this.allFcs = fcs;
-      this.queueChanged();
+
+      for (const fc of fcs) {
+        if (!this.fcIds.has(fc.id)) {
+          this.processFc(fc);
+          this.fcIds.add(fc.id);
+        }
+      }
+
       // Present first note automatically
       this.setNextFlashcard();
+
       // Tell angular things have changed to prevent ExpressionChangedAfter... error in tests
       this.cdr.detectChanges();
     });
   }
 
-  queueChanged() {
-    this.currentDueFcsQueue = this.dueFcQueues.get(this.selectedQueue);
+  queueChanged(e) {
+    this.selectedQueue = e.value;
+    this.currentQueue = this.queueToDueFcs.get(this.selectedQueue);
+    this.setNextFlashcard();
   }
 
   ngOnDestroy(): void {
@@ -251,25 +261,24 @@ export class StudyComponent implements AfterViewInit, OnDestroy {
 
   setNextFlashcard() {
     this.revealed = false;
-    // TODO: if FC is in two queues we might mess up here, it needs to be removed from both
-    this.currentDueFcsQueue = this.dueFcQueues.get(this.selectedQueue);
-    if (this.currentDueFcsQueue.length === 0) {
-      this.displayedFc = undefined;
-      return;
+    this.displayedFc = this.queueToDueFcs.get(this.selectedQueue)[0]; // Can be undefined if queue empty
+    if (this.displayedFc) {
+      this.setRenderedContents(this.displayedFc);
     }
-    this.displayedFc = this.currentDueFcsQueue[0];
-    this.setRenderedContents(this.displayedFc);
   }
 
   submitRating(rating: number, fc: Flashcard) {
     this.flashcardService.submitFlashcardRating(rating, fc);
-    this.currentDueFcsQueue = this.currentDueFcsQueue.splice(0, 1);
+    // this.queueToDueFcs.get(this.selectedQueue).splice(0, 1);
     if (rating === 0) {
-      // If user couldn't remember the card at all it re-enters queue
-      this.currentDueFcsQueue.push(fc);
+      // If user couldn't remember the card at all it re-enters queue at the end
+      this.queueToDueFcs.get(this.selectedQueue).splice(0, 1);
+      this.queueToDueFcs.get(this.selectedQueue).push(fc);
+    } else {
+      this.removeFcFromDueQueues(fc);
     }
-    // Call to setNextFlashcard() is not needed here - note service triggers update
-    // on flashcards which propagates to this component.
+    this.setNextFlashcard();
+    this.cdr.detectChanges();
   }
 
   closeView() {
@@ -312,30 +321,26 @@ export class StudyComponent implements AfterViewInit, OnDestroy {
     this.back.nativeElement.innerHTML = this.sanitizer.sanitize(SecurityContext.HTML, side2SanitizedContent);
   }
 
-  private getQueueToDueFcs(fcs: Flashcard[]) {
-    const queueToFcs = new Map<string, Flashcard[]>([[ALL_FCS_QUEUE_NAME, []]]);
-    const queueToDueFcs = new Map<string, Flashcard[]>();
-    const dueFcs: Flashcard[] = [];
-    for (const fc of fcs) {
-      for (const tag of [ALL_FCS_QUEUE_NAME, ...fc.tags]) {
-        if (!queueToFcs.has(tag)) {
-          queueToFcs.set(tag, []);
-        }
-        queueToFcs.get(tag).push(fc);
-        if (this.flashcardService.isDue(fc)) {
-          if (!queueToDueFcs.has(tag)) {
-            queueToDueFcs.set(tag, []);
-          }
-          queueToDueFcs.get(tag).push(fc);
-          dueFcs.push(fc);
-        }
+  private processFc(fc: Flashcard) {
+    const isDue = this.flashcardService.isDue(fc);
+    for (const tag of [ALL_FCS_QUEUE_NAME, ...fc.tags]) {
+      if (!this.queueToFcs.has(tag)) {
+        this.queueToFcs.set(tag, []);
+        this.queueToDueFcs.set(tag, []);
+      }
+      this.queueToFcs.get(tag).push(fc);
+      if (isDue) {
+        // Presented FCs shouldn't be sorted in any special way, since if we're still loading FCs
+        // and they're coming in they would keep switching places.
+        this.queueToDueFcs.get(tag).push(fc);
       }
     }
-    this.fcQueues = [
-      [DUE_FCS_QUEUE_NAME, dueFcs],
-      ...queueToFcs.entries(),
-    ];
-    queueToDueFcs.set(DUE_FCS_QUEUE_NAME, dueFcs);
-    return queueToDueFcs;
+  }
+
+  private removeFcFromDueQueues(fc: Flashcard) {
+    for (const tag of [ALL_FCS_QUEUE_NAME, ...fc.tags]) {
+      const dueIdx = this.queueToDueFcs.get(tag).findIndex(otherFc => otherFc.id === fc.id);
+      this.queueToDueFcs.get(tag).splice(dueIdx, 1);
+    }
   }
 }

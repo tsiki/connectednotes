@@ -1,10 +1,10 @@
 import { Injectable } from '@angular/core';
 import {sortAscByNumeric} from './utils';
-import {Flashcard, FlashcardLearningData} from './types';
+import {Flashcard} from './types';
 import {StorageService} from './storage.service';
 import {SettingsService} from './settings.service';
 import {BehaviorSubject, interval} from 'rxjs';
-import {debounce, debounceTime} from 'rxjs/operators';
+import {debounceTime} from 'rxjs/operators';
 import {INITIAL_FLASHCARD_LEARNING_DATA} from './constants';
 
 @Injectable({

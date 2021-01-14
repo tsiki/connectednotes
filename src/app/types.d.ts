@@ -102,6 +102,7 @@ interface Flashcard {
   side2: string;
   isTwoWay: boolean;
   learningData: FlashcardLearningData;
+  noteTitle?: string; // The note that was active when this was created - not always populated for early versions
 }
 
 interface FlashcardLearningData {

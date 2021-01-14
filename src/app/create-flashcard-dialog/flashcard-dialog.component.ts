@@ -14,17 +14,26 @@ import * as marked from 'marked';
 import {DomSanitizer} from '@angular/platform-browser';
 import * as CodeMirror from 'codemirror';
 import {SettingsService, Theme} from '../settings.service';
-import {DARK_THEME, INITIAL_FLASHCARD_LEARNING_DATA, LIGHT_THEME} from '../constants';
+import {
+  AUTOMATICALLY_GENERATED_TAG_NAMES,
+  DARK_THEME,
+  INITIAL_FLASHCARD_LEARNING_DATA,
+  LIGHT_THEME
+} from '../constants';
 import {fromEvent, Observable} from 'rxjs';
 import {debounceTime, map} from 'rxjs/operators';
 import {FormControl} from '@angular/forms';
 import {COMMA, ENTER} from '@angular/cdk/keycodes';
 import {MatChipInputEvent} from '@angular/material/chips';
 import {MatAutocompleteSelectedEvent} from '@angular/material/autocomplete';
+import {Editor, EditorChangeLinkedList} from 'codemirror';
 
+
+// Set of populated fields differ depending on whether the flashcard is created or edited
 export interface FlashcardDialogData {
   suggestions?: string[];
   tags?: string[];
+  noteTitle?: string;
   flashcardToEdit?: Flashcard;
 }
 
@@ -43,34 +52,38 @@ export interface FlashcardDialogData {
       <!--      </div>-->
       <div id="editor-and-rendered-wrapper">
         <span>
-          <h2>Edit</h2>
           <div id="editors-container">
             <div>
-              <h3>Front:</h3>
-              <div class="codemirror-container">
-                <textarea #frontEditorElem></textarea>
+              <div class="center">
+                <span>
+                  <h3>Front:</h3>
+                  <div class="codemirror-container">
+                    <textarea #frontEditorElem></textarea>
+                  </div>
+                </span>
               </div>
             </div>
             <div>
-              <h3>Back:</h3>
-              <div class="codemirror-container">
-                <textarea #backEditorElem></textarea>
+              <div class="center">
+                  <span>
+                  <h3>Back:</h3>
+                  <div class="codemirror-container">
+                    <textarea #backEditorElem></textarea>
+                  </div>
+                </span>
               </div>
             </div>
           </div>
         </span>
         <span>
-          <h2>Preview</h2>
-            <div id="rendered-sides-container">
-              <div id="visible-side-container">
-                <h3>Rendered front:</h3>
-                <div #renderedFront></div>
-              </div>
-              <div id="hidden-side-container">
-                <h3>Rendered back:</h3>
-                <div #renderedBack></div>
-              </div>
+          <div id="rendered-sides-container">
+            <div id="visible-side-container">
+              <div class="raisedbox" #renderedFront></div>
             </div>
+            <div id="hidden-side-container">
+              <div class="raisedbox" #renderedBack></div>
+            </div>
+          </div>
         </span>
       </div>
       <h3>Queues:</h3>
@@ -130,11 +143,17 @@ export interface FlashcardDialogData {
       height: 50%;
     }
 
+    .center {
+      display: flex;
+      justify-content: space-around;
+    }
+
     .codemirror-container {
       border: 1px solid #bdbdbd;
       border-radius: 4px;
-      margin-right: 3px;
-      padding: 1px;
+      min-height: 100px;
+      max-width: 350px;
+      margin: 10px;
     }
 
     #editors-container > * {
@@ -174,6 +193,23 @@ export interface FlashcardDialogData {
     }
 
     .chip-list {
+      width: 100%;
+    }
+
+    .raisedbox {
+      border-radius: 6px;
+      box-shadow: 0 0 10px #bdbdbd;
+      display: flex;
+      flex-direction: column;
+      max-width: 350px;
+      padding: 10px;
+    }
+
+    #visible-side-container,
+    #hidden-side-container {
+      display: flex;
+      justify-content: space-around;
+      margin: 20px;
       width: 100%;
     }
   `]
@@ -217,7 +253,10 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
       this.tags = data.tags;
     }
 
-    this.storage.tagGroups.subscribe(tgs => this.allTags = tgs.map(tg => tg.tag));
+    this.storage.tagGroups.subscribe(
+        tgs => this.allTags = tgs
+            .map(tg => tg.tag)
+            .filter(t => !AUTOMATICALLY_GENERATED_TAG_NAMES.includes(t)));
     this.filteredTags = this.tagCtrl.valueChanges.pipe(
         map((tag: string | null) => tag ? this._filter(tag) : this.allTags.slice()));
   }
@@ -268,7 +307,7 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
     this.frontEditor.on('mousedown', (cm, e) => {
       this.mouseEventWithCtrlActive = e.metaKey || e.ctrlKey;
     });
-    this.frontEditor.on('cursorActivity', async (cm, event) => {
+    this.frontEditor.on('cursorActivity', (cm: Editor) => {
       if (this.mouseEventWithCtrlActive) {
         const wordUnderCursor = cm.findWordAt(cm.getCursor());
         const word = cm.getRange(wordUnderCursor.anchor, wordUnderCursor.head);
@@ -307,6 +346,7 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
       await this.storage.saveFlashcard(fc);
     } else {
       await this.storage.createFlashcard({
+        noteTitle: this.data.noteTitle,
         tags: this.tags.filter(t => !this.ignoredTags.has(t)),
         side1: this.frontEditor.getValue(),
         side2: this.backEditor.getValue(),

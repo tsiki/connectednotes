@@ -1,7 +1,7 @@
 import {async, ComponentFixture, fakeAsync, flush, TestBed, waitForAsync} from '@angular/core/testing';
 
-import {ALL_FCS_QUEUE_NAME, DUE_FCS_QUEUE_NAME, StudyComponent} from './study.component';
-import {FlashcardService, INITIAL_FLASHCARD_LEARNING_DATA} from '../flashcard.service';
+import {ALL_FCS_QUEUE_NAME, StudyComponent} from './study.component';
+import {FlashcardService} from '../flashcard.service';
 import {BehaviorSubject} from 'rxjs';
 import {Flashcard} from '../types';
 import {By} from '@angular/platform-browser';
@@ -12,8 +12,9 @@ import {MatFormFieldModule} from '@angular/material/form-field';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
 import {MatIconModule} from '@angular/material/icon';
 import {MatMenuModule} from '@angular/material/menu';
+import {INITIAL_FLASHCARD_LEARNING_DATA} from '../constants';
 
-fdescribe('StudyComponent', () => {
+describe('StudyComponent', () => {
   let component: StudyComponent;
   let fixture: ComponentFixture<StudyComponent>;
   let flashcardService;
@@ -59,10 +60,11 @@ fdescribe('StudyComponent', () => {
 
   it("receive one flashcard, submit rating, ensure it's not shown again", fakeAsync(() => {
     const fc = {
+      id: '1',
       side1: 'visible side',
       side2: 'hidden side',
       tags: [],
-      learningData: INITIAL_FLASHCARD_LEARNING_DATA
+      learningData: INITIAL_FLASHCARD_LEARNING_DATA,
     } as Flashcard;
 
     const spy = spyOn(flashcardService, 'submitFlashcardRating');
@@ -92,12 +94,14 @@ fdescribe('StudyComponent', () => {
 
   it('displays queue for each tag in flashcard', fakeAsync(() => {
     const fc1 = {
+      id: '1',
       side1: 'visible side',
       side2: 'hidden side',
       tags: ['#tag1', '#tag2'],
       learningData: INITIAL_FLASHCARD_LEARNING_DATA
     } as Flashcard;
     const fc2 = {
+      id: '2',
       side1: 'visible side',
       side2: 'hidden side',
       tags: ['#tag2', '#tag3'],
@@ -107,10 +111,10 @@ fdescribe('StudyComponent', () => {
     fixture.detectChanges();
     flashcardService.flashcards.next([ fc1, fc2 ]);
     fixture.detectChanges();
-    const queues = fixture.componentInstance.fcQueues.map(t => t[0]);
+    const queues = [...fixture.componentInstance.queueToFcs.keys()];
     expect(queues).toEqual(
         jasmine.arrayContaining(
-            [DUE_FCS_QUEUE_NAME, ALL_FCS_QUEUE_NAME, '#tag1', '#tag2', '#tag3']));
-    expect(fixture.componentInstance.dueFcQueues.get(ALL_FCS_QUEUE_NAME).length).toBe(2);
+            [ALL_FCS_QUEUE_NAME, '#tag1', '#tag2', '#tag3']));
+    expect(fixture.componentInstance.queueToDueFcs.get(ALL_FCS_QUEUE_NAME).length).toBe(2);
   }));
 });

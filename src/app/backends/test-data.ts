@@ -119,6 +119,16 @@ Nash equilibrium refers to a solution of a non-cooperative game involving two or
 `,
         lastChangedEpochMillis: 1
     },
+    {
+        id: '8',
+        title: 'Exploitative poker',
+        content:
+            `#texas-holdem-strategies
+
+Exploitative poker refers to a style of poker where the focus is on trying to adjust to the playing style of the opponent to achieve maximum win rate.
+`,
+        lastChangedEpochMillis: 1
+    },
 ];
 
 
@@ -134,6 +144,16 @@ export const TEST_FLASHCARDS: Flashcard[] = [
         tags: ['#zettelkasten', '#some-another-tag'],
         side1: 'The two basic components of Zettelkasten are ...',
         side2: 'The two basic components of Zettelkasten are tagging and connecting notes',
+        isTwoWay: false,
+        learningData: INITIAL_FLASHCARD_LEARNING_DATA,
+    },
+    {
+        id: '2',
+        createdEpochMillis: 0,
+        lastChangedEpochMillis: 0,
+        tags: ['#sample-tag', '#another-sample-tag'],
+        side1: 'Some people claim poker strategies can be roughly divided into two strategies, what are these?',
+        side2: 'Game theory optimal and exploitative',
         isTwoWay: false,
         learningData: INITIAL_FLASHCARD_LEARNING_DATA,
     },
