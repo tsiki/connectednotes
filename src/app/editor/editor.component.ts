@@ -337,7 +337,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
         const endIdx = end.indexOf(']]');
         if (startIdx !== 0 && endIdx !== -1) {
           const noteTitle = start.substr(startIdx) + end.substr(0, endIdx);
-          const note = this.storage.notes.value.find(n => n.title === noteTitle);
+          const note = this.storage.getNoteForTitleCaseInsensitive(noteTitle);
           let noteId;
           if (note) {
             noteId = note.id;

@@ -71,6 +71,9 @@ Everyone at the table is dealt 2 cards face down. Everyone can look at their car
 
 The first players to the left of the last person to put money to the pot must either fold their hand (meaning they're out of the game), call (meaning they must match whatever money someone else has put to the pot) or raise (put more money to the pot than the amount to call).
 
+# Strategies
+
+It's sometimes claimed that the two basic approaches to holdem are [[game theory optimal poker]] and [[exploitative poker]], although this is a very simplistic view. Rather, some people see latter as a special case of the former.
 
 `,
         lastChangedEpochMillis: 1
