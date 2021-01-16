@@ -64,15 +64,7 @@ import {combineLatest, ReplaySubject} from 'rxjs';
 export class GraphComponent implements OnDestroy {
   @ViewChild('graph') graph: ElementRef;
 
-  // current theme: dark, light, cyan etc.
-  // The graph supports themes by adding
-  // styles in class names which use theme name
-  // as suffix for e.g. node-dark, node-light etc.
-  theme = 'light';
-
-  // to hold active graph component
-  cy: cytoscape.Core;
-
+  private cy: cytoscape.Core;
   private destroyed = new ReplaySubject<any>(1);
 
   constructor(private readonly storage: StorageService,
@@ -80,7 +72,7 @@ export class GraphComponent implements OnDestroy {
               private readonly subviewManager: SubviewManagerService) {
     combineLatest([this.storage.notes, this.settings.themeSetting])
         .pipe(takeUntil(this.destroyed))
-        .pipe(debounceTime(1000))
+        .pipe(debounceTime(500))
         .subscribe(unused => {
           this.displayCytograph(this.storage.getGraphRepresentation());
           this.updateCytographStyles();

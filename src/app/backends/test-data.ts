@@ -30,7 +30,7 @@ You can open notes by clicking on then in the left menu or by finding them using
 
 If you have refenced a note, you can hold ctrl/cmd and click on the reference to jump directly to the note. You can then navigate back using the 'back' button of the browser. 
 `,
-        lastChangedEpochMillis: 1
+        lastChangedEpochMillis: Math.random()
     },
     {
         id: '2',
@@ -44,14 +44,14 @@ Zettelkasten is a knowledge management method based on tagging and connecting no
 
 Tagging notes is designed to allow for arbitrary grouping of notes.
 `,
-        lastChangedEpochMillis: 1
+        lastChangedEpochMillis: Math.random()
     },
     {
         id: '3',
         title: 'TODO',
         content:
             `This is just an example of a note without any tags.`,
-        lastChangedEpochMillis: 1
+        lastChangedEpochMillis: Math.random()
     },
     {
         id: '4',
@@ -76,7 +76,7 @@ The first players to the left of the last person to put money to the pot must ei
 It's sometimes claimed that the two basic approaches to holdem are [[game theory optimal poker]] and [[exploitative poker]], although this is a very simplistic view. Rather, some people see latter as a special case of the former.
 
 `,
-        lastChangedEpochMillis: 1
+        lastChangedEpochMillis: Math.random()
     },
     {
         id: '5',
@@ -96,7 +96,7 @@ Correspondingly, middle positions are somewhat better than early positions and t
 
 Late positions usually refer to the button and cut-off. These players have the most information and playability and should play hands at a much higher rate than players in early or middle positions.
 `,
-        lastChangedEpochMillis: 1
+        lastChangedEpochMillis: Math.random()
     },
     {
         id: '6',
@@ -110,7 +110,7 @@ Heads-up holdem (ie. involving two players) has a unique [[Nash equilibrium]], u
 
 There's a lot of software out there that can approximate the [[Nash equilibrium]] of a situation, the most famous being piosolver.
 `,
-        lastChangedEpochMillis: 1
+        lastChangedEpochMillis: Math.random()
     },
     {
         id: '7',
@@ -120,7 +120,7 @@ There's a lot of software out there that can approximate the [[Nash equilibrium]
 
 Nash equilibrium refers to a solution of a non-cooperative game involving two or more players. In a Nash equilibrium, each player is assumed to know the equilibrium strategies of the other players and no player has anything to gain by changing only his own strategy.
 `,
-        lastChangedEpochMillis: 1
+        lastChangedEpochMillis: Math.random()
     },
     {
         id: '8',
@@ -130,7 +130,7 @@ Nash equilibrium refers to a solution of a non-cooperative game involving two or
 
 Exploitative poker refers to a style of poker where the focus is on trying to adjust to the playing style of the opponent to achieve maximum win rate.
 `,
-        lastChangedEpochMillis: 1
+        lastChangedEpochMillis: Math.random()
     },
 ];
 
