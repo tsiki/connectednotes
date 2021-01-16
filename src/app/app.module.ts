@@ -49,6 +49,7 @@ import { TagGroupComponent } from './tag-group/tag-group.component';
 import { EditTagParentsDialogComponent } from './edit-tag-parents-dialog/edit-tag-parents-dialog.component';
 import {MatAutocompleteModule} from '@angular/material/autocomplete';
 import { ConfirmationDialogComponent } from './confirmation-dialog/confirmation-dialog.component';
+import {GoogleDriveAuthConfirmationComponent} from './backends/google-drive-auth-confirmation.component';
 
 @NgModule({
   entryComponents: [CreateNoteDialog], // Not declared in template to must be here
@@ -64,6 +65,7 @@ import { ConfirmationDialogComponent } from './confirmation-dialog/confirmation-
     SettingsComponent,
     AttachmentsDialogComponent,
     BackreferencesDialogComponent,
+    GoogleDriveAuthConfirmationComponent,
     AlreadyExistingNoteDirective,
     StudyComponent,
     FlashcardDialogComponent,

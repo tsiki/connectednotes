@@ -81,6 +81,10 @@
     display: flex;
     justify-content: space-around;
   }
+
+  .space-below {
+    margin-bottom: 20px;
+  }
 </style>
 
 <div id="container">
@@ -91,9 +95,9 @@
 
   <h1 id="title">CONNECTED NOTES</h1>
 
-  <a href="/test">Demo (read-only)</a><br>
+  <a class="space-below" href="/test">Demo (read-only)</a>
 
-  <a (click)="toGd()" class="link">Try the alpha version (Google Drive authorization required)</a><br>
+  <a (click)="toGd()" class="link space-below">Try the alpha version (Google Drive authorization required)</a>
 
   <div id="text">
     <p>
@@ -245,12 +249,13 @@
     </p>
 
     <h3>Caveat</h3>
-    If you're planning to start your own instance, note that Google Drive files are only accessible from whitelisted
-    domains, so notes created in connectednotes.net won't be accessible from someotherdomain.com. The solution is to
-    copy the files and re-upload them via the new correct domain.
+    <p class="space-below">
+      If you're planning to start your own instance, note that Google Drive files are only accessible from whitelisted
+      domains, so notes created in connectednotes.net won't be accessible from someotherdomain.com. The solution is to
+      copy the files and re-upload them via the new correct domain.
+    </p>
 
-    <br>
-    <br>
+
     <h2>Future work</h2>
 
     <p>

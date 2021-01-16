@@ -4,6 +4,8 @@ html, body { height: 100%; }
 body { margin: 0; font-family: "Roboto", sans-serif; }
 
 :root {
+  --editor-font-weight: 400;
+  --editor-text-font-size: 14px;
   --primary-text-color: #000;
   --low-contrast-text-color: #4d4d4d;
   --primary-background-color: #fff;
@@ -35,7 +37,8 @@ body { margin: 0; font-family: "Roboto", sans-serif; }
   --h5-font-weight: 500;
   --h6-font-weight: 500;
   --header-text-color: #000478;
-  --editor-text-font-size: 14px;
+  --graph-highlighted-edge-color: #ba68c8;
+  --graph-highlighted-node-color: #ba68c8;
 }
 
 .dark-theme {
@@ -53,4 +56,6 @@ body { margin: 0; font-family: "Roboto", sans-serif; }
   --save-status-indicator-everything-saved-color: initial;
   --header-text-color: rgb(209, 209, 209);
   --nested-tag-gutter-color: #4d4d4d;
+  --graph-highlighted-edge-color: #8BC34A;
+  --graph-highlighted-node-color: #8BC34A;
  }

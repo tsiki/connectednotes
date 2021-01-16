@@ -208,7 +208,6 @@ export class FrontpageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   async toGd() {
     if (localStorage.getItem(ANALYTICS_ENABLED_LOCAL_STORAGE_KEY) === 'true') {
-      await this.googleDriveBackend.initialize();
       this.router.navigate(['gd']);
       return;
     }
@@ -238,12 +237,7 @@ export class FrontpageComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     }
     localStorage.setItem(ANALYTICS_ENABLED_LOCAL_STORAGE_KEY, ans.toString());
-    // Initialize backends here - at least for Google Drive if we initialize immediately after redirecting to new URL
-    // the popup is more likely to get blocked by the browser and it'll be confusing when the user lands on the page
-    // and can't create notes without understanding why.
-    await this.googleDriveBackend.initialize();
     this.router.navigate(['gd']);
-    // });
   }
 
   ngOnDestroy() {

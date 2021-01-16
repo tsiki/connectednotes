@@ -14,6 +14,8 @@ import {InMemoryCache} from './in-memory-cache.service';
 import {NotificationService} from '../notification.service';
 import {JSON_MIMETYPE, TEXT_MIMETYPE} from '../constants';
 import {AnalyticsService} from '../analytics.service';
+import {MatDialog} from '@angular/material/dialog';
+import {GoogleDriveAuthConfirmationComponent} from './google-drive-auth-confirmation.component';
 
 const ROOT_FOLDER_NAME = 'Connected Notes';
 const NOTES_FOLDER_NAME = 'Notes';
@@ -63,7 +65,8 @@ export class GoogleDriveService implements StorageBackend {
       private http: HttpClient,
       private cache: InMemoryCache,
       private notifications: NotificationService,
-      private analytics: AnalyticsService) {}
+      private analytics: AnalyticsService,
+      private dialog: MatDialog) {}
 
 
   async shouldUseThisBackend(): Promise<boolean> {
@@ -105,8 +108,11 @@ export class GoogleDriveService implements StorageBackend {
     });
   }
 
-  async initiateSignIn() {
-    await gapi.auth2.getAuthInstance().signIn();
+  async initiateSignIn(expired = false) {
+    await this.dialog.open(GoogleDriveAuthConfirmationComponent, {
+      data: { expired },
+      maxWidth: '500px',
+    }).afterClosed().toPromise();
   }
 
   logout() {
@@ -153,17 +159,20 @@ export class GoogleDriveService implements StorageBackend {
     return gapi.auth2.getAuthInstance().isSignedIn.get();
   }
 
-  private async signIn() {
-    const isSignedIn = gapi.auth2.getAuthInstance().isSignedIn.get();
-    if (!isSignedIn) {
-      await this.initiateSignIn();
+  async saveContent(fileId: string, content: string, notify: boolean, mimeType = TEXT_MIMETYPE) {
+    if (!content) {
+      return; // Don't save empty content, just in case there's some bug which overwrites the notes
     }
-    // In case the session expires
-    gapi.auth2.getAuthInstance().isSignedIn.listen(signedIn => {
-      if (signedIn) {
-        this.initiateSignIn();
-      }
-    });
+    const req = gapi.client.request({
+      path: `/upload/drive/v3/files/${fileId}`,
+      method: 'PATCH',
+      headers: {
+        'Content-Type': mimeType
+      },
+      body: content});
+
+    // TODO: cache this
+    const resp = await req;
   }
 
   private async loadAndInitGapiAuth() {
@@ -312,73 +321,17 @@ export class GoogleDriveService implements StorageBackend {
     }
   }
 
-  // TODO: is there seriously no way to merge this and refreshAllNotes???
-  private async refreshAllFlashcards() {
-    const notificationId = this.notifications.createId();
-    this.notifications.toSidebar(notificationId.toString(), 'Syncing flashcards...');
-
-    let flashcardMetadata: FileMetadata[];
-    try {
-      flashcardMetadata = await this.fetchFileMetadata(JSON_MIMETYPE, this.flashcardsFolderId.value);
-    } catch (e) {
-      this.notifications.toSidebar(
-          notificationId,
-          'Fetching metadata for flashcards failed. Displaying only cached flashcards.',
-          10_000);
-      flashcardMetadata = null;
+  private async signIn() {
+    const isSignedIn = gapi.auth2.getAuthInstance().isSignedIn.get();
+    if (!isSignedIn) {
+      await this.initiateSignIn();
     }
-
-    const cachedIdToLastChanged = await this.cache.getAllFlashcardIdToLastChangedTimestamp();
-    this.removeDeletedIdsFromCache(
-        ItemType.FLASHCARD,
-        flashcardMetadata?.map(n => n.id),
-        cachedIdToLastChanged.keys());
-
-    // Then, only consider the flashcards which have newer version on drive
-    const flashcardsWithNewerVersion = flashcardMetadata
-            ?.filter(n => n.lastChangedEpochMillis > (cachedIdToLastChanged.get(n.id) || 0))
-        || [];
-
-    // Get up-to-date cached flashcards
-    const cachedFlashcards = await this.cache.getAllFlashcardsInCache();
-    const newerFlashcardIds = new Set(flashcardsWithNewerVersion.map(n => n.id));
-    const upToDateCachedFlashcards = cachedFlashcards.filter(fc => !newerFlashcardIds.has(fc.id));
-    this.flashcards.next(upToDateCachedFlashcards);
-    if (flashcardsWithNewerVersion.length === 0) {
-      this.notifications.toSidebar(notificationId, 'Syncing flashcards... done', 3000);
-    }
-
-    let doneCount = 0;
-    let failCount = 0;
-    const failNotificationId = this.notifications.createId();
-
-    // Now fetch the content of the flashcards for which we don't have the newest version for.
-    const flashcardContentFetchPromises = this.fetchContents(flashcardsWithNewerVersion.map(n => n.id));
-    for (let i = 0; i < flashcardsWithNewerVersion.length; i++) {
-      const promise = flashcardContentFetchPromises[i];
-      const metadata = flashcardsWithNewerVersion[i];
-      promise.then(flashcardTxtJson => {
-        const updatedFlashcard: Flashcard = Object.assign({
-          id: metadata.id,
-          lastChangedEpochMillis: metadata.lastChangedEpochMillis,
-          createdEpochMillis: metadata.createdEpochMillis,
-        }, JSON.parse(flashcardTxtJson));
-
-        this.cache.addOrUpdateFlashcardInCache(metadata.id, updatedFlashcard);
-        this.flashcards.value.push(updatedFlashcard);
-        this.flashcards.next(this.flashcards.value);
-        doneCount++;
-        this.notifications.toSidebar(
-            notificationId.toString(),
-            `Syncing flashcards (${doneCount}/${flashcardsWithNewerVersion.length})`,
-            5000);
-      }).catch(err => {
-        failCount++;
-        this.notifications.toSidebar(failNotificationId.toString(),
-            `Failed to sync (${failCount}} flashcards - refresh might help?`,
-            10_000);
-      });
-    }
+    // In case the session expires
+    gapi.auth2.getAuthInstance().isSignedIn.listen(signedIn => {
+      if (signedIn) {
+        this.initiateSignIn(true);
+      }
+    });
   }
 
   /**
@@ -493,20 +446,75 @@ export class GoogleDriveService implements StorageBackend {
     }
   }
 
-  async saveContent(fileId: string, content: string, notify: boolean, mimeType = TEXT_MIMETYPE) {
-    if (!content) {
-      return; // Don't save empty content, just in case there's some bug which overwrites the notes
-    }
-    const req = gapi.client.request({
-      path: `/upload/drive/v3/files/${fileId}`,
-      method: 'PATCH',
-      headers: {
-        'Content-Type': mimeType
-      },
-      body: content});
+  // TODO: is there seriously no way to merge this and refreshAllNotes???
+  private async refreshAllFlashcards() {
+    const notificationId = this.notifications.createId();
+    this.notifications.toSidebar(notificationId.toString(), 'Syncing flashcards...');
 
-    // TODO: cache this
-    await req;
+    let flashcardMetadata: FileMetadata[];
+    try {
+      flashcardMetadata = await this.fetchFileMetadata(JSON_MIMETYPE, this.flashcardsFolderId.value);
+    } catch (e) {
+      this.notifications.toSidebar(
+          notificationId,
+          'Fetching metadata for flashcards failed. Displaying only cached flashcards.',
+          10_000);
+      flashcardMetadata = null;
+    }
+
+    const cachedIdToLastChanged = await this.cache.getAllFlashcardIdToLastChangedTimestamp();
+    this.removeDeletedIdsFromCache(
+        ItemType.FLASHCARD,
+        flashcardMetadata?.map(n => n.id),
+        cachedIdToLastChanged.keys());
+
+    // Then, only consider the flashcards which have newer version on drive
+    const flashcardsWithNewerVersion = flashcardMetadata
+            ?.filter(n => n.lastChangedEpochMillis > (cachedIdToLastChanged.get(n.id) || 0))
+        || [];
+
+    // Get up-to-date cached flashcards
+    const cachedFlashcards = await this.cache.getAllFlashcardsInCache();
+    const newerFlashcardIds = new Set(flashcardsWithNewerVersion.map(n => n.id));
+    const upToDateCachedFlashcards = cachedFlashcards.filter(fc => !newerFlashcardIds.has(fc.id));
+    this.flashcards.next(upToDateCachedFlashcards);
+    if (flashcardsWithNewerVersion.length === 0) {
+      this.notifications.toSidebar(notificationId, 'Syncing flashcards... done', 3000);
+    }
+
+    let doneCount = 0;
+    let failCount = 0;
+    const failNotificationId = this.notifications.createId();
+
+    // Now fetch the content of the flashcards for which we don't have the newest version for.
+    const flashcardContentFetchPromises = this.fetchContents(flashcardsWithNewerVersion.map(n => n.id));
+    for (let i = 0; i < flashcardsWithNewerVersion.length; i++) {
+      const promise = flashcardContentFetchPromises[i];
+      const metadata = flashcardsWithNewerVersion[i];
+      promise.then(flashcardTxtJson => {
+        const updatedFlashcard: Flashcard = Object.assign(
+            JSON.parse(flashcardTxtJson),
+            {
+              id: metadata.id,
+              lastChangedEpochMillis: metadata.lastChangedEpochMillis,
+              createdEpochMillis: metadata.createdEpochMillis,
+            });
+
+        this.cache.addOrUpdateFlashcardInCache(metadata.id, updatedFlashcard);
+        this.flashcards.value.push(updatedFlashcard);
+        this.flashcards.next(this.flashcards.value);
+        doneCount++;
+        this.notifications.toSidebar(
+            notificationId.toString(),
+            `Syncing flashcards (${doneCount}/${flashcardsWithNewerVersion.length})`,
+            5000);
+      }).catch(err => {
+        failCount++;
+        this.notifications.toSidebar(failNotificationId.toString(),
+            `Failed to sync (${failCount}} flashcards - refresh might help?`,
+            10_000);
+      });
+    }
   }
 
   private async fetchOrCreateJsonFile(fileName: string, parentFolder: string): Promise<[string, {}]> {

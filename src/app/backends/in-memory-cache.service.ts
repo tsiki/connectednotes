@@ -109,7 +109,6 @@ export class InMemoryCache {
     }
     const transaction = this.db.transaction(FLASHCARD_STORE_NAME, 'readwrite');
     const flashcards = transaction.objectStore(FLASHCARD_STORE_NAME);
-
     const putReq = flashcards.put(flashcard);
     return new Promise((resolve, reject) => {
       putReq.onsuccess = () => resolve();

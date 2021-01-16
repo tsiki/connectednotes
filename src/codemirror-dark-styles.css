@@ -22,7 +22,7 @@
     /* font-family: monospace; */
     font-family: Helvetica;
     font-size: 14px;
-    font-weight: 400;
+    font-weight: var(--editor-font-weight);
     height: 300px;
     direction: ltr;
 }
@@ -56,14 +56,14 @@
 .cm-s-darcula span.cm-keyword { color: #CC7832; line-height: 1em; font-weight: bold; }
 .cm-s-darcula span.cm-def { color: #A9B7C6; font-style: italic; }
 .cm-s-darcula span.cm-variable { color: #A9B7C6; }
-.cm-s-darcula span.cm-variable-2 { color: #A9B7C6; }
+.cm-s-darcula span.cm-variable-2 {  } /* lists */
 .cm-s-darcula span.cm-variable-3 { color: #9876AA; }
 .cm-s-darcula span.cm-type { color: #AABBCC; font-weight: bold; }
 .cm-s-darcula span.cm-property { color: #FFC66D; }
 .cm-s-darcula span.cm-operator { color: #A9B7C6; }
 .cm-s-darcula span.cm-string { color: #6A8759; }
 .cm-s-darcula span.cm-string-2 { color: #6A8759; }
-.cm-s-darcula span.cm-comment { color: #61A151; font-style: italic; }
+.cm-s-darcula span.cm-comment { background-color: #424242; font-family: monospace; }
 .cm-s-darcula span.cm-link { color: #CC7832; }
 .cm-s-darcula span.cm-atom { color: #CC7832; }
 .cm-s-darcula span.cm-error { color: #BC3F3C; }
