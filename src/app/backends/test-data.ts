@@ -28,7 +28,7 @@ If you reference a note that doesn't exist, [[like this]], it will show up in re
 
 You can open notes by clicking on then in the left menu or by finding them using ctrl+shift+f. If you hold control (or cmd for mac users) at the same time, the note will be opened in a new view.
 
-If you have refenced a note, you can hold ctrl/cmd and click on the reference to jump directly to the note. You can then navigate back using the 'back' button of the browser. 
+If you have refenced a note, you can hold ctrl/cmd and click on the reference to jump directly to the note. You can then navigate back using the 'back' button of the browser.
 `,
         lastChangedEpochMillis: Math.random()
     },
