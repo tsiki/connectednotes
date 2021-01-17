@@ -16,7 +16,7 @@ Zettelkasten support comes in two forms: support for tagging and connecting note
 
 ## Tagging
 
-Tagging notes can be done by placing a hashtag followed by the tag anywhere in the note, like is done on the first line of this document.
+Tagging notes can be done by placing a hashtag followed by the tag anywhere in the note, like is done on the first line of this document. You can also ignore tags by clicking on the 3-dots menu on the left and choosing 'ignore tag', to make sure it's not used to organize notes.
 
 ## Connecting notes
 
@@ -155,7 +155,7 @@ export const TEST_FLASHCARDS: Flashcard[] = [
         createdEpochMillis: 0,
         lastChangedEpochMillis: 0,
         tags: ['#sample-tag', '#another-sample-tag'],
-        side1: 'Some people claim poker strategies can be roughly divided into two strategies, what are these?',
+        side1: 'Some claim poker strategies can be roughly divided into two strategies, which are these?',
         side2: 'Game theory optimal and exploitative',
         isTwoWay: false,
         learningData: INITIAL_FLASHCARD_LEARNING_DATA,

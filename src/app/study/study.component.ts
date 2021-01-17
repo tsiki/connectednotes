@@ -60,7 +60,7 @@ export const ALL_FCS_QUEUE_NAME = 'all flashcards';
         <div class="notification" *ngIf="queueToFcs.size > 0 && queueToDueFcs.get(this.selectedQueue)?.length === 0">
           All done!
         </div>
-        <span [style.display]="displayedFc ? 'initial' : 'none'">
+        <span id="wrapper" [style.display]="displayedFc ? 'initial' : 'none'">
           <div id="tags">
             <div id="tags-container">
                 <span class="tag" *ngFor="let tag of displayedFc?.tags">{{tag}}</span>
@@ -142,8 +142,6 @@ export const ALL_FCS_QUEUE_NAME = 'all flashcards';
       box-shadow: 0 0 10px #bdbdbd;
       display: flex;
       flex-direction: column;
-      width: 350px;
-      /*min-height: 500px;*/
       padding: 10px;
     }
 
@@ -164,7 +162,6 @@ export const ALL_FCS_QUEUE_NAME = 'all flashcards';
     #fc-container {
       align-items: center;
       display: flex;
-      flex-direction: column;
       justify-content: space-around;
     }
 
@@ -195,6 +192,12 @@ export const ALL_FCS_QUEUE_NAME = 'all flashcards';
 
     #show-answer-button {
       width: 100%;
+    }
+    
+    #wrapper {
+      display: flex;
+      flex-direction: column;
+      flex-basis: 350px;
     }
   `]
 })
@@ -269,7 +272,6 @@ export class StudyComponent implements AfterViewInit, OnDestroy {
 
   submitRating(rating: number, fc: Flashcard) {
     this.flashcardService.submitFlashcardRating(rating, fc);
-    // this.queueToDueFcs.get(this.selectedQueue).splice(0, 1);
     if (rating === 0) {
       // If user couldn't remember the card at all it re-enters queue at the end
       this.queueToDueFcs.get(this.selectedQueue).splice(0, 1);

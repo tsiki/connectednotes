@@ -211,7 +211,7 @@ export class GraphComponent implements OnDestroy {
     const data = this.createGraphData(notesAndLinks);
 
     // settings for a directed graph
-    const isDirectedGraph = true;
+    const isDirectedGraph = false;
 
     // apply theme class to the graph element
     elGraph.classList.add('graph');
@@ -414,8 +414,6 @@ export class GraphComponent implements OnDestroy {
       sourceNode
           .closedNeighborhood()
           .toggleClass('highlighted');
-
-      console.log(sourceNode);
     };
 
     // Remove any node/edge highlighting from the graph

@@ -280,6 +280,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
         lineWrapping: true,
         extraKeys: {'Shift-Space': 'autocomplete'},
         theme,
+        viewportMargin: Infinity,
         foldGutter: true,
         gutters: ['CodeMirror-foldgutter'],
       });
