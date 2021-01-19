@@ -1,7 +1,8 @@
 import {EventEmitter, Injectable, SecurityContext} from '@angular/core';
-import {BehaviorSubject} from 'rxjs';
+import {BehaviorSubject, Subject} from 'rxjs';
 import {ActivatedRoute, Router} from '@angular/router';
 import {DomSanitizer} from '@angular/platform-browser';
+import {NoteTitleChanged, TagNameChanged} from './types';
 
 export enum ViewType {
   NOTE,
@@ -18,6 +19,9 @@ export class SubviewManagerService {
   activeNotes = new BehaviorSubject<string[]>([]);
   activeSubviewIdx: number|null = null;
   somethingOpened = new EventEmitter();
+
+  noteTitleChanged = new Subject<NoteTitleChanged>();
+  tagChanged = new Subject<TagNameChanged>();
 
   constructor(
       private router: Router,
@@ -43,6 +47,15 @@ export class SubviewManagerService {
       default:
         return ViewType.NOTE;
     }
+  }
+
+  renameNoteInActiveViews(oldTitle: string, newTitle: string) {
+    this.noteTitleChanged.next({oldTitle, newTitle});
+  }
+
+  // Rename tag in the given note if the note is opened
+  renameTagInActiveView(activeViewNoteId: string, oldTag: string, newTag: string) {
+    this.tagChanged.next({oldTag, newTag, affectedNoteIds: [activeViewNoteId]});
   }
 
   setActiveSubview(subview: string) {

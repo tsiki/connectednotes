@@ -1,18 +1,20 @@
 import {Injectable, Injector} from '@angular/core';
-import {BehaviorSubject, combineLatest} from 'rxjs';
+import {BehaviorSubject, combineLatest, Subject} from 'rxjs';
 import {GoogleDriveService} from './backends/google-drive.service';
 import {
   AttachmentMetadata, Flashcard,
   NoteAndLinks,
-  NoteObject, ParentTagToChildTags,
+  NoteObject, NoteTitleChanged, ParentTagToChildTags,
   RenameResult,
   StorageBackend,
   TagGroup, UserSettings
 } from './types';
-import {ALL_NOTES_TAG_NAME, JSON_MIMETYPE, TEXT_MIMETYPE, UNTAGGED_NOTES_TAG_NAME} from './constants';
+import {ALL_NOTES_TAG_NAME, JSON_MIMETYPE, TAG_MATCH_REGEX, TEXT_MIMETYPE, UNTAGGED_NOTES_TAG_NAME} from './constants';
 import {InMemoryCache} from './backends/in-memory-cache.service';
 import {NotificationService} from './notification.service';
 import {TestDataService} from './backends/test-data.service';
+import assert from 'assert';
+import {SubviewManagerService} from './subview-manager.service';
 
 export enum Backend {
   FIREBASE,
@@ -39,19 +41,28 @@ export class StorageService { // Should be actually something like BackendServic
   private noteIdToNote = new Map<string, NoteObject>();
   private noteTitleToNote?: Map<string, NoteObject>;
   private noteTitleToNoteCaseInsensitive?: Map<string, NoteObject>;
-  private tags = new Set<string>();
   private tagToTagGroup = new Map<string, TagGroup>();
   private notesAwaitedFor: Map<string, (s: NoteObject) => void> = new Map();
 
   constructor(
       private injector: Injector,
       private cache: InMemoryCache,
+      private subviewManager: SubviewManagerService,
       private notifications: NotificationService) {}
 
   static getTagsForNoteContent(noteContent: string): string[] {
-    return noteContent.match(/(^|\s)(#((?![#])[\S])+)/ig)
+    return noteContent.match(TAG_MATCH_REGEX)
         ?.map(t => t[0] !== '#' ? t.slice(1) : t)
         || [];
+  }
+
+  async replaceTags(noteId: string, oldTag: string, newTag: string) {
+    const note = this.getNote(noteId);
+    assert(oldTag[0] === '#' && newTag[0] === '#');
+    const matcher = new RegExp(`(^|\\s)(${oldTag})($|\\s)`);
+    const newContent = note.content.replace(matcher, `$1${newTag}$3`);
+    await this.saveContent(note.id, newContent);
+    this.subviewManager.renameTagInActiveView(noteId, oldTag, newTag);
   }
 
   static fileIdToLink(fileId: string) {
@@ -77,8 +88,14 @@ export class StorageService { // Should be actually something like BackendServic
     return this.noteTitleToNoteCaseInsensitive.get(title.toLowerCase());
   }
 
-  tagExists(tag: string) {
-    return this.tags?.has(tag);
+  async isTagIgnored(tag: string) {
+    if (this.storedSettings.value) {
+      return Promise.resolve(this.storedSettings.value.ignoredTags?.includes(tag));
+    }
+    return new Promise(async resolve => {
+      const settings = await this.storedSettings.toPromise();
+      resolve(settings.ignoredTags.includes(tag));
+    });
   }
 
   logout() {
@@ -144,6 +161,7 @@ export class StorageService { // Should be actually something like BackendServic
   async renameNote(noteId: string, newTitle: string): Promise<RenameResult> {
     const noteToRename = this.noteIdToNote.get(noteId);
     const prevTitle = noteToRename.title;
+    this.subviewManager.renameNoteInActiveViews(prevTitle, newTitle);
     const currentNotesAndLinks = this.getGraphRepresentation();
     await this.backend.renameFile(noteId, newTitle);
     noteToRename.title = newTitle;
@@ -267,7 +285,6 @@ export class StorageService { // Should be actually something like BackendServic
         for (const tg of tagGroups) {
           this.tagToTagGroup.set(tg.tag, tg);
         }
-        this.tags = new Set(this.tagGroups.value.map(t => t.tag));
         this.tagGroups.next(tagGroups);
       }
     });
@@ -275,14 +292,19 @@ export class StorageService { // Should be actually something like BackendServic
     this.notes.next(this.backend.notes.value);
   }
 
-  async addChildTag(parentTag: string, childTag: string) {
-    if (!this.nestedTagGroups.value[parentTag]) {
-      this.nestedTagGroups.value[parentTag] = [];
+  async changeParentTag(oldParentTag: string, newParentTag: string, childTag: string) {
+    const ntg = StorageService.deepCopyObject(this.nestedTagGroups.value);
+    if (!ntg[newParentTag]) {
+      ntg[newParentTag] = [];
     }
-    if (!this.nestedTagGroups.value[parentTag].includes(childTag)) {
-      this.nestedTagGroups.value[parentTag].push(childTag);
+    if (!ntg[newParentTag].includes(childTag)) {
+      ntg[newParentTag].push(childTag);
     }
-    this.backend.saveNestedTagGroups(this.nestedTagGroups.value);
+    if (oldParentTag in ntg && ntg[oldParentTag].includes(childTag)) {
+      const idx = ntg[oldParentTag].findIndex(childTag);
+      ntg[oldParentTag].splice(idx, 1);
+    }
+    this.backend.saveNestedTagGroups(ntg);
   }
 
   async updateParentTags(childTag: string, parentTags: string[]) {

@@ -68,7 +68,7 @@ import {SubviewManagerService} from '../subview-manager.service';
 import {DomSanitizer} from '@angular/platform-browser';
 import {FlashcardDialogComponent, FlashcardDialogData} from '../create-flashcard-dialog/flashcard-dialog.component';
 import {TextMarker} from 'codemirror';
-import {DARK_THEME, LIGHT_THEME} from '../constants';
+import {DARK_THEME, LIGHT_THEME, TAG_MATCH_REGEX} from '../constants';
 
 declare interface CodeMirrorHelper {
   commands: {
@@ -95,7 +95,7 @@ const FC_SUGGESTION_EXTRACTION_RULES: FlashcardSuggestionExtractionRule[] = [
 ];
 
 @Component({
-  selector: 'app-editor',
+  selector: 'cn-editor',
   templateUrl: './editor.component.html',
   styles: [],
 })
@@ -153,6 +153,39 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
           this.codemirror?.setOption('theme', LIGHT_THEME);
       }
     });
+    this.subviewManager.noteTitleChanged.pipe(takeUntil(this.destroyed)).subscribe(change => {
+      this.renameNote(change.oldTitle, change.newTitle);
+    });
+    this.subviewManager.tagChanged.pipe(takeUntil(this.destroyed)).subscribe(change => {
+      const isAffected = !change.affectedNoteIds || change.affectedNoteIds.includes(this.noteId);
+      if (isAffected) {
+        this.renameTag(change.oldTag, change.newTag);
+      }
+    });
+  }
+
+  renameNote(oldName: string, newName: string) {
+    const cursor = this.codemirror.getSearchCursor(`[[${oldName}]]`);
+    while (cursor.findNext()) {
+      this.codemirror.replaceRange(`[[${newName}]]`, cursor.from(), cursor.to());
+    }
+  }
+
+  renameTag(oldTag: string, newTag: string) {
+    const cursor = this.codemirror.getSearchCursor(new RegExp(`(^|\\s)(${oldTag})($|\\s)`));
+    while (cursor.findNext()) {
+      const line = cursor.from().line;
+      const lineStr = this.codemirror.getLine(line);
+      let startCh = cursor.from().ch;
+      let endCh = Math.min(cursor.to().ch, lineStr.length - 1);
+      for (; lineStr[startCh] !== '#' && startCh < lineStr.length; startCh++) {}
+      for (; lineStr[endCh].match(/\s/) && endCh >= 0; endCh--) {
+        console.log(lineStr[endCh]);
+      }
+      if (startCh < endCh) {
+        this.codemirror.replaceRange(newTag, {line, ch: startCh}, {line, ch: endCh + 1});
+      }
+    }
   }
 
   async ngOnInit() {
@@ -365,6 +398,11 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
         .pipe(takeUntil(this.destroyed))
         .subscribe(e => this.styleHashtags());
 
+    // Style markdown header (hashtags)
+    this.contentChange.pipe(debounceTime(100))
+        .pipe(takeUntil(this.destroyed))
+        .subscribe(e => this.styleMarkdownHeaders());
+
     // Style note links
     this.contentChange.pipe(debounceTime(100))
         .pipe(takeUntil(this.destroyed))
@@ -379,7 +417,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   async saveChanges() {
-    const valueToSave = this.codemirror.getValue();
+    const valueToSave = this.codemirror?.getValue();
     const noteId = this.selectedNote?.id;
     if (noteId && this.selectedNote.content !== valueToSave) {
       await this.storage.saveContent(this.selectedNote.id, valueToSave);
@@ -500,15 +538,25 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     this.subviewManager.closeView(this.selectedNote.id);
   }
 
-  private styleHashtags() {
+  private async styleMarkdownHeaders() {
+    const cursor = this.codemirror.getSearchCursor(/^[#]+\s/);
+    while (cursor.findNext()) {
+      // The range here might include some whitespace around the tag but that shouldn't matter.
+      const textMarker = this.codemirror.markText(cursor.from(), cursor.to(), {className: 'md-header-hashtags'});
+    }
+  }
+
+  private async styleHashtags() {
     for (const textMarker of this.hashtagTextMarkers) {
       textMarker.clear();
     }
     this.hashtagTextMarkers.clear();
-    const cursor = this.codemirror.getSearchCursor(/#[^\s#]+\s/);
+    const cursor = this.codemirror.getSearchCursor(TAG_MATCH_REGEX);
     while (cursor.findNext()) {
-      const txt = this.codemirror.getRange(cursor.from(), cursor.to()).trimEnd();
-      if (this.storage.tagExists(txt)) {
+      const txt = this.codemirror.getRange(cursor.from(), cursor.to()).trim();
+      const isIgnored = await this.storage.isTagIgnored(txt);
+      if (!isIgnored) {
+        // The range here might include some whitespace around the tag but that shouldn't matter.
         const textMarker = this.codemirror.markText(cursor.from(), cursor.to(), {className: 'existing-tag'});
         this.hashtagTextMarkers.add(textMarker);
       }

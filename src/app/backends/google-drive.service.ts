@@ -203,7 +203,6 @@ export class GoogleDriveService implements StorageBackend {
     });
   }
 
-  // TODO NEXT: fetch all flashcards and basically handle them like we handle notes
   private async fetchFileMetadata(mimeType: string, parentFolderId: string): Promise<FileMetadata[]> {
     const fileMetadata: FileMetadata[] = [];
     let pageToken = null;

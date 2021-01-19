@@ -5,7 +5,7 @@ import {StorageService} from '../storage.service';
 import {SubviewManagerService} from '../subview-manager.service';
 
 @Component({
-  selector: 'app-backreferences-dialog',
+  selector: 'cn-backreferences-dialog',
   template: `
     <button *ngFor="let ref of backrefs"
             class="result-link"

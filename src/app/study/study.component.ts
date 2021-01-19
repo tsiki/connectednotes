@@ -20,7 +20,7 @@ import {ConfirmationDialogComponent, ConfirmDialogData} from '../confirmation-di
 export const ALL_FCS_QUEUE_NAME = 'all flashcards';
 
 @Component({
-  selector: 'app-study',
+  selector: 'cn-study',
   template: `
     <div id="top-bar">
       <span><!-- empty element for centering the dropdown --></span>

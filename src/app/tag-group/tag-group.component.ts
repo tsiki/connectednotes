@@ -3,17 +3,16 @@ import {StorageService} from '../storage.service';
 import {SettingsService} from '../settings.service';
 import {SubviewManagerService} from '../subview-manager.service';
 import {NotificationService} from '../notification.service';
-import {NoteObject, ParentTagToChildTags, TagGroup, TagNesting} from '../types';
+import {NoteDrag, NoteObject, ParentTagToChildTags, TagGroup, TagNesting} from '../types';
 import {SortDirection} from '../zettelkasten/zettelkasten.component';
 import {MatDialog} from '@angular/material/dialog';
 import {EditTagParentsDialogComponent} from '../edit-tag-parents-dialog/edit-tag-parents-dialog.component';
 import {AUTOMATICALLY_GENERATED_TAG_NAMES, ROOT_TAG_NAME} from '../constants';
-import {FilelistComponent} from '../filelist/filelist.component';
 import {CdkDragMove} from '@angular/cdk/drag-drop';
 import {combineLatest} from 'rxjs';
 
 @Component({
-  selector: 'app-tag-group',
+  selector: 'cn-tag-group',
   template: `
     <button class="tag-group-link"
             *ngIf="!isRootTagGroup"
@@ -41,18 +40,20 @@ import {combineLatest} from 'rxjs';
     </button>
     <ng-container *ngIf="expanded || isRootTagGroup">
       <div id="group-indicator" *ngIf="!isRootTagGroup"></div>
-      <app-tag-group
-          *ngFor="let tag of childTags"
+      <cn-tag-group
+          *ngFor="let childTag of childTags"
           cdkDrag
           [class.highlighted]="isRootTagGroup"
-          (cdkDragMoved)="onDragMoved($event)"
+          (cdkDragMoved)="onTagGroupDragMoved($event)"
           (tagDraggedOverOtherTag)="tagDraggedOverOtherTag.emit($event)"
+          (noteDraggedOverTag)="noteDraggedOverTag.emit($event)"
           class="tag-group"
           [ngStyle]="{'margin-left.px': isRootTagGroup ? 0 : 10}"
-          [attr.data-tag]="tag"
-          [tag]="tag"
+          [attr.data-tag]="childTag"
+          [attr.data-parent-tag]="tag"
+          [tag]="childTag"
           [sortDirection]="currentSortDirection">
-      </app-tag-group>
+      </cn-tag-group>
 
       <ng-container *ngIf="!isRootTagGroup">
         <button *ngFor="let noteId of noteIds"
@@ -60,6 +61,11 @@ import {combineLatest} from 'rxjs';
                 class="note-link tag-group-note"
                 (click)="openNote($event, noteId)"
                 matTooltip="{{ storage.getNote(noteId).title }}"
+                [attr.data-title]="storage.getNote(noteId).title"
+                [attr.data-tag-group]="tag"
+                data-button-type="note-title-button"
+                cdkDrag
+                (cdkDragMoved)="onNoteButtonDragMoved($event)"
                 mat-button>
           <span>{{ storage.getNote(noteId).title }}<!--
           --><span class="unsaved-marker" *ngIf="unsavedNotes.has(noteId)">*</span></span>
@@ -170,6 +176,7 @@ export class TagGroupComponent implements OnInit {
   @Input() tag: string;
   // Emits event when user is dragging a tag around.
   @Output() tagDraggedOverOtherTag: EventEmitter<TagNesting> = new EventEmitter();
+  @Output() noteDraggedOverTag: EventEmitter<NoteDrag> = new EventEmitter();
   selectedNoteIds: Set<string> = new Set();
   noteIds: string[] = [];
   unsavedNotes = new Set<string>();
@@ -261,16 +268,36 @@ export class TagGroupComponent implements OnInit {
     this.noteIds = TagGroupComponent.sortNotes(this.noteIds, direction, getNoteFn);
   }
 
-  onDragMoved(e: CdkDragMove) {
+  onTagGroupDragMoved(e: CdkDragMove) {
     const sourceTag = e.source.element.nativeElement.dataset.tag;
+    const oldParentTag = e.source.element.nativeElement.dataset.parentTag;
     for (const elem of e.event.composedPath()) {
-      if ((elem as HTMLElement).tagName === 'APP-TAG-GROUP') {
+      if ((elem as HTMLElement).tagName === 'CN-TAG-GROUP') {
         const targetTag = (elem as HTMLElement).dataset.tag;
-        this.tagDraggedOverOtherTag.emit({ parentTag: targetTag, childTag: sourceTag });
+        this.tagDraggedOverOtherTag.emit({ oldParentTag, newParentTag: targetTag, childTag: sourceTag });
         return;
       }
     }
-    this.tagDraggedOverOtherTag.emit({ parentTag: null, childTag: sourceTag });
+    this.tagDraggedOverOtherTag.emit({ newParentTag: null, oldParentTag: null, childTag: sourceTag });
+  }
+
+  onNoteButtonDragMoved(e: CdkDragMove) {
+    const source = e.source.element.nativeElement;
+    const noteTitle = source.dataset.title;
+    const sourceTag = source.dataset.tagGroup;
+    for (const elem of e.event.composedPath()) {
+      // If we drag note title button over another button nothing happens
+      if ((elem as HTMLElement).dataset.buttonType === 'note-title-button') {
+        this.noteDraggedOverTag.emit({noteTitle, sourceTag, targetTag: null});
+        return;
+      }
+      if ((elem as HTMLElement).tagName === 'CN-TAG-GROUP') {
+        const targetTag = (elem as HTMLElement).dataset.tag;
+        this.noteDraggedOverTag.emit({noteTitle, sourceTag, targetTag});
+        return;
+      }
+    }
+    this.noteDraggedOverTag.emit({noteTitle, sourceTag, targetTag: null});
   }
 
   /**

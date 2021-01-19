@@ -27,7 +27,7 @@ import {SettingsService} from '../settings.service';
 import {combineLatest, ReplaySubject} from 'rxjs';
 
 @Component({
-  selector: 'app-graph',
+  selector: 'cn-graph',
   template: `
     <div id="top-bar">
       <span><!-- this element is for centering the dropdown --></span>

@@ -38,7 +38,7 @@ export interface FlashcardDialogData {
 }
 
 @Component({
-  selector: 'app-flashcard-dialog',
+  selector: 'cn-flashcard-dialog',
   template: `
     <div id="wrapper">
       <div id="loading-spinner" *ngIf="submitting">

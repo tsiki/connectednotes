@@ -28,12 +28,14 @@
 </style>
 
 <div #droplist
-     (cdkDropListDropped)="nestTags($event)"
+     (cdkDropListDropped)="dragEnded($event)"
      [cdkDropListSortingDisabled]="true"
      cdkDropList
      id="note-list-container">
-  <app-tag-group (tagDraggedOverOtherTag)="onTagDraggedOverOtherTag($event)"
-                 [sortDirection]="sortDirection"
-                 isRoot="true">
-  </app-tag-group>
+  <cn-tag-group (noteDraggedOverTag)="onNoteDraggedOverTag($event)"
+                (tagDraggedOverOtherTag)="onTagDraggedOverOtherTag($event)"
+                [sortDirection]="sortDirection"
+                [tag]="ROOT_TAG_NAME"
+                isRoot="true">
+  </cn-tag-group>
 </div>

@@ -10,7 +10,7 @@ function compare(a: number | string, b: number | string, isAsc: boolean) {
 }
 
 @Component({
-  selector: 'app-attachments-dialog',
+  selector: 'cn-attachments-dialog',
   template: `
     <table (matSortChange)="sortData($event)"
            matSort

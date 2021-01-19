@@ -4,7 +4,7 @@ import {SettingsService, Theme} from '../settings.service';
 import {BehaviorSubject} from 'rxjs';
 
 @Component({
-  selector: 'app-settings',
+  selector: 'cn-settings',
   template: `
   <mat-form-field>
     <mat-label>Theme</mat-label>

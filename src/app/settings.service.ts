@@ -25,11 +25,13 @@ export class SettingsService {
     storage.storedSettings.asObservable().subscribe(newSettings => {
       if (newSettings?.theme) {
         if (newSettings.theme === Theme.DEVICE) {
-          window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', this.colorSchemeListener);
+          window.matchMedia('(prefers-color-scheme: dark)')
+              .addEventListener('change', this.colorSchemeListener);
           const darkModePreferred = window.matchMedia('(prefers-color-scheme: dark)');
           this.themeSetting.next(darkModePreferred.matches ? Theme.DARK : Theme.LIGHT);
         } else {
-          window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', this.colorSchemeListener);
+          window.matchMedia('(prefers-color-scheme: dark)')
+              .removeEventListener('change', this.colorSchemeListener);
           this.themeSetting.next(newSettings.theme);
         }
       }

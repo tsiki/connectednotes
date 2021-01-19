@@ -30,7 +30,7 @@ describe('FilelistComponent', () => {
       tagGroups,
       getTagGroupForTag: tag => tagGroups.value.find(tg => tg.tag === tag),
       getNote: noteId => ({ id: noteId, title: noteId, lastChangedEpochMillis: 0 }),
-      addChildTag: () => {},
+      changeParentTag: () => {},
     };
 
     notifications = {
@@ -87,7 +87,7 @@ describe('FilelistComponent', () => {
     flush();
 
     // We should only see the root level tags, #non-root-tag is hidden by *ngIf
-    const rootTagGroups = fixture.debugElement.queryAll(By.css('app-tag-group'));
+    const rootTagGroups = fixture.debugElement.queryAll(By.css('cn-tag-group'));
     expect(rootTagGroups.length).toBe(3);
 
     // Then expand everything and check that the we have the right number of child tags
@@ -96,7 +96,7 @@ describe('FilelistComponent', () => {
     }
     fixture.detectChanges();
     flush();
-    const tagGroupsAfterExpanding = fixture.debugElement.queryAll(By.css('app-tag-group'));
+    const tagGroupsAfterExpanding = fixture.debugElement.queryAll(By.css('cn-tag-group'));
     expect(tagGroupsAfterExpanding.length).toBe(5);
   }));
 
@@ -113,7 +113,7 @@ describe('FilelistComponent', () => {
     // Default sorting is SortDirection.MODIFIED_NEWEST_FIRST
     fixture.detectChanges();
     flush();
-    let rootTagGroups = fixture.debugElement.queryAll(By.css('app-tag-group'));
+    let rootTagGroups = fixture.debugElement.queryAll(By.css('cn-tag-group'));
     let tags = rootTagGroups
         .filter(tf => !tf.componentInstance.isRootTagGroup)
         .map(tg => tg.componentInstance.tag);
@@ -122,7 +122,7 @@ describe('FilelistComponent', () => {
     fixture.componentInstance.sortDirection = SortDirection.MODIFIED_OLDEST_FIRST;
     fixture.detectChanges();
     flush();
-    rootTagGroups = fixture.debugElement.queryAll(By.css('app-tag-group'));
+    rootTagGroups = fixture.debugElement.queryAll(By.css('cn-tag-group'));
     tags = rootTagGroups
         .filter(tf => !tf.componentInstance.isRootTagGroup)
         .map(tg => tg.componentInstance.tag);
@@ -131,7 +131,7 @@ describe('FilelistComponent', () => {
     fixture.componentInstance.sortDirection = SortDirection.ALPHABETICAL;
     fixture.detectChanges();
     flush();
-    rootTagGroups = fixture.debugElement.queryAll(By.css('app-tag-group'));
+    rootTagGroups = fixture.debugElement.queryAll(By.css('cn-tag-group'));
     tags = rootTagGroups
         .filter(tf => !tf.componentInstance.isRootTagGroup)
         .map(tg => tg.componentInstance.tag);
@@ -140,7 +140,7 @@ describe('FilelistComponent', () => {
     fixture.componentInstance.sortDirection = SortDirection.ALPHABETICAL_REVERSED;
     fixture.detectChanges();
     flush();
-    rootTagGroups = fixture.debugElement.queryAll(By.css('app-tag-group'));
+    rootTagGroups = fixture.debugElement.queryAll(By.css('cn-tag-group'));
     tags = rootTagGroups
         .filter(tf => !tf.componentInstance.isRootTagGroup)
         .map(tg => tg.componentInstance.tag);
@@ -169,7 +169,7 @@ describe('FilelistComponent', () => {
     fixture.detectChanges();
     flush();
 
-    const allTags = fixture.debugElement.queryAll(By.css('app-tag-group'));
+    const allTags = fixture.debugElement.queryAll(By.css('cn-tag-group'));
     const rootTag = allTags.filter(tf => !tf.componentInstance.isRootTagGroup)[0];
     rootTag.componentInstance.expanded = true;
     fixture.detectChanges();
@@ -196,11 +196,14 @@ describe('FilelistComponent', () => {
     storageService.nestedTagGroups.next({});
     storageService.tagGroups.next([]);
 
-    fixture.componentInstance.forTesting.setLastChildTagDragged('#rt1');
-    fixture.componentInstance.forTesting.setLastParentTagDragged('#rt2');
+    fixture.componentInstance.forTesting
+        .setLastDragEvent({oldParentTag: ROOT_TAG_NAME, newParentTag: '#rt1', childTag: '#rt2'});
+    // fixture.componentInstance.forTesting.setLastParentTagDragged('#rt2');
 
-    const spy = spyOn(storageService, 'addChildTag');
-    fixture.componentInstance.nestTags({ isPointerOverContainer: true } as CdkDragDrop<unknown>);
-    expect(spy.calls.mostRecent().args).toEqual(['#rt2', '#rt1']);
+    const spy = spyOn(storageService, 'changeParentTag');
+    fixture.componentInstance.dragEnded({ isPointerOverContainer: true } as CdkDragDrop<unknown>);
+
+    //       await this.storage.changeParentTag(oldParentTag, newParentTag, childTag);
+    expect(spy.calls.mostRecent().args).toEqual(['(root)', '#rt1', '#rt2']);
   }));
 });

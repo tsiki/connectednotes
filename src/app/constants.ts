@@ -19,3 +19,9 @@ export const INITIAL_FLASHCARD_LEARNING_DATA: FlashcardLearningData = Object.fre
     prevRepetitionEpochMillis: 0,
     prevRepetitionIntervalMillis: 0,
 });
+
+// (^|\s) matches whitespace or start of line
+// ?![#] ensures that there's only one hashtag before the tag, ignoring stuff like ##asd
+// \S is non-whitespace
+// ig makes it case insensitive and global
+export const TAG_MATCH_REGEX = /(^|\s)(#((?![#])[\S])+)/ig;

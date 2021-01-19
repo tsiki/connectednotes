@@ -70,8 +70,12 @@
   font-size: var(--editor-text-font-size);
   font-weight: var(--editor-font-weight);
   color: #262626;
-  /*height: 300px;*/
   direction: ltr;
+}
+
+.CodeMirror .cm-header.md-header-hashtags {
+  color: var(--md-header-hashtag-color);
+  font-weight: 300;
 }
 
 .CodeMirror-foldmarker {

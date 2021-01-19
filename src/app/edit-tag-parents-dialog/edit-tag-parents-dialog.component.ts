@@ -11,7 +11,7 @@ import {AUTOMATICALLY_GENERATED_TAG_NAMES, ROOT_TAG_NAME} from '../constants';
 import {MatSnackBar} from '@angular/material/snack-bar';
 
 @Component({
-  selector: 'app-edit-tag-parents-dialog',
+  selector: 'cn-edit-tag-parents-dialog',
   template: `
     <h1>Parent tags for {{tag}}</h1>
     <mat-form-field class="chip-list">

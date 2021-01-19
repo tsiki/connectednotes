@@ -6,7 +6,7 @@ import {SettingsService, Theme} from '../settings.service';
 import {SubviewManagerService} from '../subview-manager.service';
 
 @Component({
-  selector: 'app-search-dialog',
+  selector: 'cn-search-dialog',
   template: `
     <mat-form-field id="search-input">
       <mat-label>Note search</mat-label>

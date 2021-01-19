@@ -162,6 +162,7 @@
     display: flex;
     justify-content: space-around;
     opacity: .8;
+    padding: 10px;
     position: absolute;
     height: 100%;
     width: 100%;
@@ -259,8 +260,8 @@
                    [@openClose]="{value: sidebarCollapsed ? 'closed' : 'open', params: {curWidth: unCollapsedSidebarWidth}}"
                    [size]="250">
       <div [class.vertical]="sidebarCollapsed" id="left-frame">
-        <app-filelist #filelist [hidden]="sidebarCollapsed" [sortDirection]="currentSortDirection" id="note-list">
-        </app-filelist>
+        <cn-filelist #filelist [hidden]="sidebarCollapsed" [sortDirection]="currentSortDirection" id="note-list">
+        </cn-filelist>
 
         <div id="left-frame-end">
           <div id="notifications">
@@ -281,9 +282,9 @@
              (focusin)="onWindowFocus(subview)"
              *ngFor="let subview of subviewManager.subviews | async; trackBy: trackByFn; let i = index">
           <span *ngIf="i !== subviewManager.activeSubviewIdx" class="overlay"></span>
-          <app-editor *ngIf="getViewType(subview) === viewType.NOTE" noteId="{{subview}}"></app-editor>
-          <app-graph *ngIf="getViewType(subview) === viewType.GRAPH"></app-graph>
-          <app-study *ngIf="getViewType(subview) === viewType.FLASHCARDS"></app-study>
+          <cn-editor *ngIf="getViewType(subview) === viewType.NOTE" noteId="{{subview}}"></cn-editor>
+          <cn-graph *ngIf="getViewType(subview) === viewType.GRAPH"></cn-graph>
+          <cn-study *ngIf="getViewType(subview) === viewType.FLASHCARDS"></cn-study>
         </div>
       </div>
     </as-split-area>

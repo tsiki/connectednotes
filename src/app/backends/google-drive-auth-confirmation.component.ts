@@ -1,8 +1,14 @@
 import {Component, Inject} from '@angular/core';
 import {MAT_DIALOG_DATA, MatDialogRef} from '@angular/material/dialog';
 
+declare interface ExtendedWindow {
+  gapi: any;
+}
+
+declare const window: ExtendedWindow;
+
 @Component({
-  selector: 'app-backreferences-dialog',
+  selector: 'cn-google-drive-auth-confirmation-dialog',
   template: `
     <h2 *ngIf="expired">Google Drive authorization has expired.</h2>
     <h2 *ngIf="!expired">Click below to authorize Google Drive usage</h2>
@@ -30,7 +36,7 @@ export class GoogleDriveAuthConfirmationComponent {
   }
 
   async authorize() {
-    await gapi.auth2.getAuthInstance().signIn();
+    await window.gapi.auth2.getAuthInstance().signIn();
     this.close();
   }
 

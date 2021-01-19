@@ -11,7 +11,7 @@ export interface ConfirmDialogData {
 
 
 @Component({
-  selector: 'app-confirmation-dialog',
+  selector: 'cn-confirmation-dialog',
   template: `
       <h1>{{title}}</h1>
       {{message}}

@@ -11,7 +11,7 @@ const RADIUS = 8;
 const LINE_WIDTH = 15;
 
 @Component({
-  selector: 'app-frontpage',
+  selector: 'cn-frontpage',
   templateUrl: './frontpage.component.html',
 })
 export class FrontpageComponent implements OnInit, AfterViewInit, OnDestroy {

@@ -25,7 +25,7 @@ export enum SortDirection {
 }
 
 @Component({
-  selector: 'app-zettelkasten',
+  selector: 'cn-zettelkasten',
   templateUrl: './zettelkasten.component.html',
   animations: [
     trigger('openClose', [
@@ -187,7 +187,7 @@ export class ZettelkastenComponent implements OnInit {
 }
 
 @Component({
-  selector: 'app-create-note-dialog',
+  selector: 'cn-create-note-dialog',
   template: `
   <mat-form-field>
     <mat-label>Note title</mat-label>

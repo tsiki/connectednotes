@@ -24,8 +24,15 @@ declare interface TagGroup {
 }
 
 interface TagNesting {
-  parentTag: string;
+  oldParentTag: string;
+  newParentTag: string;
   childTag: string;
+}
+
+interface NoteDrag {
+  noteTitle: string;
+  sourceTag: string;
+  targetTag: string;
 }
 
 declare interface FileMetadata {
@@ -136,6 +143,17 @@ export enum TextHidingLogic {
 interface FlashcardTextHidingRule {
   matcher: RegExp;
   hidingLogic: TextHidingLogic[];
+}
+
+interface NoteTitleChanged {
+  oldTitle: string;
+  newTitle: string;
+}
+
+interface TagNameChanged {
+  oldTag: string;
+  newTag: string;
+  affectedNoteIds?: string[]; // If unset, all notes are affected
 }
 
 interface StorageBackend {
