@@ -177,11 +177,9 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       const line = cursor.from().line;
       const lineStr = this.codemirror.getLine(line);
       let startCh = cursor.from().ch;
-      let endCh = Math.min(cursor.to().ch, lineStr.length - 1);
+      let endCh = Math.min(cursor.to().ch - 1, lineStr.length - 1);
       for (; lineStr[startCh] !== '#' && startCh < lineStr.length; startCh++) {}
-      for (; lineStr[endCh].match(/\s/) && endCh >= 0; endCh--) {
-        console.log(lineStr[endCh]);
-      }
+      for (; lineStr[endCh].match(/\s/) && endCh >= 0; endCh--) {}
       if (startCh < endCh) {
         this.codemirror.replaceRange(newTag, {line, ch: startCh}, {line, ch: endCh + 1});
       }
