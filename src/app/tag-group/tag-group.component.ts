@@ -1,4 +1,4 @@
-import {Component, EventEmitter, HostBinding, Input, OnInit, Output} from '@angular/core';
+import {Component, EventEmitter, HostBinding, Input, OnDestroy, OnInit, Output} from '@angular/core';
 import {StorageService} from '../storage.service';
 import {SettingsService} from '../settings.service';
 import {SubviewManagerService} from '../subview-manager.service';
@@ -9,7 +9,8 @@ import {MatDialog} from '@angular/material/dialog';
 import {EditTagParentsDialogComponent} from '../edit-tag-parents-dialog/edit-tag-parents-dialog.component';
 import {AUTOMATICALLY_GENERATED_TAG_NAMES, ROOT_TAG_NAME} from '../constants';
 import {CdkDragMove} from '@angular/cdk/drag-drop';
-import {combineLatest} from 'rxjs';
+import {combineLatest, ReplaySubject} from 'rxjs';
+import {takeUntil} from 'rxjs/operators';
 
 @Component({
   selector: 'cn-tag-group',
@@ -172,7 +173,7 @@ import {combineLatest} from 'rxjs';
     }
   `]
 })
-export class TagGroupComponent implements OnInit {
+export class TagGroupComponent implements OnInit, OnDestroy {
   @Input() tag: string;
   // Emits event when user is dragging a tag around.
   @Output() tagDraggedOverOtherTag: EventEmitter<TagNesting> = new EventEmitter();
@@ -185,6 +186,8 @@ export class TagGroupComponent implements OnInit {
   automaticallyGeneratedTagNames = AUTOMATICALLY_GENERATED_TAG_NAMES;
   currentSortDirection: SortDirection = SortDirection.MODIFIED_NEWEST_FIRST;
   isRootTagGroup = false;
+
+  private readonly onDestroy = new ReplaySubject(1);
 
   constructor(
       public dialog: MatDialog,
@@ -208,14 +211,17 @@ export class TagGroupComponent implements OnInit {
 
   ngOnInit(): void {
     this.subviewManager.activeNotes
+        .pipe(takeUntil(this.onDestroy))
         .subscribe(activeNotes => this.selectedNoteIds = new Set(activeNotes));
 
     if (!this.isRootTagGroup) {
       this.storage.nestedTagGroups
+          .pipe(takeUntil(this.onDestroy))
           .subscribe(nestedTagGroups => this.childTags = nestedTagGroups[this.tag]);
     }
 
     combineLatest([this.storage.tagGroups, this.storage.nestedTagGroups])
+        .pipe(takeUntil(this.onDestroy))
         .subscribe(data => {
       const [tagGroups, nestedTagGroups] = data;
       if (tagGroups && nestedTagGroups) {
@@ -228,8 +234,12 @@ export class TagGroupComponent implements OnInit {
         this.setSortDirection(this.currentSortDirection);
       }
     });
-    this.notifications.unsaved.subscribe(
+    this.notifications.unsaved.pipe(takeUntil(this.onDestroy)).subscribe(
         unsavedNotes => this.unsavedNotes = new Set<string>(unsavedNotes));
+  }
+
+  ngOnDestroy() {
+    this.onDestroy.next(undefined);
   }
 
   ignoreTag(tag: string) {
@@ -287,7 +297,7 @@ export class TagGroupComponent implements OnInit {
     const sourceTag = source.dataset.tagGroup;
     for (const elem of e.event.composedPath()) {
       // If we drag note title button over another button nothing happens
-      if ((elem as HTMLElement).dataset.buttonType === 'note-title-button') {
+      if ((elem as HTMLElement).dataset?.buttonType === 'note-title-button') {
         this.noteDraggedOverTag.emit({noteTitle, sourceTag, targetTag: null});
         return;
       }

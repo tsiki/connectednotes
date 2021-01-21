@@ -54,18 +54,31 @@ export class FilelistComponent implements OnInit {
     }
   }
 
+  private static isValidNoteOverTagPosition(e: NoteDrag) {
+    return !(AUTOMATICALLY_GENERATED_TAG_NAMES.includes(e.targetTag)
+        || e.targetTag === e.sourceTag
+        || !e.sourceTag
+        || !e.targetTag);
+  }
+
+  private static isValidTagOverTagPosition(e: TagNesting) {
+    const {oldParentTag, newParentTag, childTag} = e;
+    return !(newParentTag === null
+        || AUTOMATICALLY_GENERATED_TAG_NAMES.includes(newParentTag)
+        || oldParentTag === newParentTag
+        || newParentTag === childTag);
+  }
+
   async handleTagOverTagDrag(e: TagNesting) {
     const {oldParentTag, newParentTag, childTag} = e;
-    if (newParentTag === null || AUTOMATICALLY_GENERATED_TAG_NAMES.includes(newParentTag)) {
+    if (!FilelistComponent.isValidTagOverTagPosition(e)) {
       return;
     }
-    if (newParentTag !== childTag && oldParentTag !== newParentTag) {
-      await this.storage.changeParentTag(oldParentTag, newParentTag, childTag);
-    }
+    await this.storage.changeParentTag(oldParentTag, newParentTag, childTag);
   }
 
   async handleNoteOverTagDrag(e: NoteDrag) {
-    if (AUTOMATICALLY_GENERATED_TAG_NAMES.includes(e.targetTag)) {
+    if (!FilelistComponent.isValidNoteOverTagPosition(e)) {
       return;
     }
     const note = this.storage.getNoteForTitleCaseInsensitive(e.noteTitle);
@@ -74,7 +87,7 @@ export class FilelistComponent implements OnInit {
 
   onTagDraggedOverOtherTag(e: TagNesting) {
     this.lastDragEvent = e;
-    if (e.newParentTag === null) {
+    if (!FilelistComponent.isValidTagOverTagPosition(e)) {
       this.notifications.showFullScreenBlockingMessage(`Cancel drag`);
     } else {
       this.notifications.showFullScreenBlockingMessage(
@@ -84,9 +97,7 @@ export class FilelistComponent implements OnInit {
 
   onNoteDraggedOverTag(e: NoteDrag) {
     this.lastDragEvent = e;
-    if (e.targetTag === null
-        || e.targetTag === e.sourceTag
-        || AUTOMATICALLY_GENERATED_TAG_NAMES.includes(e.targetTag)) {
+    if (!FilelistComponent.isValidNoteOverTagPosition(e)) {
       this.notifications.showFullScreenBlockingMessage(`Cancel drag`);
     } else {
       const maybeTruncatedTitle = e.noteTitle.length > 40 ? e.noteTitle.slice(0, 40) + '...' : e.noteTitle;

@@ -12,7 +12,8 @@ function compare(a: number | string, b: number | string, isAsc: boolean) {
 @Component({
   selector: 'cn-attachments-dialog',
   template: `
-    <table (matSortChange)="sortData($event)"
+    <div *ngIf="!attachedFiles?.length">This note doesn't have any attached files.</div>
+    <table *ngIf="attachedFiles?.length" (matSortChange)="sortData($event)"
            matSort
            matSortActive="name"
            matSortDirection="asc"

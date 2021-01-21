@@ -123,7 +123,8 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   private mouseEventWithCtrlActive = false;
   private mouseEventWithCtrlAndShiftActive = false;
   private inlinedImages: Map<string, CodeMirror.LineWidget> = new Map();
-  private hashtagTextMarkers = new Set<TextMarker>();
+  private tagMarkers = new Set<TextMarker>();
+  private mdHeaderMarkers = new Set<TextMarker>();
   private noteLinkTextMarkers = new Set<TextMarker>();
   private fetchSelectedNotePromise: Promise<NoteObject>;
   private readonly destroyed = new ReplaySubject(1);
@@ -394,7 +395,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     // Style hashtags
     this.contentChange.pipe(debounceTime(100))
         .pipe(takeUntil(this.destroyed))
-        .subscribe(e => this.styleHashtags());
+        .subscribe(e => this.styleTags());
 
     // Style markdown header (hashtags)
     this.contentChange.pipe(debounceTime(100))
@@ -431,7 +432,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     }
   }
 
-  insertImageLinkToCursorPosition(imageUrl: string, imageName: string) {
+  insertLinkToCursorPosition(imageUrl: string, imageName: string) {
     const doc = this.codemirror.getDoc();
     const cursor = doc.getCursor();
 
@@ -458,14 +459,11 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     }
     const file = files[0];
     const name = file.name;
-    const notificationId = this.notifications.createId();
-    this.notifications.toSidebar(notificationId, 'Uploading file');
+    this.notifications.showFullScreenBlockingMessage('Uploading file...');
     const fileId = await this.storage.uploadFile(file, file.type, file.name);
     await this.storage.attachUploadedFileToNote(this.selectedNote.id, fileId, file.name, file.type);
-    this.notifications.toSidebar(notificationId, 'File uploaded', 3000);
-    if (file.type.startsWith('image/')) {
-      this.insertImageLinkToCursorPosition(StorageService.fileIdToLink(fileId), name);
-    }
+    this.notifications.showFullScreenBlockingMessage(null);
+    this.insertLinkToCursorPosition(StorageService.fileIdToLink(fileId), name);
   }
 
   openBackreferencesDialog() {
@@ -537,18 +535,25 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   private async styleMarkdownHeaders() {
+    for (const textMarker of this.mdHeaderMarkers) {
+      textMarker.clear();
+    }
+    this.mdHeaderMarkers.clear();
     const cursor = this.codemirror.getSearchCursor(/^[#]+\s/);
     while (cursor.findNext()) {
       // The range here might include some whitespace around the tag but that shouldn't matter.
-      const textMarker = this.codemirror.markText(cursor.from(), cursor.to(), {className: 'md-header-hashtags'});
+      // -1 from ch so we don't end up painting the whole
+      const end = {line: cursor.to().line, ch: cursor.to().ch - 1};
+      const textMarker = this.codemirror.markText(cursor.from(), end, {className: 'md-header-hashtags'});
+      this.mdHeaderMarkers.add(textMarker);
     }
   }
 
-  private async styleHashtags() {
-    for (const textMarker of this.hashtagTextMarkers) {
+  private async styleTags() {
+    for (const textMarker of this.tagMarkers) {
       textMarker.clear();
     }
-    this.hashtagTextMarkers.clear();
+    this.tagMarkers.clear();
     const cursor = this.codemirror.getSearchCursor(TAG_MATCH_REGEX);
     while (cursor.findNext()) {
       const txt = this.codemirror.getRange(cursor.from(), cursor.to()).trim();
@@ -556,7 +561,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       if (!isIgnored) {
         // The range here might include some whitespace around the tag but that shouldn't matter.
         const textMarker = this.codemirror.markText(cursor.from(), cursor.to(), {className: 'existing-tag'});
-        this.hashtagTextMarkers.add(textMarker);
+        this.tagMarkers.add(textMarker);
       }
     }
   }
