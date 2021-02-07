@@ -25,7 +25,7 @@ export enum Backend {
 @Injectable({
   providedIn: 'root',
 })
-export class StorageService { // Should be actually something like BackendService or so since this handles ~everything
+export class StorageService {
 
   notes: BehaviorSubject<NoteObject[]> = new BehaviorSubject([]);
   tagGroups: BehaviorSubject<TagGroup[]> = new BehaviorSubject([]);

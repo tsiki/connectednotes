@@ -22,7 +22,6 @@
   #top-bar {
     height: var(--top-bar-height);
     background: var(--secondary-background-color);
-    border-bottom: 1px solid var(--gutter-color);
   }
 
   #container {
@@ -141,6 +140,7 @@
        [class.split-state]="editorState === 'split'">
     <textarea #codemirror id="codemirror"></textarea>
   </div>
-  <div #markdown *ngIf="editorState === 'split'" [hidden]="showSpinner" class="space-evenly" id="markdown-renderer">
+  <div #markdown *ngIf="editorState === 'split'" [hidden]="showSpinner" [innerHTML]="markdownContent" class="space-evenly" id="markdown-renderer">
+    <img/>
   </div>
 </div>

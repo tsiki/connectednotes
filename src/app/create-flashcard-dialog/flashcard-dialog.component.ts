@@ -55,20 +55,20 @@ export interface FlashcardDialogData {
           <div id="editors-container">
             <div>
               <div class="center">
-                <span>
+                <span class="side-wrapper">
                   <h3>Front:</h3>
                   <div class="codemirror-container">
-                    <textarea #frontEditorElem></textarea>
+                    <textarea class="codemirror-itself" #frontEditorElem></textarea>
                   </div>
                 </span>
               </div>
             </div>
             <div>
               <div class="center">
-                  <span>
+                <span class="side-wrapper">
                   <h3>Back:</h3>
                   <div class="codemirror-container">
-                    <textarea #backEditorElem></textarea>
+                    <textarea class="codemirror-itself" #backEditorElem></textarea>
                   </div>
                 </span>
               </div>
@@ -127,10 +127,21 @@ export interface FlashcardDialogData {
       margin-top: 10px;
     }
 
+    .codemirror-itself {
+      height: 100%;
+    }
+    
+    #codemirror-container textarea {
+      height: 100%;
+      width: 100%;
+    }
+
     #editors-container,
     #rendered-sides-container {
       display: flex;
+      flex: 1 1 350px;
       flex-direction: row;
+      justify-content: space-around;
       overflow-wrap: break-word;
     }
 
@@ -150,14 +161,15 @@ export interface FlashcardDialogData {
 
     .codemirror-container {
       border: 1px solid #bdbdbd;
-      border-radius: 4px;
+      border-radius: 5px;
+      overflow: hidden; /* otherwise the border will disappear under codemirror editor */
+      display: block;
       min-height: 100px;
-      max-width: 350px;
-      margin: 10px;
+      margin: 10px 0;
     }
 
     #editors-container > * {
-      width: 50%;
+      flex: 1 1 350px;
     }
 
     #rendered-sides-container > * {
@@ -176,8 +188,11 @@ export interface FlashcardDialogData {
       cursor: pointer;
     }
 
-    .greyed-out {
-      opacity: 0.3;
+    .side-wrapper {
+      display: flex;
+      flex-direction: column;
+      max-width: 350px;
+      width: 100%;
     }
 
     #loading-spinner {
@@ -203,6 +218,7 @@ export interface FlashcardDialogData {
       flex-direction: column;
       max-width: 350px;
       padding: 10px;
+      width: 100%;
     }
 
     #visible-side-container,
@@ -274,6 +290,7 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
         {
           mode: 'multiplex',
           lineWrapping: true,
+          viewportMargin: Infinity,
           theme,
           configureMouse: (cm, repeat, ev) => ({ addNew: false}),
         } as any /* for some reason configureMouse is missing from the typings */);
@@ -282,8 +299,12 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
         {
           mode: 'multiplex',
           lineWrapping: true,
+          viewportMargin: Infinity,
           theme,
         });
+
+    this.frontEditor.setSize('100%', '100%');
+    this.backEditor.setSize('100%', '100%');
 
     if (this.mode === 'edit') {
       this.frontEditor.setValue(this.data.flashcardToEdit.side1);
@@ -324,6 +345,9 @@ export class FlashcardDialogComponent implements OnInit, AfterViewInit {
     if (e.key === 'j' && ctrlPressed && this.mode === 'create') {
       this.selectedSuggestionIndex = (this.selectedSuggestionIndex + 1) % this.suggestions.length;
       this.suggestedContentSelectionChanged();
+    }
+    if (ctrlPressed && e.key === 'Enter') {
+      this.saveAndClose();
     }
   }
 

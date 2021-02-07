@@ -2,6 +2,8 @@
 html, body { height: 100%; }
 body { margin: 0; font-family: "Roboto", sans-serif; }
 
+
+
 :root {
   --editor-font-weight: 400;
   --editor-text-font-size: 14px;
@@ -9,6 +11,7 @@ body { margin: 0; font-family: "Roboto", sans-serif; }
   --low-contrast-text-color: #4d4d4d;
   --primary-background-color: #fff;
   --secondary-background-color: #fafafa;
+  --tertiary-background-color: #e6e6e6;
   --warning-background-color: #ffed61;
   --icons-menu-background-color: #2e2e2e;
   --icons-menu-color: #d1d1d1;
@@ -60,3 +63,9 @@ body { margin: 0; font-family: "Roboto", sans-serif; }
   --graph-highlighted-node-color: #8BC34A;
   --md-header-hashtag-color: #6e6e6e;
  }
+
+
+/* Styles for dynamic content */
+cn-editor #markdown-renderer img {
+  max-width: 100%;
+}

@@ -18,3 +18,4 @@ export function sortDescByString<T>(arr: T[], propertyFn: (obj: T) => string) {
 export function shallowCopy(obj: any) {
     return Object.assign({}, obj);
 }
+

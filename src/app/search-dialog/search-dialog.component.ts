@@ -96,7 +96,7 @@ export class SearchDialogComponent implements OnInit {
   @HostBinding('class.dark-theme') darkThemeActive = false;
 
   constructor(
-      public dialogRef: MatDialogRef<SearchDialogComponent>,
+      private readonly dialogRef: MatDialogRef<SearchDialogComponent>,
       private readonly storage: StorageService,
       private readonly subviewManager: SubviewManagerService,
       private readonly settingsService: SettingsService) {

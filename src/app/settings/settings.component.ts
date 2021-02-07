@@ -1,11 +1,15 @@
 import {Component} from '@angular/core';
-import {MatDialogRef} from '@angular/material/dialog';
+import {MatDialog, MatDialogRef} from '@angular/material/dialog';
 import {SettingsService, Theme} from '../settings.service';
 import {BehaviorSubject} from 'rxjs';
+import {UploadExistingDialogComponent} from '../upload-existing-dialog/upload-existing-dialog.component';
 
 @Component({
   selector: 'cn-settings',
   template: `
+  <div>
+    <button color="primary" mat-button (click)="openUploadDialog()">Upload existing notes</button>
+  </div>
   <mat-form-field>
     <mat-label>Theme</mat-label>
     <mat-select [(value)]="selectedTheme" (selectionChange)="changeTheme($event)">
@@ -34,13 +38,21 @@ export class SettingsComponent {
   selectedTheme: string;
   ignoredTags: BehaviorSubject<string[]>;
 
-  constructor(public dialogRef: MatDialogRef<SettingsComponent>,
-              private readonly settingsService: SettingsService) {
+  constructor(
+      private readonly settingsService: SettingsService,
+      public dialog: MatDialog) {
     this.ignoredTags = settingsService.ignoredTags;
   }
 
   changeTheme(e) {
     this.settingsService.setTheme(Theme[e.value]);
+  }
+
+  openUploadDialog() {
+    this.dialog.open(UploadExistingDialogComponent, {
+      position: { top: '10px' },
+      maxHeight: '90vh' /* to enable scrolling on overflow */,
+    });
   }
 
   async removeIgnoredTag(tag: string) {

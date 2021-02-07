@@ -109,6 +109,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
 
   @HostBinding('class.ctrl-pressed') ctrlPressed = false;
 
+  markdownContent: string;
   noteTitle: string;
   editorState: 'editor'|'split' = 'editor';
   attachedFiles: AttachedFile[]|null = null;
@@ -128,6 +129,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
   private noteLinkTextMarkers = new Set<TextMarker>();
   private fetchSelectedNotePromise: Promise<NoteObject>;
   private readonly destroyed = new ReplaySubject(1);
+  private lastValueSaved: string;
 
   private cmResizeObserver = new ResizeObserver(unused => {
     const {width, height} = this.cmContainer.nativeElement.getBoundingClientRect();
@@ -237,30 +239,6 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
         });
   }
 
-  private setRenderedMarkdown(content: string) {
-    const unsafeContent = (marked as any)(content);
-    this.markdown.nativeElement.innerHTML = this.sanitizer.sanitize(SecurityContext.HTML, unsafeContent);
-  }
-
-  private initializeHighlightModes() {
-    CodeMirror.defineMode('multiplex',  (config) => {
-      const codeModes = PROGRAMMING_LANGUAGES.map(({mimeType, selectors}) => {
-        const escapedSelectors = selectors.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-        return {
-          open: new RegExp('(?:```)\\s*(' + escapedSelectors.join('|') + ')\\b'),
-          close: /```/,
-          mode: CodeMirror.getMode(config, mimeType),
-          delimStyle: 'formatted-code-block',
-          innerStyle: 'formatted-code'
-        };
-      });
-      return (CodeMirror as any).multiplexingMode(
-          CodeMirror.getMode(config, 'markdown'), // Default mode
-          ...codeModes,
-      );
-    });
-  }
-
   initializeCodeMirror() {
     this.initializeHighlightModes();
     this.cmResizeObserver.observe(this.cmContainer.nativeElement);
@@ -312,7 +290,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
         lineWrapping: true,
         extraKeys: {'Shift-Space': 'autocomplete'},
         theme,
-        viewportMargin: Infinity,
+        viewportMargin: Infinity, // To enable ctrl + f in browser
         foldGutter: true,
         gutters: ['CodeMirror-foldgutter'],
       });
@@ -408,17 +386,16 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
         .subscribe(e => this.styleNoteLinks());
   }
 
-  ngOnDestroy(): void {
-    this.cmResizeObserver.disconnect();
-    this.saveChanges();
-    window.removeEventListener('beforeunload', this.unloadListener);
-    this.destroyed.next(undefined);
-  }
-
   async saveChanges() {
     const valueToSave = this.codemirror?.getValue();
+    // If the tab is inactive for a long while and is then closed, we don't want to save the note because there
+    // shouldn't be any changes and the note might've been modified elsewhere.
+    if (this.lastValueSaved === valueToSave) {
+      return;
+    }
+    this.lastValueSaved = valueToSave;
     const noteId = this.selectedNote?.id;
-    if (noteId && this.selectedNote.content !== valueToSave) {
+    if (noteId && this.selectedNote.content !== valueToSave) { // TODO: why compare against this.selectedNote.content?
       await this.storage.saveContent(this.selectedNote.id, valueToSave);
       const userSwitchedToOtherNote = noteId !== this.selectedNote?.id;
       const noteUnchangedWhileSaving = valueToSave === this.codemirror.getValue();
@@ -430,6 +407,37 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     if (this.selectedNote?.content === valueToSave) {
       this.notifications.noteSaved(noteId);
     }
+  }
+
+  ngOnDestroy(): void {
+    this.cmResizeObserver.disconnect();
+    this.saveChanges();
+    window.removeEventListener('beforeunload', this.unloadListener);
+    this.destroyed.next(undefined);
+  }
+
+  private initializeHighlightModes() {
+    CodeMirror.defineMode('multiplex',  (config) => {
+      const codeModes = PROGRAMMING_LANGUAGES.map(({mimeType, selectors}) => {
+        const escapedSelectors = selectors.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        return {
+          open: new RegExp('(?:```)\\s*(' + escapedSelectors.join('|') + ')\\b'),
+          close: /```/,
+          mode: CodeMirror.getMode(config, mimeType),
+          delimStyle: 'formatted-code-block',
+          innerStyle: 'formatted-code'
+        };
+      });
+      return (CodeMirror as any).multiplexingMode(
+          CodeMirror.getMode(config, 'markdown'), // Default mode
+          ...codeModes,
+      );
+    });
+  }
+
+  private setRenderedMarkdown(content: string) {
+    const unsafeContent = (marked as any)(content);
+    this.markdownContent = unsafeContent; // Automatically sanitized by angular
   }
 
   insertLinkToCursorPosition(imageUrl: string, imageName: string) {

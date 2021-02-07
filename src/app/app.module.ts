@@ -50,6 +50,8 @@ import { EditTagParentsDialogComponent } from './edit-tag-parents-dialog/edit-ta
 import {MatAutocompleteModule} from '@angular/material/autocomplete';
 import { ConfirmationDialogComponent } from './confirmation-dialog/confirmation-dialog.component';
 import {GoogleDriveAuthConfirmationComponent} from './backends/google-drive-auth-confirmation.component';
+import { UploadExistingDialogComponent } from './upload-existing-dialog/upload-existing-dialog.component';
+import {MatCheckboxModule} from '@angular/material/checkbox';
 
 @NgModule({
   entryComponents: [CreateNoteDialog], // Not declared in template to must be here
@@ -72,6 +74,7 @@ import {GoogleDriveAuthConfirmationComponent} from './backends/google-drive-auth
     TagGroupComponent,
     EditTagParentsDialogComponent,
     ConfirmationDialogComponent,
+    UploadExistingDialogComponent,
   ],
     imports: [
         BrowserModule,
@@ -109,6 +112,7 @@ import {GoogleDriveAuthConfirmationComponent} from './backends/google-drive-auth
         MatTabsModule,
         MatProgressSpinnerModule,
         MatAutocompleteModule,
+        MatCheckboxModule,
     ],
   providers: [],
   bootstrap: [AppComponent]
