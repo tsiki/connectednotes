@@ -21,8 +21,8 @@ anything serious just yet, but I'd love to get some feedback via github bugs or 
 
 # Current status
 
-Integration with Google Drive works - however, since this is pre-alpha
-changes are possible and I won't yet guarantee any backwards-compatibility.
+Integration with Google Drive works - however, since this is beta
+changes are possible.
 
 # Running locally
 
@@ -58,10 +58,6 @@ accessibility via web/mobile and first-class flashcard integration.
 
 Also, many such apps (open source or not) are currently based on Electron, which
 has its own set of problems.
-
-# Planned timeline
-
-Alpha will be released by the end of January.
 
 # Setting up your own instance
 

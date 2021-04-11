@@ -69,6 +69,7 @@ import {DomSanitizer} from '@angular/platform-browser';
 import {FlashcardDialogComponent, FlashcardDialogData} from '../create-flashcard-dialog/flashcard-dialog.component';
 import {TextMarker} from 'codemirror';
 import {DARK_THEME, LIGHT_THEME, TAG_MATCH_REGEX} from '../constants';
+import {makeNamesUnique} from '../utils';
 
 declare interface CodeMirrorHelper {
   commands: {
@@ -93,6 +94,9 @@ const FC_SUGGESTION_EXTRACTION_RULES: FlashcardSuggestionExtractionRule[] = [
     description: 'Match paragraph',
   }
 ];
+
+const URL_REGEX =
+    /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/;
 
 @Component({
   selector: 'cn-editor',
@@ -165,78 +169,12 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
         this.renameTag(change.oldTag, change.newTag);
       }
     });
-  }
-
-  renameNote(oldName: string, newName: string) {
-    const cursor = this.codemirror.getSearchCursor(`[[${oldName}]]`);
-    while (cursor.findNext()) {
-      this.codemirror.replaceRange(`[[${newName}]]`, cursor.from(), cursor.to());
-    }
-  }
-
-  renameTag(oldTag: string, newTag: string) {
-    const cursor = this.codemirror.getSearchCursor(new RegExp(`(^|\\s)(${oldTag})($|\\s)`));
-    while (cursor.findNext()) {
-      const line = cursor.from().line;
-      const lineStr = this.codemirror.getLine(line);
-      let startCh = cursor.from().ch;
-      let endCh = Math.min(cursor.to().ch - 1, lineStr.length - 1);
-      for (; lineStr[startCh] !== '#' && startCh < lineStr.length; startCh++) {}
-      for (; lineStr[endCh].match(/\s/) && endCh >= 0; endCh--) {}
-      if (startCh < endCh) {
-        this.codemirror.replaceRange(newTag, {line, ch: startCh}, {line, ch: endCh + 1});
-      }
-    }
-  }
-
-  async ngOnInit() {
-    // Initialize selectedNote here instead of in ngAfterViewInit to avoid 'expression has changed after it was last
-    // checked' exceptions.
-    this.selectedNote = this.storage.getNote(this.noteId);
-    if (!this.selectedNote) {
-      this.showSpinner = true;
-      this.fetchSelectedNotePromise = this.storage.getNoteWhenReady(this.noteId);
-      this.selectedNote = await this.fetchSelectedNotePromise;
-      this.showSpinner = false;
-    }
-
-    this.noteTitle = this.selectedNote.title;
-    this.storage.tagGroups.pipe(takeUntil(this.destroyed)).subscribe(val => {
-      this.allTags = val.map(t => t.tag);
-      this.allTags.sort();
+    this.storage.attachedFiles.subscribe(af => {
+      this.attachedFiles = af;
     });
-    this.storage.notes.pipe(takeUntil(this.destroyed))
-        .subscribe(newNotes => this.allNoteTitles = newNotes.map(n => n.title));
-    this.storage.attachmentMetadata.pipe(takeUntil(this.destroyed)).subscribe(metadata => {
-      if (this.selectedNote && metadata && metadata.hasOwnProperty(this.selectedNote.id)) {
-        this.attachedFiles = metadata[this.selectedNote.id];
-      }
-    });
-    window.addEventListener('beforeunload', this.unloadListener);
-  }
 
-  // Initialize codemirror - we need to do this in ngAfterViewInit since (IIRC) some html elements weren't in place
-  // if we try to do this in ngOnInit, probably codemirror
-  async ngAfterViewInit() {
-    if (!this.selectedNote) {
-      this.selectedNote = await this.fetchSelectedNotePromise;
-    }
-
-    this.initializeCodeMirror();
-    this.codemirror.setValue(this.selectedNote.content);
-    this.codemirror.focus();
-    this.codemirror.setCursor(0, 0);
-
-    if (this.selectedNote) {
-      this.codemirror.setValue(this.selectedNote.content);
-    }
-
-    this.contentChange.pipe(debounceTime(100)).pipe(takeUntil(this.destroyed))
-        .subscribe(newContent => {
-          if (this.editorState === 'split') {
-            this.setRenderedMarkdown(newContent);
-          }
-        });
+    // TODO: can we just initialize this once?
+    this.setUpMarkedJsRenderer();
   }
 
   initializeCodeMirror() {
@@ -365,6 +303,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
       this.mouseEventWithCtrlActive = false;
     });
 
+    // TODO: fix image inlining by looking for the links and marking them down, can do this with markedJS renderer
     // Inline images
     this.contentChange.pipe(debounceTime(100))
         .pipe(takeUntil(this.destroyed))
@@ -386,6 +325,78 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
         .subscribe(e => this.styleNoteLinks());
   }
 
+  renameNote(oldName: string, newName: string) {
+    const cursor = this.codemirror.getSearchCursor(`[[${oldName}]]`);
+    while (cursor.findNext()) {
+      this.codemirror.replaceRange(`[[${newName}]]`, cursor.from(), cursor.to());
+    }
+  }
+
+  renameTag(oldTag: string, newTag: string) {
+    const cursor = this.codemirror.getSearchCursor(new RegExp(`(^|\\s)(${oldTag})($|\\s)`));
+    while (cursor.findNext()) {
+      const line = cursor.from().line;
+      const lineStr = this.codemirror.getLine(line);
+      let startCh = cursor.from().ch;
+      let endCh = Math.min(cursor.to().ch - 1, lineStr.length - 1);
+      for (; lineStr[startCh] !== '#' && startCh < lineStr.length; startCh++) {}
+      for (; lineStr[endCh].match(/\s/) && endCh >= 0; endCh--) {}
+      if (startCh < endCh) {
+        this.codemirror.replaceRange(newTag, {line, ch: startCh}, {line, ch: endCh + 1});
+      }
+    }
+  }
+
+  async ngOnInit() {
+    // Initialize selectedNote here instead of in ngAfterViewInit to avoid 'expression has changed after it was last
+    // checked' exceptions.
+    this.selectedNote = this.storage.getNote(this.noteId);
+    if (!this.selectedNote) {
+      this.showSpinner = true;
+      this.fetchSelectedNotePromise = this.storage.getNoteWhenReady(this.noteId);
+      this.selectedNote = await this.fetchSelectedNotePromise;
+      this.showSpinner = false;
+    }
+
+    this.noteTitle = this.selectedNote.title;
+    this.storage.tagGroups.pipe(takeUntil(this.destroyed)).subscribe(val => {
+      this.allTags = val.map(t => t.tag);
+      this.allTags.sort();
+    });
+    this.storage.notes.pipe(takeUntil(this.destroyed))
+        .subscribe(newNotes => this.allNoteTitles = newNotes.map(n => n.title));
+    this.storage.attachmentMetadata.pipe(takeUntil(this.destroyed)).subscribe(metadata => {
+      if (this.selectedNote && metadata && metadata.hasOwnProperty(this.selectedNote.id)) {
+        this.attachedFiles = metadata[this.selectedNote.id];
+      }
+    });
+    window.addEventListener('beforeunload', this.unloadListener);
+  }
+
+  // Initialize codemirror - we need to do this in ngAfterViewInit since (IIRC) some html elements weren't in place
+  // if we try to do this in ngOnInit, probably codemirror
+  async ngAfterViewInit() {
+    if (!this.selectedNote) {
+      this.selectedNote = await this.fetchSelectedNotePromise;
+    }
+
+    this.initializeCodeMirror();
+    this.codemirror.setValue(this.selectedNote.content);
+    this.codemirror.focus();
+    this.codemirror.setCursor(0, 0);
+
+    if (this.selectedNote) {
+      this.codemirror.setValue(this.selectedNote.content);
+    }
+
+    this.contentChange.pipe(debounceTime(100)).pipe(takeUntil(this.destroyed))
+        .subscribe(newContent => {
+          if (this.editorState === 'split') {
+            this.setRenderedMarkdown(newContent);
+          }
+        });
+  }
+
   async saveChanges() {
     const valueToSave = this.codemirror?.getValue();
     // If the tab is inactive for a long while and is then closed, we don't want to save the note because there
@@ -396,7 +407,7 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     this.lastValueSaved = valueToSave;
     const noteId = this.selectedNote?.id;
     if (noteId && this.selectedNote.content !== valueToSave) { // TODO: why compare against this.selectedNote.content?
-      await this.storage.saveContent(this.selectedNote.id, valueToSave);
+      await this.storage.saveNote(this.selectedNote.id, valueToSave);
       const userSwitchedToOtherNote = noteId !== this.selectedNote?.id;
       const noteUnchangedWhileSaving = valueToSave === this.codemirror.getValue();
       if (noteUnchangedWhileSaving || userSwitchedToOtherNote) {
@@ -407,6 +418,18 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     if (this.selectedNote?.content === valueToSave) {
       this.notifications.noteSaved(noteId);
     }
+  }
+
+  insertLinkToCursorPosition(url: string, name: string) {
+    const doc = this.codemirror.getDoc();
+    const cursor = doc.getCursor();
+
+    const pos = {
+      line: cursor.line,
+      ch: cursor.ch
+    };
+
+    doc.replaceRange(`![${name}](${url})`, pos);
   }
 
   ngOnDestroy(): void {
@@ -435,21 +458,64 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     });
   }
 
-  private setRenderedMarkdown(content: string) {
-    const unsafeContent = (marked as any)(content);
-    this.markdownContent = unsafeContent; // Automatically sanitized by angular
+  @HostListener('drop', ['$event'])
+  async evtDrop(e: DragEvent) {
+    const files = e.dataTransfer.files;
+    if (files.length !== 1) {
+      throw new Error(`Was expecting 1 file. Got ${files.length}.`);
+    }
+    const file = files[0];
+    this.notifications.showFullScreenBlockingMessage('Uploading file...');
+
+    // Rename attachment if the name would clash
+    let name = file.name;
+    const existingNames = new Set(this.storage.attachedFiles.value.map(af => af.name));
+    if (existingNames.has(name)) {
+      name = makeNamesUnique([name], existingNames)[0];
+      this.notifications.showFullScreenBlockingMessage(
+          `Uploading file... attachment with that name exists, renamed attachment to '${name}'`);
+    }
+
+    // Upload the attachment
+    const fileId = await this.storage.uploadFile(file, file.type, name);
+    await this.storage.attachUploadedFileToNote(this.selectedNote.id, fileId, name, file.type);
+    this.notifications.showFullScreenBlockingMessage(null);
+    this.insertLinkToCursorPosition(name, name);
   }
 
-  insertLinkToCursorPosition(imageUrl: string, imageName: string) {
-    const doc = this.codemirror.getDoc();
-    const cursor = doc.getCursor();
-
-    const pos = {
-      line: cursor.line,
-      ch: cursor.ch
+  // Set up markdown rendering so we can refer to attachments by their names.
+  private setUpMarkedJsRenderer() {
+    const renderer = {
+      image: (href: string, title: string, text: string) => {
+        // Allow linking to attached images using their name.
+        for (const af of this.attachedFiles) {
+          if (href === af.name) {
+            return `<img src="${StorageService.fileIdToLink(af.fileId)}" alt="${text}" title="${title}"/>`;
+          }
+        }
+        return `<img src="href" alt="${text}" title="${title}"/>`;
+      },
+      link: (href: string, title: string, text: string) => {
+        // Allow linking by name to attachments.
+        for (const af of this.attachedFiles) {
+          if (href === af.name) {
+            return `<a href="${StorageService.fileIdToLink(af.fileId)}">${text}</a>`;
+          }
+        }
+        // For notes that are imported from local file system. They might be of the format ../blah/image.jpg so we'll
+        // just assume the user wants to link to the image.jpg we have in attachments.
+        const isUrl = URL_REGEX.test(href);
+        for (const af of this.attachedFiles) {
+          const looksLikeFilePath = (!isUrl && href.endsWith('/' + af.name));
+          if (looksLikeFilePath) {
+            return `<a href="${StorageService.fileIdToLink(af.fileId)}">${text}</a>`;
+          }
+        }
+        return `<a href="${href}" title="${title}">${text}</a>`;
+      }
     };
 
-    doc.replaceRange(`![${imageName}](${imageUrl})`, pos);
+    marked.use({ renderer });
   }
 
   openAttachmentsDialog() {
@@ -459,19 +525,8 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     });
   }
 
-  @HostListener('drop', ['$event'])
-  async evtDrop(e: DragEvent) {
-    const files = e.dataTransfer.files;
-    if (files.length !== 1) {
-      throw new Error(`Was expecting 1 file. Got ${files.length}.`);
-    }
-    const file = files[0];
-    const name = file.name;
-    this.notifications.showFullScreenBlockingMessage('Uploading file...');
-    const fileId = await this.storage.uploadFile(file, file.type, file.name);
-    await this.storage.attachUploadedFileToNote(this.selectedNote.id, fileId, file.name, file.type);
-    this.notifications.showFullScreenBlockingMessage(null);
-    this.insertLinkToCursorPosition(StorageService.fileIdToLink(fileId), name);
+  private setRenderedMarkdown(content: string) {
+    this.markdownContent = (marked as any)(content); // Automatically sanitized by angular
   }
 
   openBackreferencesDialog() {
@@ -588,16 +643,15 @@ export class EditorComponent implements AfterViewInit, OnInit, OnDestroy {
     if (!this.attachedFiles) {
       return;
     }
+
     const newLineNumsAndLinks: Set<string> = new Set();
-    // Get all images which should be inlined
-    for (const attachedFile of this.attachedFiles) {
-      if (attachedFile.mimeType.startsWith('image/')) {
-        const link = StorageService.fileIdToLink(attachedFile.fileId);
-        const cursor = this.codemirror.getSearchCursor(link);
-        while (cursor.findNext()) {
-          const line = cursor.to().line;
-          newLineNumsAndLinks.add(JSON.stringify([line, link]));
-        }
+    for (const attachment of this.attachedFiles) {
+      // TODO: this doesn't support commented markdown links
+      const cursor = this.codemirror.getSearchCursor('[' + attachment.name + ']');
+      while (cursor.findNext()) {
+        const line = cursor.to().line;
+        const link = StorageService.fileIdToLink(attachment.fileId);
+        newLineNumsAndLinks.add(JSON.stringify([line, link]));
       }
     }
 

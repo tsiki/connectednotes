@@ -38,6 +38,7 @@ interface NoteDrag {
 declare interface FileMetadata {
   id: string;
   title: string;
+  mimeType: string;
   lastChangedEpochMillis: number;
   createdEpochMillis: number;
 }
@@ -92,6 +93,7 @@ interface AttachmentMetadata {
 }
 
 interface AttachedFile {
+  // The name should be viable
   name: string;
   fileId: string;
   mimeType: string;
@@ -157,56 +159,33 @@ interface TagNameChanged {
 }
 
 interface StorageBackend {
+  // These contain the latest notes/flashcards/etc and are synced with the backend
   notes: BehaviorSubject<NoteObject[]>;
   flashcards: BehaviorSubject<Flashcard[]>;
+  attachedFiles: BehaviorSubject<AttachedFile[]>;
   storedSettings: BehaviorSubject<UserSettings>;
-  attachmentMetadata: BehaviorSubject<AttachmentMetadata>;
   nestedTagGroups: BehaviorSubject<ParentTagToChildTags>;
+
   shouldUseThisBackend(): Promise<boolean>;
   initialize(): Promise<void>;
-  // Loads any javascript needed for the backend to operate (should maybe be combined with 'initialize'?)
+
   createNote(title: string): Promise<FileMetadata>;
+  // Updates the title and/or content of the note (update is only performed if the value is truthy).
+  updateNote(noteId: string, title: string|null, content: string|null): Promise<void>;
+  deleteNote(noteId): Promise<void>;
+
   createFlashcard(fc: Flashcard): Promise<FileMetadata>;
-  renameFile(fileId: string, newTitle: string): Promise<void>;
-  deleteFile(fileId: string);
-  saveContent(fileId: string, content: string, notify: boolean, mimeType: string);
+  updateFlashcard(fc: Flashcard): Promise<void>;
+  deleteFlashcard(fcId: string): Promise<void>;
+
+  uploadFile(content: any, filename: string, filetype: string): Promise<string>; // for uploading larger files
+  deleteUploadedFile(fileId: string): Promise<void>;
+
   saveNestedTagGroups(nestedTagGroups: ParentTagToChildTags);
-  uploadFile(content: any, fileType: string, fileName: string): Promise<string>;
+  saveSettings(settings: UserSettings): Promise<void>;
+
   addAttachmentToNote(noteId: string, fileId: string, fileName: string, mimeType: string);
   removeAttachmentFromNote(noteId: string, fileId: string);
 
-  saveSettings(settings: UserSettings): Promise<void>;
-  // saveNestedTagGroups(nestedTagGroups: ParentTagToChildTags): Promise<void>;
-  // saveAttachmentData(attachments: AttachmentMetadata): Promise<void>;
-
   logout();
 }
-
-// interface StorageBackend {
-//   shouldUseThisBackend(): Promise<boolean>;
-//   initialize(): Promise<void>;
-//   syncLocalAndBackend(): Promise<void>;
-//
-//   // isNoteSynced(id: string): Promise<boolean>; // resolved when note has been syncronized with the backend
-//   // OPTIONS:
-//   // 1. unsyncedNotes: BehaviorSubject<string[]>
-//   // 2. getUnsyncedNotes(): Promise<string[]>
-//   // 3. getNoteIdToLastChanged(): Promise<Map<string, number>>  AND  syncNotes(string[]): Promise<void>
-//
-//   // Return ID, should probably also return the creation time for caching purposes
-//   createNote(title: string): Promise<string>;
-//   updateNote(note: NoteObject): Promise<void>; // this too?
-//   deleteNote(noteId: string): Promise<void>;
-//
-//   createFlashcard(fc: Flashcard);
-//   updateFlashcard(fc: Flashcard);
-//   deleteFlashcard(fcId: Flashcard);
-//
-//   uploadFile(content: any, filename: string, filetype: string); // for uploading larger files
-//
-//   saveSettings(settings: UserSettings): Promise<void>;
-//   saveNestedTagGroups(nestedTagGroups: ParentTagToChildTags): Promise<void>;
-//   saveAttachmentData(attachments: AttachmentMetadata): Promise<void>;
-//
-//   logout();
-// }

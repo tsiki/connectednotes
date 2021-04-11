@@ -29,7 +29,7 @@ describe('UploadExistingDialogComponent', () => {
       uploadCounter++;
       return Promise.resolve('file ID ' + uploadCounter);
     },
-    saveContent: () => Promise.resolve(),
+    saveNote: () => Promise.resolve(),
   };
 
   beforeEach(async () => {
@@ -62,7 +62,7 @@ describe('UploadExistingDialogComponent', () => {
     const note = new File(['[image](img.jpg)'], 'note name', { type: 'text/plain' });
     const attachment = createFile('img.jpg', 'img.jpg', 'aa', 'image/jpeg');
     component.files = [note, attachment] as any[];
-    const spy = spyOn(storage, 'saveContent');
+    const spy = spyOn(storage, 'saveNote');
 
     await component.upload();
 
@@ -76,7 +76,7 @@ describe('UploadExistingDialogComponent', () => {
     const note = new File(['[[ref]] [image](img.jpg)'], 'note name', { type: 'text/plain' });
     const attachment = createFile('img.jpg', 'img.jpg', 'aa', 'image/jpeg');
     component.files = [note, attachment] as any[];
-    const spy = spyOn(storage, 'saveContent');
+    const spy = spyOn(storage, 'saveNote');
 
     await component.upload();
 
@@ -92,7 +92,7 @@ describe('UploadExistingDialogComponent', () => {
     const attachment1 = createFile('img1.jpg', 'img1.jpg', 'aa', 'image/jpeg');
     const attachment2 = createFile('img2.jpg', 'img2.jpg', 'aa', 'image/jpeg');
     component.files = [note, attachment1, attachment2] as any[];
-    const saveSpy = spyOn(storage, 'saveContent');
+    const saveSpy = spyOn(storage, 'saveNote');
     const uploadSpy = spyOn(storage, 'uploadFile').and.callThrough();
 
     await component.upload();
@@ -113,7 +113,7 @@ describe('UploadExistingDialogComponent', () => {
     const attachment1 = createFile('img1.jpg', 'img1.jpg', 'aa', 'image/jpeg');
     const attachment2 = createFile('img2.jpg', 'img2.jpg', 'aa', 'image/jpeg');
     component.files = [note1, note2, attachment1, attachment2] as any[];
-    const spy = spyOn(storage, 'saveContent');
+    const spy = spyOn(storage, 'saveNote');
 
     await component.upload();
 
@@ -131,7 +131,7 @@ describe('UploadExistingDialogComponent', () => {
     const note = createFile('note name', 'path/note name', '[image](to/img.jpg)', 'text/plain');
     const attachment = createFile('img.jpg', 'path/to/img.jpg', 'aa', 'image/jpeg');
     component.files = [note, attachment] as any[];
-    const spy = spyOn(storage, 'saveContent');
+    const spy = spyOn(storage, 'saveNote');
 
     await component.upload();
 
@@ -160,7 +160,7 @@ describe('UploadExistingDialogComponent', () => {
   it('should skip notes with no matching attachment', async (done) => {
     const note = new File(['asd [image](img1.jpg) qwe'], 'name', { type: 'text/plain' });
     component.files = [note] as any[];
-    const contentSpy = spyOn(storage, 'saveContent').and.callThrough();
+    const contentSpy = spyOn(storage, 'saveNote').and.callThrough();
     await component.upload();
 
     expect(contentSpy).toHaveBeenCalledTimes(1);

@@ -4,6 +4,7 @@ import {MatDialogRef} from '@angular/material/dialog';
 
 import Dropzone from 'dropzone';
 import {Sort} from '@angular/material/sort';
+import {getAllNoteReferences, makeNamesUnique} from '../utils';
 
 
 const NOTE_MIME_TYPES = ['text/plain', 'text/markdown', 'text/x-markdown', '' /* treat unknown as note */];
@@ -17,6 +18,7 @@ const NOTE_MIME_TYPES = ['text/plain', 'text/markdown', 'text/x-markdown', '' /*
         <span id="status-messages">
           <h2>{{attachmentStatusMsg}}</h2>
           <h2>{{noteStatusMsg}}</h2>
+          <h2>{{renameStatusMsg}}</h2>
         </span>
       </div>
 
@@ -35,10 +37,6 @@ const NOTE_MIME_TYPES = ['text/plain', 'text/markdown', 'text/x-markdown', '' /*
           if your notes don't have unique names, we'll rename the notes by attaching a number to the end of the note.
           Attachments should have unique names.
         </p>
-
-        <div id="settings">
-          <mat-checkbox #attachmentRename checked>Rename attachment references</mat-checkbox>
-        </div>
       </div>
 
       <div id="dropzone" #dropzone>
@@ -117,6 +115,10 @@ const NOTE_MIME_TYPES = ['text/plain', 'text/markdown', 'text/x-markdown', '' /*
     }
 
     #status-messages {
+      align-items: center;
+      display: flex;
+      flex-direction: column;
+      padding: 100px;
       position: fixed;
       top: 40%;
     }
@@ -128,11 +130,11 @@ const NOTE_MIME_TYPES = ['text/plain', 'text/markdown', 'text/x-markdown', '' /*
 })
 export class UploadExistingDialogComponent implements AfterViewInit {
   @ViewChild('dropzone') dropzoneElem: ElementRef;
-  @ViewChild('attachmentRename') attachmentRename: ElementRef;
 
   files: Dropzone.DropzoneFile[];
   attachmentStatusMsg: string;
   noteStatusMsg: string;
+  renameStatusMsg: string;
 
   private dropzone: Dropzone;
 
@@ -179,36 +181,38 @@ export class UploadExistingDialogComponent implements AfterViewInit {
     return ans;
   }
 
-  // TODO: should take into account all existing note names
-  getUniqueNoteName(curName: string, existingNames: Set<string>) {
-    if (!existingNames.has(curName)) {
-      return curName;
-    }
-    let i = 1;
-    while (existingNames.has(curName + ` (${i})`)) {
-      i++;
-    }
-    return curName + ` (${i})`;
-  }
-
-  // TODO: link the attachments to the notes
   async upload() {
-    // TODO: check the following:
-    //  1. Does note with that name exist? Warn if yes.
-    //  2. Can we match all attachments in notes to files that are going to be uploaded? Warn if no.
-    //  3. Support linking to already uploaded attachments.
-
+    // TODO: we should block this until everything has loaded so we know which notes/attachments need renaming
     const notes = this.files.filter(f => NOTE_MIME_TYPES.includes(f.type));
     const attachments = this.files.filter(f => !NOTE_MIME_TYPES.includes(f.type));
 
-    const names = new Set<string>();
-    const noteToName = new Map();
+    // 1. Check that each note and attachment has a unique name - if not, append running number to make them unique. Not
+    // renaming references since if the names are the same we can't say which note they're referring to.
+    const curNoteNames = notes.map(n => this.stripSuffix(n.name));
+    const existingNoteNames = new Set(this.storage.notes.value.map(n =>  n.title));
+    const newNoteNames = makeNamesUnique(curNoteNames, existingNoteNames);
 
-    // 1. Check that each note has unique name - if not, append running number to make it unique
-    for (const note of notes) {
-      const actualName = this.getUniqueNoteName(this.stripSuffix(note.name), names);
-      names.add(actualName);
-      noteToName.set(note, actualName);
+    const curAttachmentNames = attachments.map(a => a.name);
+    const existingAttachmentNames = new Set(this.storage.attachedFiles.value.map(at => at.name));
+    const newAttachmentNames = makeNamesUnique(curAttachmentNames, existingAttachmentNames);
+
+    // 1.5. Create status message notifying user about renamed notes.
+    let numRenamedNotes = 0;
+    for (let i = 0; i < curNoteNames.length; i++) {
+      if (curNoteNames[i] !== newNoteNames[i]) {
+        numRenamedNotes++;
+      }
+    }
+    let numRenamedAttachments = 0;
+    for (let i = 0; i < attachments.length; i++) {
+      if (attachments[i].name !== newAttachmentNames[i]) {
+        numRenamedAttachments++;
+      }
+    }
+    if (numRenamedNotes || numRenamedAttachments) {
+      this.renameStatusMsg = 'Note and attachment names must be unique - renamed ' +
+          `${numRenamedNotes} notes and ${numRenamedAttachments} attachments to make them unique.` +
+          'References have not been renamed so some notes might be in an inconsistent state.';
     }
 
     // 2. Create the notes and get their IDs
@@ -217,49 +221,28 @@ export class UploadExistingDialogComponent implements AfterViewInit {
     for (let i = 0; i < notes.length; i++) {
       const note = notes[i];
       this.attachmentStatusMsg = `Created ${i}/${notes.length} notes`;
-      const noteId = await this.storage.createNote(noteToName.get(note));
+      const noteId = await this.storage.createNote(newNoteNames[i]);
       noteToNoteId.set(note, noteId);
       const noteContent = await this.readNoteFile(note);
       noteIdToContent.set(noteId, noteContent);
     }
 
     // 3. Store all the attachments and get their URLs, assuming the uploaded notes are from local filesystem
-    const attachmentToUrl = new Map();
     for (let i = 0; i < attachments.length; i++) {
       this.attachmentStatusMsg = `Uploaded ${i}/${attachments.length} attachments`;
       const file = attachments[i];
-      const fileId = await this.storage.uploadFile(file, file.type, file.name);
-      const url = StorageService.fileIdToLink(fileId);
-      attachmentToUrl.set(file, url);
+      await this.storage.uploadFile(file, file.type, newAttachmentNames[i]);
     }
     this.attachmentStatusMsg = `Uploaded all ${attachments.length} attachments`;
 
-    // 4. Replace links
-    const noteIdToUpdatedContent = new Map<string, string>();
-    for (const [noteId, content] of noteIdToContent.entries()) {
-      const linkLocations = this.getLinkLocations(content);
-      linkLocations.reverse(); // We need to replace links from last to first so the locations won't change
-      let newContent = content;
-      for (const loc of linkLocations) {
-        const [start, end] = loc;
-        const link = content.slice(start, end);
-        const attachment = this.matchLinkToAttachment(link, attachments);
-        if (attachment && this.attachmentRename.nativeElement.checked) {
-          const attachmentLink = attachmentToUrl.get(attachment);
-          newContent = newContent.substring(0, start) + attachmentLink + newContent.substring(end);
-        }
-      }
-      noteIdToUpdatedContent.set(noteId, newContent);
+    // 4. Store notes
+    let num = 0;
+    for (const [noteId, newContent] of noteIdToContent.entries()) {
+      this.noteStatusMsg = `Uploaded ${num}/${noteIdToContent.size} note contents`;
+      await this.storage.saveNote(noteId, newContent);
+      num++;
     }
-
-    // 5. Store modified notes
-    let i = 0;
-    for (const [noteId, newContent] of noteIdToUpdatedContent.entries()) {
-      this.noteStatusMsg = `Uploaded ${i}/${noteIdToUpdatedContent.size} note contents`;
-      await this.storage.saveContent(noteId, newContent);
-      i++;
-    }
-    this.noteStatusMsg = `Uploaded all ${noteIdToUpdatedContent.size} note contents`;
+    this.noteStatusMsg = `Uploaded all ${noteIdToContent.size} note contents`;
   }
 
   ngAfterViewInit(): void {

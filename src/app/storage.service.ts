@@ -2,6 +2,7 @@ import {Injectable, Injector} from '@angular/core';
 import {BehaviorSubject, combineLatest, Subject} from 'rxjs';
 import {GoogleDriveService} from './backends/google-drive.service';
 import {
+  AttachedFile,
   AttachmentMetadata, Flashcard,
   NoteAndLinks,
   NoteObject, NoteTitleChanged, ParentTagToChildTags,
@@ -15,6 +16,7 @@ import {NotificationService} from './notification.service';
 import {TestDataService} from './backends/test-data.service';
 import assert from 'assert';
 import {SubviewManagerService} from './subview-manager.service';
+import {getAllNoteReferences} from './utils';
 
 export enum Backend {
   FIREBASE,
@@ -30,6 +32,7 @@ export class StorageService {
   notes: BehaviorSubject<NoteObject[]> = new BehaviorSubject([]);
   tagGroups: BehaviorSubject<TagGroup[]> = new BehaviorSubject([]);
   flashcards: BehaviorSubject<Flashcard[]> = new BehaviorSubject([]);
+  attachedFiles: BehaviorSubject<AttachedFile[]> = new BehaviorSubject([]);
   selectedNotes: BehaviorSubject<NoteObject[]> = new BehaviorSubject([]);
   storedSettings = new BehaviorSubject<UserSettings>(null);
   attachmentMetadata = new BehaviorSubject<AttachmentMetadata>(null);
@@ -56,17 +59,18 @@ export class StorageService {
         || [];
   }
 
+  // TODO: untangle this from Google Drive
+  static fileIdToLink(fileId: string) {
+    return `https://drive.google.com/uc?id=${fileId}`;
+  }
+
   async replaceTags(noteId: string, oldTag: string, newTag: string) {
     const note = this.getNote(noteId);
     assert(oldTag[0] === '#' && newTag[0] === '#');
     const matcher = new RegExp(`(^|\\s)(${oldTag})($|\\s)`);
     const newContent = note.content.replace(matcher, `$1${newTag}$3`);
-    await this.saveContent(note.id, newContent);
+    await this.saveNote(note.id, newContent);
     this.subviewManager.renameTagInActiveView(noteId, oldTag, newTag);
-  }
-
-  static fileIdToLink(fileId: string) {
-    return `https://drive.google.com/uc?id=${fileId}`;
   }
 
   private static deepCopyObject(obj: {}): {} {
@@ -124,7 +128,7 @@ export class StorageService {
     const idx = this.flashcards.value.findIndex(f => f.id === fc.id);
     this.flashcards.value[idx] = fc;
     this.flashcards.next(this.flashcards.value);
-    await this.backend.saveContent(fc.id, JSON.stringify(fc), false, JSON_MIMETYPE);
+    await this.backend.updateFlashcard(fc);
   }
 
   async deleteFlashcard(id: string) {
@@ -132,7 +136,7 @@ export class StorageService {
     const newFcs = this.flashcards.value.slice();
     newFcs.splice(idx, 1);
     this.flashcards.next(newFcs);
-    await this.backend.deleteFile(id);
+    await this.backend.deleteFlashcard(id);
   }
 
   getBackreferences(noteId: string) {
@@ -153,7 +157,7 @@ export class StorageService {
     const newNotesAndLinks: NoteAndLinks[] = this.notes.value.map(note => ({
       lastChanged: note.lastChangedEpochMillis,
       noteTitle: note.title,
-      connectedTo: this.getAllNotesReferenced(note.content, existingTitles)
+      connectedTo: getAllNoteReferences(note.content, existingTitles).map(ref => ref.noteReferenced),
     }));
     return newNotesAndLinks;
   }
@@ -163,7 +167,7 @@ export class StorageService {
     const prevTitle = noteToRename.title;
     this.subviewManager.renameNoteInActiveViews(prevTitle, newTitle);
     const currentNotesAndLinks = this.getGraphRepresentation();
-    await this.backend.renameFile(noteId, newTitle);
+    await this.backend.updateNote(noteId, newTitle, null);
     noteToRename.title = newTitle;
 
     // Rename backreferences
@@ -180,7 +184,7 @@ export class StorageService {
         renamedNoteCount++;
         const tmp = note.content.split('[[' + prevTitle + ']]');
         renamedBackRefCount += tmp.length - 1;
-        promises.push(this.saveContent(note.id, tmp.join('[[' + newTitle + ']]'), false));
+        promises.push(this.backend.updateNote(note.id, tmp.join('[[' + newTitle + ']]'), null));
       }
     }
     this.notes.next(this.notes.value);
@@ -188,7 +192,7 @@ export class StorageService {
   }
 
   async deleteNote(noteId: string) {
-    await this.backend.deleteFile(noteId);
+    await this.backend.deleteNote(noteId);
     const newSelectedNotes = this.selectedNotes.value.filter(n => n.id !== noteId);
     const allNotes = this.notes.value.filter(n => n.id !== noteId);
     this.notes.next(allNotes);
@@ -197,22 +201,23 @@ export class StorageService {
 
   async deleteAttachment(noteId: string, fileId: string) {
     await this.backend.removeAttachmentFromNote(noteId, fileId);
-    this.backend.deleteFile(fileId);
+    await this.backend.deleteUploadedFile(fileId);
   }
 
-  async saveContent(noteId: string, content: string, notify = true) {
+  async saveNote(noteId: string, content: string, notify = true) {
     // TODO: handle save failing
     const noteExists = this.noteIdToNote.has(noteId); // Might not exist if we just deleted it
-    if (noteExists) {
-      // Save the note locally before attempting to save it remotely. In case the remote save
-      // fails or takes a while we don't want the user to see old content.
-      const note = this.noteIdToNote.get(noteId);
-      note.content = content;
-      note.lastChangedEpochMillis = new Date().getTime();
-      await this.backend.saveContent(noteId, content, notify, TEXT_MIMETYPE);
-      if (notify) {
-        this.notes.next(this.notes.value);
-      }
+    if (!noteExists) {
+      return;
+    }
+    // Save the note locally before attempting to save it remotely. In case the remote save
+    // fails or takes a while we don't want the user to see old content.
+    const note = this.noteIdToNote.get(noteId);
+    note.content = content;
+    note.lastChangedEpochMillis = new Date().getTime();
+    await this.backend.updateNote(noteId, null, content);
+    if (notify) {
+      this.notes.next(this.notes.value);
     }
   }
 
@@ -244,7 +249,7 @@ export class StorageService {
     }
     this.backendType = backendType;
     this.backend.storedSettings.subscribe(newSettings => this.storedSettings.next(newSettings));
-    this.backend.attachmentMetadata.subscribe(newVal => this.attachmentMetadata.next(newVal));
+    this.backend.attachedFiles.subscribe(newVal => this.attachedFiles.next(newVal));
     this.backend.nestedTagGroups.subscribe(newVal => this.nestedTagGroups.next(newVal));
     this.backend.notes.subscribe(newNotes => {
       if (newNotes) {
@@ -332,24 +337,6 @@ export class StorageService {
     return this.tagToTagGroup.get(tag);
   }
 
-  private getAllNotesReferenced(s: string, existingTitles: Set<string>): string[] {
-    const ans = [];
-    let idx = s.indexOf('[[');
-    while (idx !== -1) {
-      // Just in case there's something like [[[[[title]]
-      while (s.length > idx + 1 && s[idx] === '[' && s[idx + 1] === '[') {
-        idx++;
-      }
-      const endIdx = s.indexOf(']]', idx);
-      const ref = s.slice(idx + 1, endIdx);
-      if (existingTitles.has(ref)) {
-        ans.push(s.slice(idx + 1, endIdx));
-      }
-      idx = s.indexOf('[[', endIdx);
-    }
-    return ans;
-  }
-
   // DFS to get the newest timestamp for a tag, taking into account its child tags.
   // Performance can be improved with caching if that ever becomes necessary.
   private getNewestNoteChangeTimestamp(
@@ -362,9 +349,13 @@ export class StorageService {
     }
     seen.add(tag);
     let newestTs = 1e15;
-    for (const noteId of tagToNotes.get(tag)) {
-      const lastChanged = this.noteIdToNote.get(noteId).lastChangedEpochMillis;
-      newestTs = Math.min(newestTs, lastChanged);
+    try {
+      for (const noteId of tagToNotes.get(tag)) {
+        const lastChanged = this.noteIdToNote.get(noteId).lastChangedEpochMillis;
+        newestTs = Math.min(newestTs, lastChanged);
+      }
+    } catch (e) {
+      throw e;
     }
     for (const childTag of (nestedTagGroups[tag] || [])) {
       const tmpBest = this.getNewestNoteChangeTimestamp(childTag, tagToNotes, nestedTagGroups, seen);
