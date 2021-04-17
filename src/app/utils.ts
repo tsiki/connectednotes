@@ -26,7 +26,7 @@ export interface NoteReference {
 
 export function getAllNoteReferences(s: string, existingTitles: Set<string>): NoteReference[] {
     const ans = [];
-    for (let idx = s.indexOf('[['); idx !== -1; idx = s.indexOf('[[')) {
+    for (let idx = s.indexOf('[['); idx !== -1; idx = s.indexOf('[[', idx + 1)) {
         if (idx > 0 && s[idx - 1] === '\\') continue;
         // Just in case there's something like [[[[[title]]
         while (s.length > idx + 1 && s[idx] === '[' && s[idx + 1] === '[') {
@@ -37,7 +37,6 @@ export function getAllNoteReferences(s: string, existingTitles: Set<string>): No
         if (existingTitles.has(ref)) {
             ans.push({index: idx + 1, noteReferenced: s.slice(idx + 1, endIdx)});
         }
-        idx = s.indexOf('[[', endIdx);
     }
     return ans;
 }

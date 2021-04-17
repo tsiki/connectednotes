@@ -1,4 +1,4 @@
-import {AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild, ViewEncapsulation} from '@angular/core';
+import {Component, ElementRef, OnDestroy, ViewChild, ViewEncapsulation} from '@angular/core';
 import {StorageService} from '../storage.service';
 import * as d3 from 'd3';
 import {SimulationNodeDatum} from 'd3-force';
@@ -36,7 +36,6 @@ import {combineLatest, ReplaySubject} from 'rxjs';
       </button>
     </div>
     <div id="graph" #graph></div>
-<!--    Graph view coming by the end of January-->
   `,
   encapsulation: ViewEncapsulation.None,
   styles: [`
@@ -206,7 +205,6 @@ export class GraphComponent implements OnDestroy {
 
 
   private displayCytograph(notesAndLinks: NoteAndLinks[]) {
-
     const elGraph = this.graph.nativeElement;
     const data = this.createGraphData(notesAndLinks);
 
