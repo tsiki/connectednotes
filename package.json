@@ -33,7 +33,7 @@
     "d3-force": "^2.1.1",
     "dropzone": "^5.7.2",
     "firebase": "^8.1.1",
-    "marked": "^1.2.5",
+    "marked": "^4.0.10",
     "material-design-icons": "^3.0.1",
     "rxjs": "~6.6.3",
     "tslib": "^1.14.1",
